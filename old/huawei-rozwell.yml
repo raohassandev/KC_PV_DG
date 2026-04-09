@@ -673,7 +673,7 @@ sensor:
     id: grid_import_kwh
     name: "Grid Import Energy"
     register_type: read
-    address: 0x1B20
+    address: 0x1B21
     value_type: U_QWORD
     register_count: 4
     unit_of_measurement: "kWh"
@@ -688,7 +688,7 @@ sensor:
     id: grid_export_kwh
     name: "Grid Export Energy"
     register_type: read
-    address: 0x1B24
+    address: 0x1B25
     value_type: U_QWORD
     register_count: 4
     unit_of_measurement: "kWh"
@@ -719,7 +719,7 @@ sensor:
     id: gen1_kwh
     name: "Gen1 Energy"
     register_type: read
-    address: 0x1B20
+    address: 0x1B21
     value_type: U_QWORD
     register_count: 4
     unit_of_measurement: "kWh"
@@ -750,7 +750,7 @@ sensor:
     id: gen2_kwh
     name: "Gen2 Energy"
     register_type: read
-    address: 0x1B20
+    address: 0x1B21
     value_type: U_QWORD
     register_count: 4
     unit_of_measurement: "kWh"
