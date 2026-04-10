@@ -122,7 +122,7 @@ export const defaultSlots: SourceSlot[] = [
 export const defaultSite: SiteConfig = {
   siteName: 'New Site',
   boardName: 'pv-dg-controller',
-  boardIp: '192.168.0.105',
+  boardIp: '192.168.1.50',
   wifiSsid: 'Rao',
   controllerMode: 'grid_zero_export',
   exportLimitKw: 0,

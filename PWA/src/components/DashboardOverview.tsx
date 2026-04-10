@@ -1,9 +1,42 @@
-import { useEffect, useState } from 'react';
-import { fetchBoardState } from '../boardApi';
+import React, { useEffect, useState } from 'react';
+import { fetchBoardSnapshot } from '../boardApi';
 import { mockBoardData } from '../mockBoardData';
+
+type LiveUiData = {
+  boardName: string;
+  boardIp: string;
+  wifiSsid: string;
+  controllerState: string;
+  updatedAt: string;
+  summary: {
+    gridKw: number;
+    pvKw: number;
+    commandKw: number;
+    frequencyHz: number;
+    pf: number;
+    importKwh: number;
+  };
+  sources: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    online: boolean;
+    metrics: Array<{
+      label: string;
+      value: string | number;
+      unit?: string;
+      status?: 'ok' | 'warn' | 'offline';
+    }>;
+  }>;
+};
 
 function classNames(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
+}
+
+function safeNumber(value: unknown, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function MetricCard({
@@ -80,38 +113,116 @@ function SourceMetric({
   );
 }
 
+function buildLiveDataFromMock(): LiveUiData {
+  return {
+    boardName: mockBoardData.boardName,
+    boardIp: mockBoardData.boardIp,
+    wifiSsid: mockBoardData.wifiSsid,
+    controllerState: mockBoardData.controllerState,
+    updatedAt: new Date().toLocaleTimeString(),
+    summary: { ...mockBoardData.summary },
+    sources: mockBoardData.sources.map((s) => ({
+      ...s,
+      metrics: s.metrics.map((m) => ({ ...m })),
+    })),
+  };
+}
+
 export default function DashboardOverview() {
-  const [data, setData] = useState(mockBoardData);
+  const [data, setData] = useState<LiveUiData>(buildLiveDataFromMock());
+  const [connectionMode, setConnectionMode] = useState<'live' | 'mock'>('mock');
 
   useEffect(() => {
+    let mounted = true;
+
     const load = async () => {
       try {
-        const board = await fetchBoardState('192.168.0.105');
+        const board = await fetchBoardSnapshot(data.boardIp);
 
-        // map board sensors → UI structure (temporary)
-        setData((prev) => ({
-          ...prev,
-          summary: {
-            ...prev.summary,
-            gridKw:
-              Number(board.sensors['EM500 Total Active Power'] || 0) / 1000,
-            frequencyHz: Number(board.sensors['EM500 Frequency'] || 0),
-            importKwh: Number(
-              board.sensors['EM500 Total Import Active Energy'] || 0,
-            ),
-          },
-          updatedAt: new Date().toLocaleTimeString(),
-        }));
+        if (!mounted) return;
+
+        setData((prev) => {
+          const gridKw =
+            board.gridTotalKw !== null
+              ? safeNumber(board.gridTotalKw, 0)
+              : prev.summary.gridKw;
+          const frequencyHz =
+            board.gridFrequency !== null
+              ? safeNumber(board.gridFrequency, 0)
+              : prev.summary.frequencyHz;
+          const importKwh =
+            board.gridImportKwh !== null
+              ? safeNumber(board.gridImportKwh, 0)
+              : prev.summary.importKwh;
+          const controllerState =
+            board.controllerState && board.controllerState !== 'NA'
+              ? board.controllerState
+              : prev.controllerState;
+
+          return {
+            ...prev,
+            controllerState,
+            updatedAt: new Date().toLocaleTimeString(),
+            summary: {
+              ...prev.summary,
+              gridKw,
+              frequencyHz,
+              importKwh,
+            },
+            sources: prev.sources.map((source) => {
+              if (source.id === 'grid_1') {
+                return {
+                  ...source,
+                  online: true,
+                  metrics: source.metrics.map((metric) => {
+                    if (metric.label === 'Frequency') {
+                      return {
+                        ...metric,
+                        value: frequencyHz.toFixed(2),
+                        unit: 'Hz',
+                        status: 'ok',
+                      };
+                    }
+                    if (metric.label === 'Total Power') {
+                      return {
+                        ...metric,
+                        value: gridKw.toFixed(2),
+                        unit: 'kW',
+                        status: 'ok',
+                      };
+                    }
+                    if (metric.label === 'Import Energy') {
+                      return {
+                        ...metric,
+                        value: importKwh.toFixed(2),
+                        unit: 'kWh',
+                        status: 'ok',
+                      };
+                    }
+                    return metric;
+                  }),
+                };
+              }
+              return source;
+            }),
+          };
+        });
+
+        setConnectionMode('live');
       } catch {
-        // fallback to mock
+        if (!mounted) return;
+        setConnectionMode('mock');
       }
     };
 
     load();
-    const interval = setInterval(load, 3000);
+    const timer = setInterval(load, 3000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [data.boardIp]);
 
   return (
     <section className='space-y-4'>
@@ -174,14 +285,21 @@ export default function DashboardOverview() {
             </div>
             <div className='rounded-2xl bg-slate-50 p-4'>
               <div className='text-xs text-slate-500'>Board Reachability</div>
-              <div className='mt-2 text-xl font-semibold text-emerald-600'>
-                Local Ready
+              <div
+                className={classNames(
+                  'mt-2 text-xl font-semibold',
+                  connectionMode === 'live'
+                    ? 'text-emerald-600'
+                    : 'text-amber-600',
+                )}
+              >
+                {connectionMode === 'live' ? 'Live Connected' : 'Mock Mode'}
               </div>
             </div>
             <div className='rounded-2xl bg-slate-50 p-4'>
               <div className='text-xs text-slate-500'>Next Goal</div>
               <div className='mt-2 text-sm font-medium text-slate-700'>
-                Replace mock data with board API / LAN connection
+                Map more board entities and add write actions
               </div>
             </div>
           </div>

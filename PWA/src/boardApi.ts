@@ -1,46 +1,42 @@
-export type BoardSensor = {
-  entity_id: string;
-  state: string;
-  attributes?: Record<string, any>;
+export type EntityResponse = {
+  name_id?: string;
+  id?: string;
+  value?: string | number;
+  state?: string | number;
 };
 
-export type BoardState = {
-  sensors: Record<string, number | string>;
-  raw: any;
-};
-
-// Basic fetch from ESPHome web server JSON
-export async function fetchBoardState(ip: string): Promise<BoardState> {
+async function fetchEntity(
+  ip: string,
+  path: string,
+): Promise<string | number | null> {
   try {
-    const res = await fetch(`http://${ip}/sensor`, {
-      method: 'GET',
-    });
+    const res = await fetch(`http://${ip}${path}`);
+    if (!res.ok) return null;
 
-    if (!res.ok) {
-      throw new Error('Board not reachable');
-    }
+    const data: EntityResponse = await res.json();
 
-    const data = await res.json();
+    if (data.state !== undefined) return data.state;
+    if (data.value !== undefined) return data.value;
 
-    const parsed: Record<string, number | string> = {};
-
-    // Normalize ESPHome sensor JSON
-    Object.keys(data).forEach((key) => {
-      const val = data[key];
-
-      if (typeof val === 'object' && val !== null) {
-        parsed[key] = val.state ?? 'NA';
-      } else {
-        parsed[key] = val;
-      }
-    });
-
-    return {
-      sensors: parsed,
-      raw: data,
-    };
-  } catch (err) {
-    console.error('Board fetch error:', err);
-    throw err;
+    return null;
+  } catch {
+    return null;
   }
+}
+
+export async function fetchBoardSnapshot(ip: string) {
+  const [gridFrequency, gridTotalKw, gridImportKwh, controllerState] =
+    await Promise.all([
+      fetchEntity(ip, '/sensor/Grid%20Frequency'),
+      fetchEntity(ip, '/sensor/Grid%20Total%20kW'),
+      fetchEntity(ip, '/sensor/Grid%20Import%20Energy'),
+      fetchEntity(ip, '/text_sensor/Controller%20State'),
+    ]);
+
+  return {
+    gridFrequency: gridFrequency !== null ? Number(gridFrequency) : null,
+    gridTotalKw: gridTotalKw !== null ? Number(gridTotalKw) : null,
+    gridImportKwh: gridImportKwh !== null ? Number(gridImportKwh) : null,
+    controllerState: controllerState !== null ? String(controllerState) : 'NA',
+  };
 }
