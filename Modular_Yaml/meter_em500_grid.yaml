@@ -1,0 +1,167 @@
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l1_voltage
+    name: "Grid L1 Voltage"
+    register_type: read
+    address: 0x0002
+    value_type: U_DWORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+    on_value:
+      - lambda: "id(grid_seen) = true;"
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 10
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l2_voltage
+    name: "Grid L2 Voltage"
+    register_type: read
+    address: 0x0004
+    value_type: U_DWORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 11
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l3_voltage
+    name: "Grid L3 Voltage"
+    register_type: read
+    address: 0x0006
+    value_type: U_DWORD
+    unit_of_measurement: "V"
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 12
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l1_current
+    name: "Grid L1 Current"
+    register_type: read
+    address: 0x0008
+    value_type: U_DWORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 4
+    filters:
+      - multiply: 0.0001
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 13
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l2_current
+    name: "Grid L2 Current"
+    register_type: read
+    address: 0x000A
+    value_type: U_DWORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 4
+    filters:
+      - multiply: 0.0001
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 14
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_l3_current
+    name: "Grid L3 Current"
+    register_type: read
+    address: 0x000C
+    value_type: U_DWORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 4
+    filters:
+      - multiply: 0.0001
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 15
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_frequency
+    name: "Grid Frequency"
+    register_type: read
+    address: 0x0032
+    value_type: U_DWORD
+    unit_of_measurement: "Hz"
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 16
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_total_power_w
+    name: "Grid Total Active Power"
+    register_type: read
+    address: 0x003A
+    value_type: S_DWORD
+    unit_of_measurement: "W"
+    accuracy_decimals: 2
+    filters:
+      - multiply: 0.01
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 17
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_total_pf
+    name: "Grid Total Power Factor"
+    register_type: read
+    address: 0x0040
+    value_type: S_DWORD
+    accuracy_decimals: 4
+    filters:
+      - multiply: 0.0001
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 18
+
+  - platform: modbus_controller
+    modbus_controller_id: grid_meter
+    id: grid_import_kwh
+    name: "Grid Import Energy"
+    register_type: holding
+    address: 0x1B21
+    value_type: U_QWORD
+    force_new_range: true
+    unit_of_measurement: "kWh"
+    accuracy_decimals: 2
+    state_class: total_increasing
+    filters:
+      - lambda: |-
+          return x / 4294967296.0f;
+      - multiply: 0.01
+    web_server:
+      sorting_group_id: grp_energy
+      sorting_weight: 10
+
+  - platform: template
+    id: grid_total_kw
+    name: "Grid Total kW"
+    unit_of_measurement: "kW"
+    accuracy_decimals: 2
+    lambda: |-
+      if (isnan(id(grid_total_power_w).state)) return NAN;
+      return id(grid_total_power_w).state / 1000.0f;
+    web_server:
+      sorting_group_id: grp_overview
+      sorting_weight: 10

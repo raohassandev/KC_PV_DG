@@ -1,0 +1,246 @@
+switch:
+  - platform: template
+    id: controller_enable
+    name: "Controller Enable"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 1
+
+  - platform: template
+    id: enable_grid_meter
+    name: "Enable Grid Meter"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - component.resume: grid_meter
+    turn_off_action:
+      - component.suspend: grid_meter
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 1
+
+  - platform: template
+    id: enable_inverter
+    name: "Enable Inverter"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - component.resume: solar_inverter
+    turn_off_action:
+      - component.suspend: solar_inverter
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 2
+
+  - platform: template
+    id: inverter_write_enable
+    name: "Write Commands To Inverter"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 3
+
+select:
+  - platform: template
+    id: control_mode
+    name: "Control Mode"
+    optimistic: true
+    restore_value: true
+    options:
+      - "disabled"
+      - "grid_zero_export"
+      - "grid_limited_export"
+      - "grid_limited_import"
+    initial_option: "disabled"
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 2
+
+number:
+  - platform: template
+    id: pv_rated_kw
+    name: "PV Rated kW"
+    min_value: 1
+    max_value: 5000
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 10
+
+  - platform: template
+    id: deadband_kw
+    name: "Deadband kW"
+    min_value: 0
+    max_value: 50
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 1.0
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 11
+
+  - platform: template
+    id: control_gain
+    name: "Control Gain"
+    min_value: 0.01
+    max_value: 2.0
+    step: 0.01
+    optimistic: true
+    restore_value: true
+    initial_value: 0.20
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 12
+
+  - platform: template
+    id: export_limit_kw
+    name: "Export Limit kW"
+    min_value: 0
+    max_value: 5000
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 0.0
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 13
+
+  - platform: template
+    id: import_limit_kw
+    name: "Import Limit kW"
+    min_value: 0
+    max_value: 5000
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 0.0
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 14
+
+  - platform: template
+    id: min_pv_percent
+    name: "Min PV Percent"
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 15
+
+  - platform: template
+    id: max_pv_percent
+    name: "Max PV Percent"
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 100
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 16
+
+  - platform: template
+    id: ramp_pct_step
+    name: "Ramp pct Step"
+    min_value: 0.1
+    max_value: 20
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 3.0
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 17
+
+  - platform: template
+    id: inverter_command_kw
+    name: "Inverter Command kW"
+    min_value: 0
+    max_value: 5000
+    step: 0.1
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 20
+
+text_sensor:
+  - platform: template
+    id: controller_state
+    name: "Controller State"
+    lambda: |-
+      if (!id(controller_enable).state) return {"DISABLED"};
+      if (id(control_mode).state == "grid_zero_export") return {"GRID ZERO EXPORT"};
+      if (id(control_mode).state == "grid_limited_export") return {"GRID LIMITED EXPORT"};
+      if (id(control_mode).state == "grid_limited_import") return {"GRID LIMITED IMPORT"};
+      return {"DISABLED"};
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_control
+      sorting_weight: 4
+
+  - platform: template
+    id: grid_status
+    name: "Grid Meter Status"
+    lambda: |-
+      if (!id(enable_grid_meter).state) return {"DISABLED"};
+      return { id(grid_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 5s
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 1
+
+  - platform: template
+    id: inverter_status
+    name: "Inverter Status"
+    lambda: |-
+      if (!id(enable_inverter).state) return {"DISABLED"};
+      return { id(inverter_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 5s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 1
+
+button:
+  - platform: restart
+    name: "Restart Controller"
+    web_server:
+      sorting_group_id: grp_debug
+      sorting_weight: 10
+
+  - platform: template
+    name: "Debug INFO"
+    web_server:
+      sorting_group_id: grp_debug
+      sorting_weight: 11
+    on_press:
+      - logger.set_level: INFO
+
+  - platform: template
+    name: "Debug DEBUG"
+    web_server:
+      sorting_group_id: grp_debug
+      sorting_weight: 12
+    on_press:
+      - logger.set_level: DEBUG
+
+  - platform: template
+    name: "Debug WARN"
+    web_server:
+      sorting_group_id: grp_debug
+      sorting_weight: 13
+    on_press:
+      - logger.set_level: WARN

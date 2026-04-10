@@ -1,0 +1,12 @@
+substitutions:
+  devicename: "pv-dg-controller"
+  friendly_name: "PV DG Controller"
+
+packages:
+  base_board: !include base_board.yaml
+  io_board: !include io_board.yaml
+  service_ui: !include service_ui.yaml
+  meter_em500_grid: !include meter_em500_grid.yaml
+  inverter_huawei: !include inverter_huawei.yaml
+  control_core: !include control_core.yaml
+  display_oled: !include display_oled.yaml
