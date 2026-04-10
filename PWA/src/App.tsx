@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import './App.css';
 import DashboardOverview from './components/DashboardOverview';
 import {
   type DeviceType,
@@ -8,7 +9,7 @@ import {
   defaultSite,
 } from './siteTemplates';
 
-function classNames(...xs: Array<string | false | undefined>) {
+function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
@@ -47,22 +48,20 @@ function App() {
   };
 
   return (
-    <div className='min-h-screen bg-slate-100 text-slate-900'>
-      <div className='mx-auto max-w-7xl p-4 md:p-6'>
-        <header className='mb-6 rounded-3xl bg-white p-5 shadow-sm'>
-          <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
+    <div className='app-shell'>
+      <div className='app-container'>
+        <header className='app-header'>
+          <div className='app-header-top'>
             <div>
-              <div className='text-sm text-slate-500'>
-                PV-DG Smart Controller
-              </div>
-              <h1 className='text-2xl font-semibold'>{config.siteName}</h1>
-              <div className='mt-1 text-sm text-slate-500'>
+              <div className='app-kicker'>PV-DG Smart Controller</div>
+              <h1 className='app-title'>{config.siteName}</h1>
+              <div className='app-subtitle'>
                 Board: {config.boardName} · IP: {config.boardIp} · Wi-Fi:{' '}
                 {config.wifiSsid || 'NA'}
               </div>
             </div>
 
-            <div className='grid grid-cols-2 gap-3 md:grid-cols-4'>
+            <div className='header-stats'>
               <StatCard
                 label='Enabled Sources'
                 value={String(enabledCounts.total)}
@@ -80,7 +79,7 @@ function App() {
           </div>
         </header>
 
-        <nav className='mb-6 flex flex-wrap gap-2'>
+        <nav className='tab-bar'>
           {[
             ['dashboard', 'Dashboard'],
             ['site', 'Site Setup'],
@@ -92,12 +91,7 @@ function App() {
             <button
               key={key}
               onClick={() => setTab(key as typeof tab)}
-              className={classNames(
-                'rounded-2xl px-4 py-2 text-sm font-medium transition',
-                tab === key
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white text-slate-700 shadow-sm hover:bg-slate-50',
-              )}
+              className={cx('tab-button', tab === key && 'active')}
             >
               {label}
             </button>
@@ -107,9 +101,10 @@ function App() {
         {tab === 'dashboard' && <DashboardOverview />}
 
         {tab === 'site' && (
-          <section className='grid gap-4 lg:grid-cols-2'>
-            <Panel title='Site Identity'>
-              <FormGrid>
+          <section className='section-grid'>
+            <div className='panel'>
+              <h2>Site Identity</h2>
+              <div className='form-grid'>
                 <TextField
                   label='Site Name'
                   value={config.siteName}
@@ -130,11 +125,12 @@ function App() {
                   value={config.wifiSsid}
                   onChange={(v) => updateSiteField('wifiSsid', v)}
                 />
-              </FormGrid>
-            </Panel>
+              </div>
+            </div>
 
-            <Panel title='Control Defaults'>
-              <FormGrid>
+            <div className='panel'>
+              <h2>Control Defaults</h2>
+              <div className='form-grid'>
                 <SelectField
                   label='Controller Mode'
                   value={config.controllerMode}
@@ -196,16 +192,18 @@ function App() {
                   value={config.maxPvPercent}
                   onChange={(v) => updateSiteField('maxPvPercent', v)}
                 />
-              </FormGrid>
-            </Panel>
+              </div>
+            </div>
           </section>
         )}
 
         {tab === 'slots' && (
-          <section className='space-y-4'>
+          <section className='slot-list'>
             {config.slots.map((slot) => (
-              <Panel key={slot.id} title={slot.label}>
-                <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-5'>
+              <div key={slot.id} className='slot-card'>
+                <h2>{slot.label}</h2>
+
+                <div className='form-grid'>
                   <ToggleField
                     label='Enabled'
                     checked={slot.enabled}
@@ -247,9 +245,6 @@ function App() {
                     onChange={(v) => updateSlot(slot.id, { capacityKw: v })}
                     step={0.1}
                   />
-                </div>
-
-                <div className='mt-4 grid gap-4 md:grid-cols-2'>
                   <TextField
                     label='IP Hint / Notes'
                     value={slot.ipHint || ''}
@@ -262,69 +257,68 @@ function App() {
                   />
                 </div>
 
-                <div className='mt-3 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600'>
+                <div className='slot-help'>
                   Template hint: {templateHelp[slot.deviceType]}
                 </div>
-              </Panel>
+              </div>
             ))}
           </section>
         )}
 
         {tab === 'templates' && (
-          <section className='grid gap-4 lg:grid-cols-2'>
-            <Panel title='Rozwell / EM500 Template'>
-              <ul className='space-y-2 text-sm text-slate-700'>
+          <section className='section-grid'>
+            <div className='panel'>
+              <h2>Rozwell / EM500 Template</h2>
+              <ul className='list-block'>
                 <li>Live voltage/current/power/frequency/power factor</li>
                 <li>Import energy uses confirmed corrected decode</li>
                 <li>Use for grid meters and generator meters</li>
                 <li>Role selected per slot</li>
               </ul>
-            </Panel>
+            </div>
 
-            <Panel title='Huawei Template'>
-              <ul className='space-y-2 text-sm text-slate-700'>
+            <div className='panel'>
+              <h2>Huawei Template</h2>
+              <ul className='list-block'>
                 <li>Pmax</li>
                 <li>Actual power</li>
                 <li>Command write path</li>
                 <li>Deeper live testing deferred until site visit</li>
               </ul>
-            </Panel>
+            </div>
           </section>
         )}
 
         {tab === 'engineer' && (
-          <section className='grid gap-4 lg:grid-cols-2'>
-            <Panel title='Engineer Workflow'>
-              <ol className='space-y-2 text-sm text-slate-700'>
-                <li>1. Detect board on LAN or enter board IP</li>
-                <li>2. Select site template</li>
-                <li>3. Assign slots and Modbus IDs</li>
-                <li>4. Review generated YAML</li>
-                <li>5. Build / flash / OTA later</li>
+          <section className='section-grid'>
+            <div className='panel'>
+              <h2>Engineer Workflow</h2>
+              <ol className='list-block'>
+                <li>Detect board on LAN or enter board IP</li>
+                <li>Select site template</li>
+                <li>Assign slots and Modbus IDs</li>
+                <li>Review generated YAML</li>
+                <li>Build / flash / OTA later</li>
               </ol>
-            </Panel>
+            </div>
 
-            <Panel title='Future Hooks'>
-              <ul className='space-y-2 text-sm text-slate-700'>
+            <div className='panel'>
+              <h2>Future Hooks</h2>
+              <ul className='list-block'>
                 <li>Board discovery</li>
                 <li>Live REST / WebSocket telemetry</li>
                 <li>Role-based access</li>
                 <li>YAML export</li>
                 <li>Firmware build pipeline</li>
               </ul>
-            </Panel>
+            </div>
           </section>
         )}
 
         {tab === 'yaml' && (
-          <section className='space-y-4'>
-            <Panel title='Generated Site YAML Preview'>
-              <textarea
-                value={yamlPreview}
-                readOnly
-                className='min-h-[520px] w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-sm text-slate-100 outline-none'
-              />
-            </Panel>
+          <section className='panel'>
+            <h2>Generated Site YAML Preview</h2>
+            <textarea value={yamlPreview} readOnly className='yaml-box' />
           </section>
         )}
       </div>
@@ -373,32 +367,13 @@ ${slotLines}
 `;
 }
 
-function Panel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className='rounded-3xl bg-white p-5 shadow-sm'>
-      <h2 className='mb-4 text-lg font-semibold'>{title}</h2>
-      {children}
-    </div>
-  );
-}
-
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className='rounded-2xl bg-slate-50 p-3'>
-      <div className='text-xs text-slate-500'>{label}</div>
-      <div className='mt-1 text-xl font-semibold'>{value}</div>
+    <div className='stat-card'>
+      <div className='stat-label'>{label}</div>
+      <div className='stat-value'>{value}</div>
     </div>
   );
-}
-
-function FormGrid({ children }: { children: React.ReactNode }) {
-  return <div className='grid gap-4 md:grid-cols-2'>{children}</div>;
 }
 
 function TextField({
@@ -411,12 +386,12 @@ function TextField({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className='block'>
-      <div className='mb-1 text-sm font-medium'>{label}</div>
+    <label className='field'>
+      <span className='field-label'>{label}</span>
       <input
+        className='field-input'
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-600'
       />
     </label>
   );
@@ -434,14 +409,14 @@ function NumberField({
   step?: number;
 }) {
   return (
-    <label className='block'>
-      <div className='mb-1 text-sm font-medium'>{label}</div>
+    <label className='field'>
+      <span className='field-label'>{label}</span>
       <input
+        className='field-input'
         type='number'
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className='w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-600'
       />
     </label>
   );
@@ -459,12 +434,12 @@ function SelectField({
   options: Array<[string, string]>;
 }) {
   return (
-    <label className='block'>
-      <div className='mb-1 text-sm font-medium'>{label}</div>
+    <label className='field'>
+      <span className='field-label'>{label}</span>
       <select
+        className='field-select'
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className='w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 outline-none focus:border-slate-600'
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -486,15 +461,12 @@ function ToggleField({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className='block'>
-      <div className='mb-1 text-sm font-medium'>{label}</div>
+    <label className='field'>
+      <span className='field-label'>{label}</span>
       <button
         type='button'
         onClick={() => onChange(!checked)}
-        className={classNames(
-          'w-full rounded-2xl px-3 py-2 text-left font-medium',
-          checked ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700',
-        )}
+        className={cx('toggle-button', checked ? 'enabled' : 'disabled')}
       >
         {checked ? 'Enabled' : 'Disabled'}
       </button>

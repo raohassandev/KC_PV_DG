@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchBoardSnapshot } from '../boardApi';
 import { mockBoardData } from '../mockBoardData';
+
+type MetricStatus = 'ok' | 'warn' | 'offline';
 
 type LiveUiData = {
   boardName: string;
@@ -25,12 +27,12 @@ type LiveUiData = {
       label: string;
       value: string | number;
       unit?: string;
-      status?: 'ok' | 'warn' | 'offline';
+      status?: MetricStatus;
     }>;
   }>;
 };
 
-function classNames(...xs: Array<string | false | undefined>) {
+function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
@@ -39,81 +41,7 @@ function safeNumber(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function MetricCard({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: string | number;
-  unit?: string;
-}) {
-  return (
-    <div className='rounded-2xl bg-slate-50 p-4'>
-      <div className='text-xs text-slate-500'>{label}</div>
-      <div className='mt-2 text-2xl font-semibold'>
-        {value}
-        {unit ? (
-          <span className='ml-1 text-sm text-slate-500'>{unit}</span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function SourceStatusBadge({
-  enabled,
-  online,
-}: {
-  enabled: boolean;
-  online: boolean;
-}) {
-  const label = !enabled ? 'Disabled' : online ? 'Online' : 'Offline';
-
-  return (
-    <span
-      className={classNames(
-        'rounded-full px-3 py-1 text-xs font-medium',
-        !enabled && 'bg-slate-200 text-slate-700',
-        enabled && online && 'bg-emerald-100 text-emerald-700',
-        enabled && !online && 'bg-amber-100 text-amber-700',
-      )}
-    >
-      {label}
-    </span>
-  );
-}
-
-function SourceMetric({
-  label,
-  value,
-  unit,
-  status,
-}: {
-  label: string;
-  value: string | number;
-  unit?: string;
-  status?: 'ok' | 'warn' | 'offline';
-}) {
-  return (
-    <div className='flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2'>
-      <div className='text-sm text-slate-600'>{label}</div>
-      <div
-        className={classNames(
-          'text-sm font-semibold',
-          status === 'offline' && 'text-slate-400',
-          status === 'warn' && 'text-amber-600',
-          (!status || status === 'ok') && 'text-slate-900',
-        )}
-      >
-        {value}
-        {unit ? ` ${unit}` : ''}
-      </div>
-    </div>
-  );
-}
-
-function buildLiveDataFromMock(): LiveUiData {
+function buildInitialData(): LiveUiData {
   return {
     boardName: mockBoardData.boardName,
     boardIp: '192.168.1.50',
@@ -128,8 +56,51 @@ function buildLiveDataFromMock(): LiveUiData {
   };
 }
 
+function MetricCard({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string | number;
+  unit?: string;
+}) {
+  return (
+    <div className='metric-card'>
+      <div className='metric-label'>{label}</div>
+      <div className='metric-value'>
+        {value}
+        {unit ? <span className='metric-unit'>{unit}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({
+  enabled,
+  online,
+}: {
+  enabled: boolean;
+  online: boolean;
+}) {
+  const label = !enabled ? 'Disabled' : online ? 'Online' : 'Offline';
+
+  return (
+    <span
+      className={cx(
+        'status-badge',
+        !enabled && 'status-disabled',
+        enabled && online && 'status-online',
+        enabled && !online && 'status-offline',
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default function DashboardOverview() {
-  const [data, setData] = useState<LiveUiData>(buildLiveDataFromMock());
+  const [data, setData] = useState<LiveUiData>(buildInitialData());
   const [connectionMode, setConnectionMode] = useState<'live' | 'mock'>('mock');
 
   useEffect(() => {
@@ -138,102 +109,159 @@ export default function DashboardOverview() {
     const load = async () => {
       try {
         const board = await fetchBoardSnapshot(data.boardIp);
-
         if (!mounted) return;
 
         setData((prev) => {
-          const frequencyHz =
-            board.gridFrequency !== null
-              ? safeNumber(board.gridFrequency, 0)
-              : prev.summary.frequencyHz;
-
           const gridKw =
             board.gridTotalActivePowerW !== null
-              ? safeNumber(board.gridTotalActivePowerW, 0) / 1000
+              ? safeNumber(board.gridTotalActivePowerW) / 1000
               : prev.summary.gridKw;
 
+          const frequencyHz =
+            board.gridFrequency !== null
+              ? safeNumber(board.gridFrequency)
+              : prev.summary.frequencyHz;
+
+          const importKwh =
+            board.gridImportKwh !== null
+              ? safeNumber(board.gridImportKwh)
+              : prev.summary.importKwh;
+
+          const pf =
+            board.gridPf !== null ? safeNumber(board.gridPf) : prev.summary.pf;
+
           const gridOnline =
-            board.gridStatus !== null
-              ? String(board.gridStatus).toUpperCase() === 'ONLINE'
-              : (prev.sources.find((s) => s.id === 'grid_1')?.online ?? false);
-
-          const l1 =
-            board.gridL1Voltage !== null
-              ? safeNumber(board.gridL1Voltage, 0)
-              : null;
-          const l2 =
-            board.gridL2Voltage !== null
-              ? safeNumber(board.gridL2Voltage, 0)
-              : null;
-          const l3 =
-            board.gridL3Voltage !== null
-              ? safeNumber(board.gridL3Voltage, 0)
-              : null;
-
-          const controllerState =
-            board.controllerState && board.controllerState !== 'NA'
-              ? board.controllerState
-              : prev.controllerState;
+            String(board.gridStatus).toUpperCase() === 'ONLINE';
+          const inverterOnline =
+            String(board.inverterStatus).toUpperCase() === 'ONLINE';
 
           return {
             ...prev,
-            controllerState,
+            controllerState:
+              board.controllerState && board.controllerState !== 'NA'
+                ? board.controllerState
+                : prev.controllerState,
             updatedAt: new Date().toLocaleTimeString(),
             summary: {
               ...prev.summary,
               gridKw,
               frequencyHz,
+              importKwh,
+              pf,
+              pvKw:
+                board.inverterActualPower !== null
+                  ? safeNumber(board.inverterActualPower)
+                  : prev.summary.pvKw,
             },
             sources: prev.sources.map((source) => {
               if (source.id === 'grid_1') {
                 return {
                   ...source,
                   online: gridOnline,
-                  metrics: source.metrics.map((metric) => {
-                    if (metric.label === 'L1 Voltage' && l1 !== null) {
-                      return {
-                        ...metric,
-                        value: l1.toFixed(2),
-                        unit: 'V',
-                        status: 'ok',
-                      };
-                    }
-                    if (metric.label === 'L2 Voltage' && l2 !== null) {
-                      return {
-                        ...metric,
-                        value: l2.toFixed(2),
-                        unit: 'V',
-                        status: 'ok',
-                      };
-                    }
-                    if (metric.label === 'L3 Voltage' && l3 !== null) {
-                      return {
-                        ...metric,
-                        value: l3.toFixed(2),
-                        unit: 'V',
-                        status: 'ok',
-                      };
-                    }
-                    if (metric.label === 'Frequency') {
-                      return {
-                        ...metric,
-                        value: frequencyHz.toFixed(3),
-                        unit: 'Hz',
-                        status: 'ok',
-                      };
-                    }
-                    if (metric.label === 'Total Power') {
-                      return {
-                        ...metric,
-                        value: gridKw.toFixed(2),
-                        unit: 'kW',
-                        status: 'ok',
-                      };
-                    }
-                    return metric;
-                  }),
+                  metrics: [
+                    {
+                      label: 'L1 Voltage',
+                      value:
+                        board.gridL1Voltage !== null
+                          ? safeNumber(board.gridL1Voltage).toFixed(2)
+                          : 'NA',
+                      unit: 'V',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'L2 Voltage',
+                      value:
+                        board.gridL2Voltage !== null
+                          ? safeNumber(board.gridL2Voltage).toFixed(2)
+                          : 'NA',
+                      unit: 'V',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'L3 Voltage',
+                      value:
+                        board.gridL3Voltage !== null
+                          ? safeNumber(board.gridL3Voltage).toFixed(2)
+                          : 'NA',
+                      unit: 'V',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'L1 Current',
+                      value:
+                        board.gridL1Current !== null
+                          ? safeNumber(board.gridL1Current).toFixed(4)
+                          : 'NA',
+                      unit: 'A',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'L2 Current',
+                      value:
+                        board.gridL2Current !== null
+                          ? safeNumber(board.gridL2Current).toFixed(4)
+                          : 'NA',
+                      unit: 'A',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'L3 Current',
+                      value:
+                        board.gridL3Current !== null
+                          ? safeNumber(board.gridL3Current).toFixed(4)
+                          : 'NA',
+                      unit: 'A',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'Frequency',
+                      value: frequencyHz.toFixed(3),
+                      unit: 'Hz',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'Total Power',
+                      value: gridKw.toFixed(2),
+                      unit: 'kW',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'Import Energy',
+                      value: importKwh.toFixed(2),
+                      unit: 'kWh',
+                      status: gridOnline ? 'ok' : 'offline',
+                    },
+                  ],
                 };
               }
+
+              if (source.id === 'inv_1') {
+                return {
+                  ...source,
+                  online: inverterOnline,
+                  metrics: [
+                    {
+                      label: 'Actual Power',
+                      value:
+                        board.inverterActualPower !== null
+                          ? safeNumber(board.inverterActualPower).toFixed(2)
+                          : 'NA',
+                      unit: 'kW',
+                      status: inverterOnline ? 'ok' : 'offline',
+                    },
+                    {
+                      label: 'Pmax',
+                      value:
+                        board.inverterPmax !== null
+                          ? safeNumber(board.inverterPmax).toFixed(2)
+                          : 'NA',
+                      unit: 'kW',
+                      status: inverterOnline ? 'ok' : 'offline',
+                    },
+                  ],
+                };
+              }
+
               return source;
             }),
           };
@@ -256,121 +284,120 @@ export default function DashboardOverview() {
   }, [data.boardIp]);
 
   return (
-    <section className='space-y-4'>
-      <div className='grid gap-4 lg:grid-cols-3'>
-        <div className='rounded-3xl bg-white p-5 shadow-sm lg:col-span-2'>
-          <div className='mb-4 flex items-start justify-between'>
-            <div>
-              <h2 className='text-lg font-semibold'>Live Overview</h2>
-              <p className='mt-1 text-sm text-slate-500'>
-                Board: {data.boardName} · IP: {data.boardIp} · Wi-Fi:{' '}
-                {data.wifiSsid}
-              </p>
-            </div>
-            <div className='rounded-2xl bg-slate-100 px-3 py-2 text-xs text-slate-600'>
-              Updated: {data.updatedAt}
-            </div>
+    <section className='dashboard-grid'>
+      <div className='card card-wide'>
+        <div className='card-header'>
+          <div>
+            <h2>Live Overview</h2>
+            <p>
+              Board: {data.boardName} · IP: {data.boardIp} · Wi-Fi:{' '}
+              {data.wifiSsid}
+            </p>
           </div>
+          <div className='updated-pill'>Updated: {data.updatedAt}</div>
+        </div>
 
-          <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
-            <MetricCard
-              label='Grid Power'
-              value={data.summary.gridKw.toFixed(2)}
-              unit='kW'
-            />
-            <MetricCard
-              label='PV Power'
-              value={data.summary.pvKw.toFixed(2)}
-              unit='kW'
-            />
-            <MetricCard
-              label='Command Power'
-              value={data.summary.commandKw.toFixed(2)}
-              unit='kW'
-            />
-            <MetricCard
-              label='Frequency'
-              value={data.summary.frequencyHz.toFixed(3)}
-              unit='Hz'
-            />
-            <MetricCard
-              label='Power Factor'
-              value={data.summary.pf.toFixed(4)}
-            />
-            <MetricCard
-              label='Import Energy'
-              value={data.summary.importKwh.toFixed(2)}
-              unit='kWh'
-            />
+        <div className='metric-grid'>
+          <MetricCard
+            label='Grid Power'
+            value={data.summary.gridKw.toFixed(2)}
+            unit='kW'
+          />
+          <MetricCard
+            label='PV Power'
+            value={data.summary.pvKw.toFixed(2)}
+            unit='kW'
+          />
+          <MetricCard
+            label='Command Power'
+            value={data.summary.commandKw.toFixed(2)}
+            unit='kW'
+          />
+          <MetricCard
+            label='Frequency'
+            value={data.summary.frequencyHz.toFixed(3)}
+            unit='Hz'
+          />
+          <MetricCard label='Power Factor' value={data.summary.pf.toFixed(4)} />
+          <MetricCard
+            label='Import Energy'
+            value={data.summary.importKwh.toFixed(2)}
+            unit='kWh'
+          />
+        </div>
+      </div>
+
+      <div className='card'>
+        <div className='card-header'>
+          <div>
+            <h2>Controller Status</h2>
           </div>
         </div>
 
-        <div className='rounded-3xl bg-white p-5 shadow-sm'>
-          <h2 className='text-lg font-semibold'>Controller Status</h2>
-          <div className='mt-4 space-y-3'>
-            <div className='rounded-2xl bg-slate-50 p-4'>
-              <div className='text-xs text-slate-500'>State</div>
-              <div className='mt-2 text-xl font-semibold'>
-                {data.controllerState}
-              </div>
+        <div className='status-stack'>
+          <div className='info-box'>
+            <div className='info-label'>State</div>
+            <div className='info-value'>{data.controllerState}</div>
+          </div>
+
+          <div className='info-box'>
+            <div className='info-label'>Board Reachability</div>
+            <div
+              className={cx(
+                'info-value',
+                connectionMode === 'live' ? 'text-good' : 'text-warn',
+              )}
+            >
+              {connectionMode === 'live' ? 'Live Connected' : 'Mock Mode'}
             </div>
-            <div className='rounded-2xl bg-slate-50 p-4'>
-              <div className='text-xs text-slate-500'>Board Reachability</div>
-              <div
-                className={classNames(
-                  'mt-2 text-xl font-semibold',
-                  connectionMode === 'live'
-                    ? 'text-emerald-600'
-                    : 'text-amber-600',
-                )}
-              >
-                {connectionMode === 'live' ? 'Live Connected' : 'Mock Mode'}
-              </div>
-            </div>
-            <div className='rounded-2xl bg-slate-50 p-4'>
-              <div className='text-xs text-slate-500'>Next Goal</div>
-              <div className='mt-2 text-sm font-medium text-slate-700'>
-                Map import energy and add write actions
-              </div>
+          </div>
+
+          <div className='info-box'>
+            <div className='info-label'>Next Goal</div>
+            <div className='info-small'>
+              Add commissioning write actions and source-aware mapping
             </div>
           </div>
         </div>
       </div>
 
-      <div className='rounded-3xl bg-white p-5 shadow-sm'>
-        <div className='mb-4 flex items-center justify-between'>
-          <h2 className='text-lg font-semibold'>Source Status</h2>
-          <div className='text-sm text-slate-500'>
-            {data.sources.length} source entries
+      <div className='card card-full'>
+        <div className='card-header'>
+          <div>
+            <h2>Source Status</h2>
+            <p>{data.sources.length} source entries</p>
           </div>
         </div>
 
-        <div className='grid gap-4 xl:grid-cols-2'>
+        <div className='source-grid'>
           {data.sources.map((source) => (
-            <div
-              key={source.id}
-              className='rounded-3xl border border-slate-200 p-4'
-            >
-              <div className='mb-4 flex items-start justify-between gap-3'>
+            <div key={source.id} className='source-card'>
+              <div className='source-top'>
                 <div>
-                  <div className='text-lg font-semibold'>{source.name}</div>
-                  <div className='text-sm text-slate-500'>ID: {source.id}</div>
+                  <div className='source-title'>{source.name}</div>
+                  <div className='source-subtitle'>ID: {source.id}</div>
                 </div>
-                <SourceStatusBadge
-                  enabled={source.enabled}
-                  online={source.online}
-                />
+                <SourceBadge enabled={source.enabled} online={source.online} />
               </div>
 
-              <div className='space-y-2'>
+              <div className='source-metrics'>
                 {source.metrics.map((metric) => (
-                  <SourceMetric
+                  <div
                     key={`${source.id}-${metric.label}`}
-                    label={metric.label}
-                    value={metric.value}
-                    unit={metric.unit}
-                    status={metric.status}
-                  />
+                    className='source-metric-row'
+                  >
+                    <span className='source-metric-label'>{metric.label}</span>
+                    <span
+                      className={cx(
+                        'source-metric-value',
+                        metric.status === 'offline' && 'metric-offline',
+                        metric.status === 'warn' && 'metric-warn',
+                      )}
+                    >
+                      {metric.value}
+                      {metric.unit ? ` ${metric.unit}` : ''}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
