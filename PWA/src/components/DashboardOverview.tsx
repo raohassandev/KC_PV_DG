@@ -116,7 +116,7 @@ function SourceMetric({
 function buildLiveDataFromMock(): LiveUiData {
   return {
     boardName: mockBoardData.boardName,
-    boardIp: mockBoardData.boardIp,
+    boardIp: '192.168.1.50',
     wifiSsid: mockBoardData.wifiSsid,
     controllerState: mockBoardData.controllerState,
     updatedAt: new Date().toLocaleTimeString(),
@@ -142,18 +142,34 @@ export default function DashboardOverview() {
         if (!mounted) return;
 
         setData((prev) => {
-          const gridKw =
-            board.gridTotalKw !== null
-              ? safeNumber(board.gridTotalKw, 0)
-              : prev.summary.gridKw;
           const frequencyHz =
             board.gridFrequency !== null
               ? safeNumber(board.gridFrequency, 0)
               : prev.summary.frequencyHz;
-          const importKwh =
-            board.gridImportKwh !== null
-              ? safeNumber(board.gridImportKwh, 0)
-              : prev.summary.importKwh;
+
+          const gridKw =
+            board.gridTotalActivePowerW !== null
+              ? safeNumber(board.gridTotalActivePowerW, 0) / 1000
+              : prev.summary.gridKw;
+
+          const gridOnline =
+            board.gridStatus !== null
+              ? String(board.gridStatus).toUpperCase() === 'ONLINE'
+              : (prev.sources.find((s) => s.id === 'grid_1')?.online ?? false);
+
+          const l1 =
+            board.gridL1Voltage !== null
+              ? safeNumber(board.gridL1Voltage, 0)
+              : null;
+          const l2 =
+            board.gridL2Voltage !== null
+              ? safeNumber(board.gridL2Voltage, 0)
+              : null;
+          const l3 =
+            board.gridL3Voltage !== null
+              ? safeNumber(board.gridL3Voltage, 0)
+              : null;
+
           const controllerState =
             board.controllerState && board.controllerState !== 'NA'
               ? board.controllerState
@@ -167,18 +183,41 @@ export default function DashboardOverview() {
               ...prev.summary,
               gridKw,
               frequencyHz,
-              importKwh,
             },
             sources: prev.sources.map((source) => {
               if (source.id === 'grid_1') {
                 return {
                   ...source,
-                  online: true,
+                  online: gridOnline,
                   metrics: source.metrics.map((metric) => {
+                    if (metric.label === 'L1 Voltage' && l1 !== null) {
+                      return {
+                        ...metric,
+                        value: l1.toFixed(2),
+                        unit: 'V',
+                        status: 'ok',
+                      };
+                    }
+                    if (metric.label === 'L2 Voltage' && l2 !== null) {
+                      return {
+                        ...metric,
+                        value: l2.toFixed(2),
+                        unit: 'V',
+                        status: 'ok',
+                      };
+                    }
+                    if (metric.label === 'L3 Voltage' && l3 !== null) {
+                      return {
+                        ...metric,
+                        value: l3.toFixed(2),
+                        unit: 'V',
+                        status: 'ok',
+                      };
+                    }
                     if (metric.label === 'Frequency') {
                       return {
                         ...metric,
-                        value: frequencyHz.toFixed(2),
+                        value: frequencyHz.toFixed(3),
                         unit: 'Hz',
                         status: 'ok',
                       };
@@ -188,14 +227,6 @@ export default function DashboardOverview() {
                         ...metric,
                         value: gridKw.toFixed(2),
                         unit: 'kW',
-                        status: 'ok',
-                      };
-                    }
-                    if (metric.label === 'Import Energy') {
-                      return {
-                        ...metric,
-                        value: importKwh.toFixed(2),
-                        unit: 'kWh',
                         status: 'ok',
                       };
                     }
@@ -259,7 +290,7 @@ export default function DashboardOverview() {
             />
             <MetricCard
               label='Frequency'
-              value={data.summary.frequencyHz.toFixed(2)}
+              value={data.summary.frequencyHz.toFixed(3)}
               unit='Hz'
             />
             <MetricCard
@@ -299,7 +330,7 @@ export default function DashboardOverview() {
             <div className='rounded-2xl bg-slate-50 p-4'>
               <div className='text-xs text-slate-500'>Next Goal</div>
               <div className='mt-2 text-sm font-medium text-slate-700'>
-                Map more board entities and add write actions
+                Map import energy and add write actions
               </div>
             </div>
           </div>
