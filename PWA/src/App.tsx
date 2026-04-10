@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import DashboardOverview from './components/DashboardOverview';
 import {
   type DeviceType,
   type SourceRole,
@@ -44,13 +45,6 @@ function App() {
       ),
     }));
   };
-
-  const enabledGrid = config.slots.find(
-    (s) => s.enabled && s.role === 'grid_meter',
-  );
-  const enabledInverters = config.slots.filter(
-    (s) => s.enabled && s.role === 'inverter',
-  );
 
   return (
     <div className='min-h-screen bg-slate-100 text-slate-900'>
@@ -110,61 +104,7 @@ function App() {
           ))}
         </nav>
 
-        {tab === 'dashboard' && (
-          <section className='grid gap-4 lg:grid-cols-3'>
-            <Panel title='System Overview'>
-              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-                <InfoRow
-                  label='Controller Mode'
-                  value={config.controllerMode}
-                />
-                <InfoRow label='PV Rated' value={`${config.pvRatedKw} kW`} />
-                <InfoRow
-                  label='Primary Grid Meter'
-                  value={enabledGrid ? enabledGrid.label : 'Not assigned'}
-                />
-                <InfoRow
-                  label='Primary Inverter'
-                  value={
-                    enabledInverters.length > 0
-                      ? enabledInverters[0].label
-                      : 'Not assigned'
-                  }
-                />
-                <InfoRow
-                  label='Export Limit'
-                  value={`${config.exportLimitKw} kW`}
-                />
-                <InfoRow
-                  label='Import Limit'
-                  value={`${config.importLimitKw} kW`}
-                />
-              </div>
-            </Panel>
-
-            <Panel title='Board Status'>
-              <div className='space-y-2'>
-                <InfoRow label='Board Name' value={config.boardName} />
-                <InfoRow label='Board IP' value={config.boardIp} />
-                <InfoRow label='Wi-Fi SSID' value={config.wifiSsid || 'NA'} />
-                <InfoRow label='Commissioning' value='Local / Remote Ready' />
-              </div>
-            </Panel>
-
-            <Panel title='Action Summary'>
-              <div className='space-y-2 text-sm'>
-                <div className='rounded-2xl bg-slate-50 p-3'>
-                  This PWA will later connect to the board for local monitoring,
-                  source assignment, configuration, and YAML generation.
-                </div>
-                <div className='rounded-2xl bg-slate-50 p-3'>
-                  Current goal: stabilize board YAML and shape commissioning
-                  flow.
-                </div>
-              </div>
-            </Panel>
-          </section>
-        )}
+        {tab === 'dashboard' && <DashboardOverview />}
 
         {tab === 'site' && (
           <section className='grid gap-4 lg:grid-cols-2'>
@@ -453,15 +393,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className='rounded-2xl bg-slate-50 p-3'>
       <div className='text-xs text-slate-500'>{label}</div>
       <div className='mt-1 text-xl font-semibold'>{value}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className='rounded-2xl bg-slate-50 p-3'>
-      <div className='text-xs text-slate-500'>{label}</div>
-      <div className='mt-1 text-sm font-medium'>{value}</div>
     </div>
   );
 }

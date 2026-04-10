@@ -9,3 +9,5 @@ esphome run pv_dg_dynamic_professional_v2.yaml --device /dev/cu.usbserial-1110
 esphome config /Users/israrulhaq/Desktop/DEV/KC_PV_DG/Modular_Yaml/pv-dg-controller.yaml --device /dev/cu.usbserial-1110
 
 esphome run /Users/israrulhaq/Desktop/DEV/KC_PV_DG/Modular_Yaml/pv-dg-controller.yaml --device /dev/cu.usbserial-1110
+# KC_PV_DG
+# KC_PV_DG
