@@ -15,8 +15,8 @@ async function fetchEntity(
 
     const data: EntityResponse = await res.json();
 
-    if (data.state !== undefined) return data.state;
-    if (data.value !== undefined) return data.value;
+    if (data.value !== undefined && data.value !== null) return data.value;
+    if (data.state !== undefined && data.state !== null) return data.state;
 
     return null;
   } catch {
@@ -33,6 +33,8 @@ export async function fetchBoardSnapshot(ip: string) {
     gridL3Voltage,
     gridStatus,
     controllerState,
+    gridImportKwh,
+    gridPf,
   ] = await Promise.all([
     fetchEntity(ip, '/sensor/Grid%20Frequency'),
     fetchEntity(ip, '/sensor/Grid%20Total%20Active%20Power'),
@@ -41,6 +43,8 @@ export async function fetchBoardSnapshot(ip: string) {
     fetchEntity(ip, '/sensor/Grid%20L3%20Voltage'),
     fetchEntity(ip, '/text_sensor/Grid%20Meter%20Status'),
     fetchEntity(ip, '/text_sensor/Controller%20State'),
+    fetchEntity(ip, '/sensor/Grid%20Import%20Energy'),
+    fetchEntity(ip, '/sensor/Grid%20Total%20Power%20Factor'),
   ]);
 
   return {
@@ -52,5 +56,7 @@ export async function fetchBoardSnapshot(ip: string) {
     gridL3Voltage: gridL3Voltage !== null ? Number(gridL3Voltage) : null,
     gridStatus: gridStatus !== null ? String(gridStatus) : 'NA',
     controllerState: controllerState !== null ? String(controllerState) : 'NA',
+    gridImportKwh: gridImportKwh !== null ? Number(gridImportKwh) : null,
+    gridPf: gridPf !== null ? Number(gridPf) : null,
   };
 }
