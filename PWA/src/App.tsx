@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import './App.css';
 import DashboardOverview from './components/DashboardOverview';
+import EngineerActions from './components/EngineerActions';
 import {
   type DeviceType,
   type SourceRole,
@@ -85,7 +86,7 @@ function App() {
             ['site', 'Site Setup'],
             ['slots', 'Source Slots'],
             ['templates', 'Templates'],
-            ['engineer', 'Engineer Settings'],
+            ['engineer', 'Engineer Actions'],
             ['yaml', 'YAML Preview'],
           ].map(([key, label]) => (
             <button
@@ -289,31 +290,7 @@ function App() {
           </section>
         )}
 
-        {tab === 'engineer' && (
-          <section className='section-grid'>
-            <div className='panel'>
-              <h2>Engineer Workflow</h2>
-              <ol className='list-block'>
-                <li>Detect board on LAN or enter board IP</li>
-                <li>Select site template</li>
-                <li>Assign slots and Modbus IDs</li>
-                <li>Review generated YAML</li>
-                <li>Build / flash / OTA later</li>
-              </ol>
-            </div>
-
-            <div className='panel'>
-              <h2>Future Hooks</h2>
-              <ul className='list-block'>
-                <li>Board discovery</li>
-                <li>Live REST / WebSocket telemetry</li>
-                <li>Role-based access</li>
-                <li>YAML export</li>
-                <li>Firmware build pipeline</li>
-              </ul>
-            </div>
-          </section>
-        )}
+        {tab === 'engineer' && <EngineerActions boardIp={config.boardIp} />}
 
         {tab === 'yaml' && (
           <section className='panel'>

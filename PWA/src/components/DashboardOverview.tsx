@@ -44,7 +44,7 @@ function safeNumber(value: unknown, fallback = 0) {
 function buildInitialData(): LiveUiData {
   return {
     boardName: mockBoardData.boardName,
-    boardIp: '192.168.1.50',
+    boardIp: '192.168.1.52',
     wifiSsid: mockBoardData.wifiSsid,
     controllerState: mockBoardData.controllerState,
     updatedAt: new Date().toLocaleTimeString(),
