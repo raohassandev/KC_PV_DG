@@ -1,0 +1,19 @@
+# Key/value bridge for the host firmware core
+site.name=Demo Plant
+site.controllerId=dzx-001
+topology.type=DUAL_BUS_COMBINED
+topology.busCount=2
+topology.tieSignalPresent=true
+meterInput.transport=rtu
+meterInput.brand=generic-modbus
+meterInput.profileId=default-grid-meter
+virtualMeter.brand=generic-modbus
+virtualMeter.profileId=default-virtual-meter
+virtualMeter.mode=adjusted
+policy.netMeteringEnabled=true
+policy.gridMode=zero_export
+policy.exportSetpointKw=0
+policy.zeroExportDeadbandKw=1
+policy.reverseMarginKw=2
+policy.dieselMinimumLoadPct=30
+policy.gasMinimumLoadPct=50
