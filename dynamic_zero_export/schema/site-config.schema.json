@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raohassandev.github.io/KC_PV_DG/dynamic_zero_export/schema/site-config.schema.json",
+  "title": "Dynamic Zero Export Site Config",
+  "type": "object",
+  "required": ["site", "topology", "meterInput", "virtualMeter", "policy", "safety", "generators", "inverterGroups"],
+  "properties": {
+    "site": {
+      "type": "object",
+      "required": ["name", "controllerId"],
+      "properties": {
+        "name": { "type": "string" },
+        "customerName": { "type": "string" },
+        "controllerId": { "type": "string" },
+        "timezone": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "topology": {
+      "type": "object",
+      "required": ["type", "busCount", "tieSignalPresent"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["SINGLE_BUS", "SINGLE_BUS_MULTI_GEN", "DUAL_BUS", "DUAL_BUS_SEPARATE", "DUAL_BUS_COMBINED"]
+        },
+        "busCount": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "tieSignalPresent": { "type": "boolean" }
+      }
+    },
+    "meterInput": {
+      "type": "object",
+      "required": ["transport", "brand", "addressing"],
+      "properties": {
+        "transport": { "type": "string", "enum": ["rtu", "tcp"] },
+        "brand": { "type": "string" },
+        "profileId": { "type": "string" },
+        "addressing": {
+          "type": "object",
+          "properties": {
+            "slaveId": { "type": "integer" },
+            "ip": { "type": "string" },
+            "port": { "type": "integer" },
+            "baud": { "type": "integer" },
+            "parity": { "type": "string" }
+          }
+        }
+      }
+    },
+    "virtualMeter": {
+      "type": "object",
+      "required": ["brand", "profileId", "mode"],
+      "properties": {
+        "brand": { "type": "string" },
+        "profileId": { "type": "string" },
+        "mode": { "type": "string", "enum": ["pass_through", "adjusted", "safe_fallback"] },
+        "slaveId": { "type": "integer" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["netMeteringEnabled", "gridMode", "fallbackMode"],
+      "properties": {
+        "netMeteringEnabled": { "type": "boolean" },
+        "gridMode": { "type": "string", "enum": ["full_production", "export_setpoint", "zero_export"] },
+        "exportSetpointKw": { "type": "number" },
+        "zeroExportDeadbandKw": { "type": "number" },
+        "dieselMinimumLoadPct": { "type": "number" },
+        "gasMinimumLoadPct": { "type": "number" },
+        "reverseMarginKw": { "type": "number" },
+        "rampUpPct": { "type": "number" },
+        "rampDownPct": { "type": "number" },
+        "fastDropPct": { "type": "number" },
+        "fallbackMode": { "type": "string", "enum": ["hold_last_safe", "reduce_to_safe_min", "manual_bypass"] }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "meterTimeoutSec": { "type": "number" },
+        "staleDataMode": { "type": "string", "enum": ["freeze", "reduce", "alarm"] },
+        "manualOverrideEnabled": { "type": "boolean" }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "enableWebUi": { "type": "boolean" },
+        "enableEventLog": { "type": "boolean" },
+        "publishDiagnostics": { "type": "boolean" }
+      }
+    },
+    "generators": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "type", "ratingKw"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "type": { "type": "string", "enum": ["diesel", "gas"] },
+          "ratingKw": { "type": "number" },
+          "runningSignal": { "type": "string" },
+          "breakerSignal": { "type": "string" },
+          "powerSignal": { "type": "string" },
+          "networkId": { "type": "string" },
+          "busSide": { "type": "string", "enum": ["A", "B", "both"] }
+        }
+      }
+    },
+    "inverterGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "brand", "emulationProfileId", "slaveId"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "brand": { "type": "string" },
+          "emulationProfileId": { "type": "string" },
+          "networkId": { "type": "string" },
+          "busSide": { "type": "string", "enum": ["A", "B", "both"] },
+          "slaveId": { "type": "integer" },
+          "serialPort": { "type": "string" }
+        }
+      }
+    }
+  }
+}

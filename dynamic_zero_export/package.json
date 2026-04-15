@@ -1,0 +1,14 @@
+{
+  "name": "dynamic-zero-export",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --import tsx tests/*.spec.ts",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  }
+}
+

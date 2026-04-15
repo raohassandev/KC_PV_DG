@@ -1,0 +1,37 @@
+{
+  "site": { "name": "Site A", "controllerId": "dzx-001", "timezone": "Asia/Karachi" },
+  "topology": { "type": "SINGLE_BUS", "busCount": 1, "tieSignalPresent": false },
+  "meterInput": {
+    "transport": "rtu",
+    "brand": "em500",
+    "profileId": "em500-grid",
+    "addressing": { "slaveId": 1, "baud": 9600, "parity": "N" }
+  },
+  "virtualMeter": {
+    "brand": "huawei",
+    "profileId": "huawei-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": false,
+    "gridMode": "zero_export",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": { "meterTimeoutSec": 10, "staleDataMode": "reduce", "manualOverrideEnabled": false },
+  "monitoring": { "enableWebUi": true, "enableEventLog": true, "publishDiagnostics": true },
+  "generators": [
+    { "id": "gen_1", "label": "Generator 1", "type": "diesel", "ratingKw": 500, "networkId": "main", "busSide": "A" }
+  ],
+  "inverterGroups": [
+    { "id": "inv_1", "label": "PV Group 1", "brand": "huawei", "emulationProfileId": "huawei-default", "slaveId": 1, "networkId": "main", "busSide": "A" }
+  ]
+}

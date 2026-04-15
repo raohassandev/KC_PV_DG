@@ -1,0 +1,72 @@
+{
+  "site": {
+    "name": "Three Generator Site",
+    "customerName": "Lab Customer",
+    "controllerId": "dzx-three-gen",
+    "timezone": "Asia/Karachi",
+    "notes": "Single bus with three generators"
+  },
+  "topology": {
+    "type": "SINGLE_BUS_MULTI_GEN",
+    "busCount": 1,
+    "tieSignalPresent": false
+  },
+  "meterInput": {
+    "transport": "rtu",
+    "brand": "generic-modbus",
+    "profileId": "em500-grid",
+    "addressing": {
+      "slaveId": 1,
+      "baud": 9600,
+      "parity": "N"
+    },
+    "pollIntervalMs": 1000,
+    "timeoutMs": 2000
+  },
+  "virtualMeter": {
+    "brand": "goodwe",
+    "profileId": "goodwe-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": true,
+    "gridMode": "zero_export",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": {
+    "meterTimeoutSec": 10,
+    "staleDataMode": "reduce",
+    "manualOverrideEnabled": false
+  },
+  "monitoring": {
+    "enableWebUi": true,
+    "enableEventLog": true,
+    "publishDiagnostics": true
+  },
+  "generators": [
+    { "id": "gen_1", "label": "Generator 1", "type": "diesel", "ratingKw": 300, "networkId": "main", "busSide": "A" },
+    { "id": "gen_2", "label": "Generator 2", "type": "gas", "ratingKw": 250, "networkId": "main", "busSide": "A" },
+    { "id": "gen_3", "label": "Generator 3", "type": "diesel", "ratingKw": 200, "networkId": "main", "busSide": "A" }
+  ],
+  "inverterGroups": [
+    {
+      "id": "inv_1",
+      "label": "Inverter Group 1",
+      "brand": "huawei",
+      "emulationProfileId": "huawei-default",
+      "networkId": "main",
+      "busSide": "A",
+      "slaveId": 1,
+      "serialPort": "/dev/ttyUSB0"
+    }
+  ]
+}

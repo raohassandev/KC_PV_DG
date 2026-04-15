@@ -1,0 +1,68 @@
+{
+  "site": {
+    "name": "Huawei Site",
+    "customerName": "Lab Customer",
+    "controllerId": "dzx-huawei",
+    "timezone": "Asia/Karachi",
+    "notes": "Huawei profile example"
+  },
+  "topology": {
+    "type": "SINGLE_BUS",
+    "busCount": 1,
+    "tieSignalPresent": false
+  },
+  "meterInput": {
+    "transport": "rtu",
+    "brand": "generic-modbus",
+    "profileId": "em500-grid",
+    "addressing": {
+      "slaveId": 1,
+      "baud": 9600,
+      "parity": "N"
+    },
+    "pollIntervalMs": 1000,
+    "timeoutMs": 2000
+  },
+  "virtualMeter": {
+    "brand": "huawei",
+    "profileId": "huawei-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": true,
+    "gridMode": "zero_export",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": {
+    "meterTimeoutSec": 10,
+    "staleDataMode": "reduce",
+    "manualOverrideEnabled": false
+  },
+  "monitoring": {
+    "enableWebUi": true,
+    "enableEventLog": true,
+    "publishDiagnostics": true
+  },
+  "generators": [],
+  "inverterGroups": [
+    {
+      "id": "inv_1",
+      "label": "Huawei Inverter",
+      "brand": "huawei",
+      "emulationProfileId": "huawei-default",
+      "networkId": "main",
+      "busSide": "A",
+      "slaveId": 1,
+      "serialPort": "/dev/ttyUSB0"
+    }
+  ]
+}

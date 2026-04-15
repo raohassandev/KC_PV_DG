@@ -1,0 +1,67 @@
+{
+  "site": {
+    "name": "Solis Site",
+    "customerName": "Lab Customer",
+    "controllerId": "dzx-solis",
+    "timezone": "Asia/Karachi",
+    "notes": "Solis profile example"
+  },
+  "topology": {
+    "type": "SINGLE_BUS",
+    "busCount": 1,
+    "tieSignalPresent": false
+  },
+  "meterInput": {
+    "transport": "tcp",
+    "brand": "generic-modbus",
+    "profileId": "dr302-grid-meter",
+    "addressing": {
+      "ip": "192.168.10.20",
+      "port": 502
+    },
+    "pollIntervalMs": 1000,
+    "timeoutMs": 2000
+  },
+  "virtualMeter": {
+    "brand": "solis",
+    "profileId": "solis-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": false,
+    "gridMode": "zero_export",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": {
+    "meterTimeoutSec": 10,
+    "staleDataMode": "reduce",
+    "manualOverrideEnabled": false
+  },
+  "monitoring": {
+    "enableWebUi": true,
+    "enableEventLog": true,
+    "publishDiagnostics": true
+  },
+  "generators": [],
+  "inverterGroups": [
+    {
+      "id": "inv_1",
+      "label": "Solis Inverter",
+      "brand": "solis",
+      "emulationProfileId": "solis-default",
+      "networkId": "main",
+      "busSide": "A",
+      "slaveId": 1,
+      "serialPort": "/dev/ttyUSB0"
+    }
+  ]
+}

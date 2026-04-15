@@ -1,0 +1,39 @@
+{
+  "site": { "name": "Single Grid Two Gen", "controllerId": "dzx-002", "timezone": "Asia/Karachi" },
+  "topology": { "type": "SINGLE_BUS_MULTI_GEN", "busCount": 1, "tieSignalPresent": false },
+  "meterInput": {
+    "transport": "rtu",
+    "brand": "em500",
+    "profileId": "em500-grid",
+    "addressing": { "slaveId": 1, "baud": 9600, "parity": "N" }
+  },
+  "virtualMeter": {
+    "brand": "solis",
+    "profileId": "solis-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": false,
+    "gridMode": "zero_export",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": { "meterTimeoutSec": 10, "staleDataMode": "reduce", "manualOverrideEnabled": false },
+  "monitoring": { "enableWebUi": true, "enableEventLog": true, "publishDiagnostics": true },
+  "generators": [
+    { "id": "gen_1", "label": "Generator 1", "type": "diesel", "ratingKw": 500, "busSide": "A" },
+    { "id": "gen_2", "label": "Generator 2", "type": "gas", "ratingKw": 400, "busSide": "A" }
+  ],
+  "inverterGroups": [
+    { "id": "inv_1", "label": "PV Group 1", "brand": "solis", "emulationProfileId": "solis-default", "slaveId": 1, "busSide": "A" }
+  ]
+}
+

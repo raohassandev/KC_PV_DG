@@ -1,0 +1,86 @@
+{
+  "site": {
+    "name": "Dual Bus Separate Site",
+    "customerName": "Lab Customer",
+    "controllerId": "dzx-dual-separate",
+    "timezone": "Asia/Karachi",
+    "notes": "Two independent buses with separate inverter groups"
+  },
+  "topology": {
+    "type": "DUAL_BUS_SEPARATE",
+    "busCount": 2,
+    "tieSignalPresent": true
+  },
+  "meterInput": {
+    "transport": "tcp",
+    "brand": "generic-modbus",
+    "profileId": "dr302-grid-meter",
+    "addressing": {
+      "ip": "192.168.10.20",
+      "port": 502
+    },
+    "pollIntervalMs": 1000,
+    "timeoutMs": 2000
+  },
+  "virtualMeter": {
+    "brand": "huawei",
+    "profileId": "huawei-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": true,
+    "gridMode": "export_setpoint",
+    "exportSetpointKw": 50,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": {
+    "meterTimeoutSec": 10,
+    "staleDataMode": "reduce",
+    "manualOverrideEnabled": false
+  },
+  "monitoring": {
+    "enableWebUi": true,
+    "enableEventLog": true,
+    "publishDiagnostics": true
+  },
+  "generators": [
+    {
+      "id": "gen_1",
+      "label": "Generator 1",
+      "type": "diesel",
+      "ratingKw": 400,
+      "networkId": "bus_a",
+      "busSide": "A"
+    }
+  ],
+  "inverterGroups": [
+    {
+      "id": "inv_a",
+      "label": "Inverter Group A",
+      "brand": "huawei",
+      "emulationProfileId": "huawei-default",
+      "networkId": "bus_a",
+      "busSide": "A",
+      "slaveId": 1,
+      "serialPort": "/dev/ttyUSB0"
+    },
+    {
+      "id": "inv_b",
+      "label": "Inverter Group B",
+      "brand": "growatt",
+      "emulationProfileId": "growatt-default",
+      "networkId": "bus_b",
+      "busSide": "B",
+      "slaveId": 2,
+      "serialPort": "/dev/ttyUSB1"
+    }
+  ]
+}

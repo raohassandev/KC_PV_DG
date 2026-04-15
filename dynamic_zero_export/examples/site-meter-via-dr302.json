@@ -1,0 +1,40 @@
+{
+  "site": { "name": "DR302 Gateway Site", "controllerId": "dzx-020", "timezone": "Asia/Karachi" },
+  "topology": { "type": "DUAL_BUS_SEPARATE", "busCount": 2, "tieSignalPresent": true },
+  "meterInput": {
+    "transport": "tcp",
+    "brand": "dr302",
+    "profileId": "gateway-grid",
+    "addressing": { "ip": "192.168.1.50", "port": 502 }
+  },
+  "virtualMeter": {
+    "brand": "growatt",
+    "profileId": "growatt-default",
+    "mode": "adjusted",
+    "slaveId": 1
+  },
+  "policy": {
+    "netMeteringEnabled": true,
+    "gridMode": "export_setpoint",
+    "exportSetpointKw": 0,
+    "zeroExportDeadbandKw": 1,
+    "dieselMinimumLoadPct": 30,
+    "gasMinimumLoadPct": 50,
+    "reverseMarginKw": 2,
+    "rampUpPct": 3,
+    "rampDownPct": 10,
+    "fastDropPct": 25,
+    "fallbackMode": "reduce_to_safe_min"
+  },
+  "safety": { "meterTimeoutSec": 10, "staleDataMode": "alarm", "manualOverrideEnabled": false },
+  "monitoring": { "enableWebUi": true, "enableEventLog": true, "publishDiagnostics": true },
+  "generators": [
+    { "id": "gen_a", "label": "Generator A", "type": "diesel", "ratingKw": 500, "busSide": "A" },
+    { "id": "gen_b", "label": "Generator B", "type": "diesel", "ratingKw": 500, "busSide": "B" }
+  ],
+  "inverterGroups": [
+    { "id": "inv_a", "label": "PV A", "brand": "growatt", "emulationProfileId": "growatt-default", "slaveId": 1, "busSide": "A" },
+    { "id": "inv_b", "label": "PV B", "brand": "growatt", "emulationProfileId": "growatt-default", "slaveId": 2, "busSide": "B" }
+  ]
+}
+
