@@ -1,9 +1,22 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildOverviewViewModel } from '../view-models/overview';
+import { useEffect, useState } from 'react';
+import { buildRoleAwareLiveStatusFromProvider, loadProviderMode } from '../services/liveStatusService';
 import type { PwaRole } from '../roles';
 
 export function OverviewPage({ role = 'user' }: { role?: PwaRole }) {
-  const model = buildOverviewViewModel(role);
+  const [model, setModel] = useState(() => buildOverviewViewModel(role));
+
+  useEffect(() => {
+    let active = true;
+    buildRoleAwareLiveStatusFromProvider(role, loadProviderMode()).then((next) => {
+      if (active) setModel(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [role]);
+
   return (
     <div className='feature-page-grid'>
       <FeatureCard title='Overview' value={model.snapshot.systemState} subtitle={model.snapshot.siteName}>

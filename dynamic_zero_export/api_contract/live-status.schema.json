@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LiveStatusResponse",
+  "type": "object",
+  "required": ["role", "siteName", "controllerState", "systemOnline", "powerKw", "solarKw", "gridImportKw", "gridExportKw", "alertsCount", "lastUpdatedAt", "summary"],
+  "properties": {
+    "role": { "type": "string", "enum": ["user", "installer", "manufacturer"] },
+    "siteName": { "type": "string" },
+    "controllerState": { "type": "string" },
+    "systemOnline": { "type": "boolean" },
+    "powerKw": { "type": "number" },
+    "solarKw": { "type": "number" },
+    "gridImportKw": { "type": "number" },
+    "gridExportKw": { "type": "number" },
+    "generatorKw": { "type": "number" },
+    "alertsCount": { "type": "number" },
+    "lastUpdatedAt": { "type": "string" },
+    "summary": { "type": "array", "items": { "type": "string" } }
+  }
+}
+

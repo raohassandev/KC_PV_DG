@@ -15,6 +15,7 @@ add_library(dzx_firmware_core
   src/alarm.cpp
   src/monitoring.cpp
   src/serialization.cpp
+  src/api_contract.cpp
   src/controller.cpp
   src/policy_engine.cpp
   src/simulator.cpp
@@ -33,6 +34,7 @@ if (DZX_BUILD_TESTS)
     tests/test_config.cpp
     tests/test_policy_engine.cpp
     tests/test_controller.cpp
+    tests/test_api_contract.cpp
   )
   target_link_libraries(dzx_firmware_core_tests PRIVATE dzx_firmware_core)
   target_include_directories(dzx_firmware_core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

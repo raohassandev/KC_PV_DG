@@ -7,8 +7,10 @@ import {
   type PwaRole,
 } from '../../../../../dynamic_zero_export/pwa';
 import { liveStatusFixture } from '../mock/liveStatus';
+import { createDzxProvider, type ProviderMode } from './provider';
 
 const LIVE_KEY = 'dzx.liveStatus';
+const PROVIDER_KEY = 'dzx.providerMode';
 
 export function loadLiveStatus(): LiveStatusSnapshot {
   if (typeof window === 'undefined') return liveStatusFixture;
@@ -30,6 +32,30 @@ export function saveLiveStatus(snapshot: LiveStatusSnapshot): LiveStatusSnapshot
     }
   }
   return snapshot;
+}
+
+export function loadProviderMode(): ProviderMode {
+  if (typeof window === 'undefined') return 'auto';
+  const stored = localStorage.getItem(PROVIDER_KEY);
+  if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
+  return 'auto';
+}
+
+export function saveProviderMode(mode: ProviderMode): ProviderMode {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(PROVIDER_KEY, mode);
+    } catch {
+      // ignore
+    }
+  }
+  return mode;
+}
+
+export async function loadLiveStatusFromProvider(role: PwaRole, mode: ProviderMode = loadProviderMode()) {
+  const provider = createDzxProvider(mode);
+  const snapshot = await provider.loadLiveStatus(role);
+  return saveLiveStatus(snapshot);
 }
 
 export function buildOverviewModel(role: PwaRole, snapshot = loadLiveStatus()): DashboardModel {
@@ -55,3 +81,7 @@ export function buildRoleAwareLiveStatus(role: PwaRole, snapshot = loadLiveStatu
   };
 }
 
+export async function buildRoleAwareLiveStatusFromProvider(role: PwaRole, mode: ProviderMode = loadProviderMode()) {
+  const snapshot = await loadLiveStatusFromProvider(role, mode);
+  return buildRoleAwareLiveStatus(role, snapshot);
+}

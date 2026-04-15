@@ -1,9 +1,21 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildConnectivityViewModel } from '../view-models/connectivity';
+import { useEffect, useState } from 'react';
+import { buildConnectivityViewModelFromProvider, loadConnectivityProviderMode } from '../services/connectivityService';
 import type { PwaRole } from '../roles';
 
 export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
-  const view = buildConnectivityViewModel(role);
+  const [view, setView] = useState(() => buildConnectivityViewModel(role));
+
+  useEffect(() => {
+    let active = true;
+    buildConnectivityViewModelFromProvider(role, loadConnectivityProviderMode()).then((next) => {
+      if (active) setView(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [role]);
   return (
     <div className='feature-page-grid'>
       <FeatureCard

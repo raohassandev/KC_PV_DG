@@ -9,8 +9,10 @@ import {
   todayHistoryFixture,
 } from '../mock/history';
 import { aggregateEnergyTotals } from '../types';
+import { createDzxProvider, type ProviderMode } from './provider';
 
 const HISTORY_KEY = 'dzx.history';
+const HISTORY_PROVIDER_KEY = 'dzx.historyProviderMode';
 
 export type HistoryBundle = {
   today: EnergyHistorySeries;
@@ -56,6 +58,30 @@ export function saveHistoryBundle(bundle: HistoryBundle): HistoryBundle {
   return bundle;
 }
 
+export function loadHistoryProviderMode(): ProviderMode {
+  if (typeof window === 'undefined') return 'auto';
+  const stored = localStorage.getItem(HISTORY_PROVIDER_KEY);
+  if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
+  return 'auto';
+}
+
+export function saveHistoryProviderMode(mode: ProviderMode): ProviderMode {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(HISTORY_PROVIDER_KEY, mode);
+    } catch {
+      // ignore
+    }
+  }
+  return mode;
+}
+
+export async function loadHistoryBundleFromProvider(mode: ProviderMode = loadHistoryProviderMode()): Promise<HistoryBundle> {
+  const provider = createDzxProvider(mode);
+  const bundle = await provider.loadHistory('user');
+  return saveHistoryBundle(bundle);
+}
+
 export function buildHistoryViewModel(role: PwaRole, bundle = loadHistoryBundle()) {
   return {
     role,
@@ -74,3 +100,7 @@ export function buildHistoryViewModel(role: PwaRole, bundle = loadHistoryBundle(
   };
 }
 
+export async function buildHistoryViewModelFromProvider(role: PwaRole, mode: ProviderMode = loadHistoryProviderMode()) {
+  const bundle = await loadHistoryBundleFromProvider(mode);
+  return buildHistoryViewModel(role, bundle);
+}

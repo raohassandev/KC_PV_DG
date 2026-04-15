@@ -1,5 +1,7 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildEnergyHistoryViewModel } from '../view-models/history';
+import { useEffect, useState } from 'react';
+import { buildHistoryViewModelFromProvider, loadHistoryProviderMode } from '../services/historyService';
 import type { PwaRole } from '../roles';
 
 type HistoryPoint = {
@@ -31,7 +33,17 @@ function historyTable(title: string, points: HistoryPoint[]) {
 }
 
 export function EnergyHistoryPage({ role = 'user' }: { role?: PwaRole }) {
-  const model = buildEnergyHistoryViewModel(role);
+  const [model, setModel] = useState(() => buildEnergyHistoryViewModel(role));
+
+  useEffect(() => {
+    let active = true;
+    buildHistoryViewModelFromProvider(role, loadHistoryProviderMode()).then((next) => {
+      if (active) setModel(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [role]);
 
   return (
     <div className='feature-page-grid'>

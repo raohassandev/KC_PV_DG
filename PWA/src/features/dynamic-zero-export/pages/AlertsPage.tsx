@@ -1,9 +1,21 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildAlertViewModel } from '../view-models/alerts';
+import { useEffect, useState } from 'react';
+import { buildAlertsViewModelFromProvider, loadAlertsProviderMode } from '../services/alertsService';
 import type { PwaRole } from '../roles';
 
 export function AlertsPage({ role }: { role: PwaRole }) {
-  const view = buildAlertViewModel(role);
+  const [view, setView] = useState(() => buildAlertViewModel(role));
+
+  useEffect(() => {
+    let active = true;
+    buildAlertsViewModelFromProvider(role, loadAlertsProviderMode()).then((next) => {
+      if (active) setView(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [role]);
   return (
     <div className='feature-page-grid'>
       <FeatureCard title='Alerts' subtitle={view.summary.join(' · ')}>
