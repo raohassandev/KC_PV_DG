@@ -41,6 +41,9 @@ function slotSummary(config: SiteConfig) {
     role: ${quote(slot.role)}
     modbus_id: ${slot.modbusId}
     capacity_kw: ${slot.capacityKw}
+    network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
+    bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
+    generator_type: ${slot.generatorType ? quote(slot.generatorType) : 'null'}
     ip_hint: ${slot.ipHint ? quote(slot.ipHint) : 'null'}
     notes: ${slot.notes ? quote(slot.notes) : 'null'}`,
     )
@@ -61,7 +64,9 @@ ${gridSlots
       label: ${quote(slot.label)}
       modbus_id: ${slot.modbusId}
       device_type: ${quote(slot.deviceType)}
-      capacity_kw: ${slot.capacityKw}`,
+      capacity_kw: ${slot.capacityKw}
+      network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
+      bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}`,
   )
   .join('\n')}
   generator_meters:
@@ -71,7 +76,10 @@ ${generatorSlots
       label: ${quote(slot.label)}
       modbus_id: ${slot.modbusId}
       device_type: ${quote(slot.deviceType)}
-      capacity_kw: ${slot.capacityKw}`,
+      capacity_kw: ${slot.capacityKw}
+      network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
+      bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
+      generator_type: ${slot.generatorType ? quote(slot.generatorType) : 'null'}`,
   )
   .join('\n')}
 
@@ -82,7 +90,9 @@ ${inverterSlots
     label: ${quote(slot.label)}
     modbus_id: ${slot.modbusId}
     device_type: ${quote(slot.deviceType)}
-    rated_kw: ${slot.capacityKw}`,
+    rated_kw: ${slot.capacityKw}
+    network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
+    bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}`,
   )
   .join('\n')}`;
 }
@@ -98,6 +108,31 @@ ${zones
     fallback_mode: ${quote(config.fallbackMode)}`,
   )
   .join('\n')}`;
+}
+
+function validationBlock(config: SiteConfig) {
+  const topologySummary =
+    config.topologyType === 'DUAL_BUS_COMBINED'
+      ? 'combined'
+      : config.topologyType === 'DUAL_BUS_SEPARATE'
+        ? 'separate'
+        : config.topologyType.startsWith('DUAL_BUS')
+          ? 'derived'
+          : 'single';
+
+  return `validation:
+  warnings:
+${policyWarnings(config)
+  .map((warning) => `    - ${quote(warning)}`)
+  .join('\n')}
+  topology_type: ${quote(config.topologyType)}
+  tie_signal_present: ${config.tieSignalPresent}
+  generator_override_enabled: ${config.generatorMinimumOverrideEnabled}
+  network_count: ${new Set(
+    config.slots.filter((slot) => slot.enabled).map((slot) => slot.networkId || 'main'),
+  ).size}
+  dual_bus_state: ${quote(topologySummary)}
+`;
 }
 
 function manifestYaml(config: SiteConfig): string {
@@ -180,6 +215,8 @@ ${slotSummary(config)}
 ${sourceAndInverterBlocks(config)}
 
 ${zonePolicyBlock(config)}
+
+${validationBlock(config)}
 `;
 }
 

@@ -608,6 +608,44 @@ function App() {
                   label='Tie Signal'
                   value={config.tieSignalPresent ? 'Present' : 'Not declared'}
                 />
+                <SummaryItem
+                  label='Bus A Sources'
+                  value={String(
+                    config.slots.filter(
+                      (slot) => slot.enabled && (slot.busSide || 'A') === 'A',
+                    ).length,
+                  )}
+                />
+                <SummaryItem
+                  label='Bus B Sources'
+                  value={String(
+                    config.slots.filter(
+                      (slot) => slot.enabled && slot.busSide === 'B',
+                    ).length,
+                  )}
+                />
+                <SummaryItem
+                  label='Network IDs'
+                  value={String(
+                    new Set(
+                      config.slots
+                        .filter((slot) => slot.enabled)
+                        .map((slot) => slot.networkId || 'main'),
+                    ).size,
+                  )}
+                />
+                <SummaryItem
+                  label='Dual-Bus State'
+                  value={
+                    config.topologyType.startsWith('DUAL_BUS')
+                      ? config.topologyType === 'DUAL_BUS_COMBINED'
+                        ? 'combined'
+                        : config.topologyType === 'DUAL_BUS_SEPARATE'
+                          ? 'separate'
+                          : 'derived'
+                      : 'n/a'
+                  }
+                />
               </div>
               <div className='info-box' style={{ marginTop: 16 }}>
                 <div className='info-label'>Warnings</div>
@@ -655,7 +693,17 @@ function App() {
                   className='tab-button active'
                   onClick={() => {
                     const blob = new Blob(
-                      [JSON.stringify({ config, zones }, null, 2)],
+                      [
+                        JSON.stringify(
+                          {
+                            config,
+                            zones,
+                            warnings: commissioningWarnings(config),
+                          },
+                          null,
+                          2,
+                        ),
+                      ],
                       { type: 'application/json;charset=utf-8' },
                     );
                     const url = URL.createObjectURL(blob);
@@ -802,6 +850,37 @@ function MappingCard({
           onChange={(v) => updateSlot(slot.id, { capacityKw: v })}
           step={0.1}
         />
+        <TextField
+          label='Network ID'
+          help='Logical network assignment for combined or separate operation.'
+          value={slot.networkId || ''}
+          onChange={(v) => updateSlot(slot.id, { networkId: v })}
+        />
+        <SelectField
+          label='Bus Side'
+          help='Assign this source or inverter to bus A, bus B, or both.'
+          value={slot.busSide || 'A'}
+          onChange={(v) => updateSlot(slot.id, { busSide: v as 'A' | 'B' | 'both' })}
+          options={[
+            ['A', 'A'],
+            ['B', 'B'],
+            ['both', 'both'],
+          ]}
+        />
+        {slot.role === 'generator_meter' ? (
+          <SelectField
+            label='Generator Type'
+            help='Diesel and gas defaults drive minimum loading policy.'
+            value={slot.generatorType || 'diesel'}
+            onChange={(v) =>
+              updateSlot(slot.id, { generatorType: v as 'diesel' | 'gas' })
+            }
+            options={[
+              ['diesel', 'diesel'],
+              ['gas', 'gas'],
+            ]}
+          />
+        ) : null}
         {!compact ? (
           <>
             <TextField
@@ -816,7 +895,7 @@ function MappingCard({
               value={slot.notes || ''}
               onChange={(v) => updateSlot(slot.id, { notes: v })}
             />
-          </>
+            </>
         ) : null}
       </div>
       {!compact ? (

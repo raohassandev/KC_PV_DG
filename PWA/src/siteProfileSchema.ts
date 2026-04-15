@@ -28,6 +28,9 @@ export type SourceSlot = {
   role: SourceRole;
   modbusId: number;
   capacityKw: number;
+  networkId?: string;
+  busSide?: 'A' | 'B' | 'both';
+  generatorType?: 'diesel' | 'gas';
   ipHint?: string;
   notes?: string;
 };
@@ -99,5 +102,64 @@ export const defaultSite: SiteConfig = {
   rampPctStep: 3,
   minPvPercent: 0,
   maxPvPercent: 100,
-  slots: [],
+  slots: [
+    {
+      id: 'grid_1',
+      label: 'Grid Meter 1',
+      enabled: true,
+      deviceType: 'em500',
+      role: 'grid_meter',
+      modbusId: 1,
+      capacityKw: 0,
+      networkId: 'main',
+      busSide: 'A',
+    },
+    {
+      id: 'gen_1',
+      label: 'Generator Meter 1',
+      enabled: false,
+      deviceType: 'none',
+      role: 'generator_meter',
+      modbusId: 3,
+      capacityKw: 500,
+      networkId: 'main',
+      busSide: 'A',
+      generatorType: 'diesel',
+    },
+    {
+      id: 'gen_2',
+      label: 'Generator Meter 2',
+      enabled: false,
+      deviceType: 'none',
+      role: 'generator_meter',
+      modbusId: 4,
+      capacityKw: 500,
+      networkId: 'main',
+      busSide: 'A',
+      generatorType: 'diesel',
+    },
+    {
+      id: 'gen_3',
+      label: 'Generator Meter 3',
+      enabled: false,
+      deviceType: 'none',
+      role: 'generator_meter',
+      modbusId: 5,
+      capacityKw: 500,
+      networkId: 'main',
+      busSide: 'A',
+      generatorType: 'diesel',
+    },
+    {
+      id: 'inv_1',
+      label: 'Inverter 1',
+      enabled: true,
+      deviceType: 'huawei',
+      role: 'inverter',
+      modbusId: 10,
+      capacityKw: 100,
+      networkId: 'main',
+      busSide: 'A',
+    },
+  ],
 };

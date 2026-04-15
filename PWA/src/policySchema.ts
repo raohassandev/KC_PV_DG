@@ -21,7 +21,26 @@ export type CommissioningSnapshot = {
   config: SiteConfig;
   zones: DerivedZone[];
   warnings: string[];
+  topologySummary: string;
 };
+
+function dualBusState(config: SiteConfig) {
+  const sides = new Set(
+    config.slots
+      .filter((slot) => slot.enabled)
+      .map((slot) => slot.busSide || 'A'),
+  );
+  const hasA = sides.has('A');
+  const hasB = sides.has('B');
+  const combined = config.topologyType === 'DUAL_BUS_COMBINED';
+
+  if (combined) return 'combined';
+  if (config.topologyType === 'DUAL_BUS_SEPARATE') return 'separate';
+  if (hasA && hasB) return 'derived-both';
+  if (hasA && !hasB) return 'derived-a-only';
+  if (!hasA && hasB) return 'derived-b-only';
+  return 'ambiguous';
+}
 
 export function deriveZones(config: SiteConfig): DerivedZone[] {
   const inverterGroups = config.slots.filter(
@@ -70,6 +89,23 @@ export function policyWarnings(config: SiteConfig) {
     gens: config.slots.filter((s) => s.enabled && s.role === 'generator_meter').length,
     inverters: config.slots.filter((s) => s.enabled && s.role === 'inverter').length,
   };
+  const generatorTypes = config.slots
+    .filter((s) => s.enabled && s.role === 'generator_meter')
+    .map((s) => s.generatorType || 'diesel');
+  const busSides = config.slots
+    .filter((s) => s.enabled && s.role !== 'none')
+    .map((s) => s.busSide || 'A');
+  const networkIds = config.slots
+    .filter((s) => s.enabled)
+    .map((s) => s.networkId || 'main');
+  const inverterNetworks = new Set(
+    config.slots
+      .filter((s) => s.enabled && s.role === 'inverter')
+      .map((s) => s.networkId || 'main'),
+  );
+  const generatorRatings = config.slots
+    .filter((s) => s.enabled && s.role === 'generator_meter')
+    .map((s) => s.capacityKw);
 
   const warnings: string[] = [];
 
@@ -86,6 +122,27 @@ export function policyWarnings(config: SiteConfig) {
     !config.netMeteringEnabled
   ) {
     warnings.push('Zero-export mode is active while net metering is off');
+  }
+  if (enabledCounts.gens > 1 && !config.generatorMinimumOverrideEnabled) {
+    warnings.push('Multiple generators are configured without override approval');
+  }
+  if (generatorTypes.includes('gas') && config.dieselMinimumLoadPct < 30) {
+    warnings.push('Diesel minimum load is below the default safe starting point');
+  }
+  if (config.topologyType.startsWith('DUAL_BUS') && busSides.every((side) => side === 'A')) {
+    warnings.push('Dual-bus site maps all sources to bus A; bus B remains unmapped');
+  }
+  if (networkIds.length > 0 && new Set(networkIds).size > 2) {
+    warnings.push('More than two logical network IDs are present; validate topology');
+  }
+  if (inverterNetworks.size > 1 && !config.topologyType.startsWith('DUAL_BUS')) {
+    warnings.push('Multiple inverter networks configured on a non-dual-bus site');
+  }
+  if (generatorRatings.some((kw) => kw <= 0) && enabledCounts.gens > 0) {
+    warnings.push('A generator meter has no positive rating');
+  }
+  if (config.topologyType.startsWith('DUAL_BUS') && dualBusState(config) === 'ambiguous') {
+    warnings.push('Dual-bus topology is ambiguous from the current mapping');
   }
 
   return warnings;
@@ -110,5 +167,6 @@ export function snapshotCommissioning(
     config,
     zones: deriveZones(config),
     warnings: policyWarnings(config),
+    topologySummary: dualBusState(config),
   };
 }
