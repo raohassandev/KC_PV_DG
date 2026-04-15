@@ -1,5 +1,5 @@
 # KC_PV_DG Handover Document
-_Last updated: 2026-04-11_
+_Last updated: 2026-04-15_
 
 ## 1) Project summary
 
@@ -32,9 +32,20 @@ Use **ESPHome modular YAML** for now.
 Do not try to make ESPHome fully runtime-dynamic yet.
 Huawei deep testing is postponed until on-site access is available.
 
+Current board-side status:
+- EM500 live reads are verified
+- board firmware is flashed and running
+- web UI is active
+- inverter command behavior remains pending on-site validation
+
 ### App side
 Use a **PWA first**, not a native app first.
 The PWA is now the main active track while site testing is blocked.
+
+Current app-side status:
+- live read path works
+- core write path works
+- bundle export generates a deployable ESPHome root YAML plus support files
 
 ### UI strategy
 Do **not** rely on ESPHome UI as the final product UI.
@@ -53,6 +64,9 @@ The real UI should live in the PWA.
 - EM500 / Rozwell live values are working
 - modular YAML structure exists and is the current baseline
 - ESPHome `web_server` is already present in `Modular_Yaml/base_board.yaml`
+- PWA reads live board data
+- PWA writes core controller settings
+- PWA export bundle is generated and validated
 
 ### EM500 confirmed working live registers
 These were validated from real hardware testing:
@@ -80,6 +94,12 @@ Reason:
 - only minimal Huawei placeholders should remain until site visit
 
 Do not burn time on Huawei now unless site test access is available.
+
+Pending until site validation:
+- inverter register verification
+- inverter command write verification
+- inverter power/setpoint control
+- inverter alarm/status expansion beyond placeholders
 
 ## 4) Modular YAML status
 
@@ -189,7 +209,7 @@ Latest known good PWA status:
 
 ### Blocked
 - Huawei inverter real validation
-- full write-path verification on live plant
+- inverter write-path verification on live plant
 - final commissioning flow
 - remote access design
 
@@ -200,6 +220,9 @@ Latest known good PWA status:
 - entity mapping layer
 - commissioning model
 - YAML/config generation planning
+- core PWA write actions
+- bundle export generation
+- site config structure
 
 ## 8) What should NOT be repeated in a new chat / Codex session
 
@@ -231,6 +254,7 @@ Recommended order:
    - inverter enable
    - control mode
    - numeric parameters like export limit, import limit, PV rated, deadband, gain, ramp
+   - keep inverter command control pending until site validation
 
 2. **Make write path exact and safe**
    - verify real ESPHome endpoints from the repo / running board
@@ -258,6 +282,11 @@ The next milestone should be:
 
 That means:
 - live dashboard works
+- engineer actions work
+- board entity mapping is centralized
+- site model is stable
+- export bundle is generated
+- Huawei/inverter command path remains pending for site testing
 - engineer actions work
 - board entity mapping is centralized
 - site model is stable

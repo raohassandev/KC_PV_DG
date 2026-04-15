@@ -118,6 +118,27 @@ textarea {
   color: #ffffff;
 }
 
+.notice-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 14px;
+}
+
+.notice-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -369,6 +390,15 @@ textarea {
   font-weight: 600;
 }
 
+.field-help,
+.help-text {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
 .field-input,
 .field-select,
 .field-textarea {
@@ -444,6 +474,12 @@ textarea {
   color: #475569;
   display: grid;
   gap: 8px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
 }
 
 @media (max-width: 1024px) {

@@ -7,6 +7,7 @@ import {
   setInverterEnable,
   setInverterWriteEnable,
 } from '../boardWriteApi';
+import { controllerModeHelp, controlFieldHelp } from '../siteTemplates';
 
 type Props = {
   boardIp: string;
@@ -110,29 +111,39 @@ export default function EngineerActions({ boardIp }: Props) {
     <section className='section-grid'>
       <div className='panel'>
         <h2>Write Actions</h2>
+        <p className='help-text'>
+          These toggles map directly to board switches. Use them for control
+          enable, meter enable, and inverter gate testing. The inverter write
+          gate is still pending until site validation.
+        </p>
         <div className='form-grid'>
           <ToggleField
             label='Controller Enable'
+            help='Master control switch for the local control loop.'
             checked={form.controllerEnable}
             onChange={(v) => setField('controllerEnable', v)}
           />
           <ToggleField
             label='Enable Grid Meter'
+            help='Suspend or resume the grid meter polling task.'
             checked={form.gridMeterEnable}
             onChange={(v) => setField('gridMeterEnable', v)}
           />
           <ToggleField
             label='Enable Inverter'
+            help='Suspend or resume inverter polling.'
             checked={form.inverterEnable}
             onChange={(v) => setField('inverterEnable', v)}
           />
           <ToggleField
             label='Write Commands To Inverter'
+            help='Gate for inverter write operations. Keep pending until site validation.'
             checked={form.inverterWriteEnable}
             onChange={(v) => setField('inverterWriteEnable', v)}
           />
           <SelectField
             label='Control Mode'
+            help={controllerModeHelp[form.controlMode]}
             value={form.controlMode}
             onChange={(v) =>
               setField('controlMode', v as FormState['controlMode'])
@@ -159,49 +170,63 @@ export default function EngineerActions({ boardIp }: Props) {
 
       <div className='panel'>
         <h2>Controller Numbers</h2>
+        <p className='help-text'>
+          These values tune the synch-control loop and should match the board
+          defaults or the current commissioning plan. The loop compares grid
+          power to the selected mode target, applies deadband and gain, then
+          clamps the command between the PV percent limits.
+        </p>
         <div className='form-grid'>
           <NumberField
             label='Export Limit kW'
+            help={controlFieldHelp.exportLimitKw}
             value={form.exportLimitKw}
             onChange={(v) => setField('exportLimitKw', v)}
             step={0.1}
           />
           <NumberField
             label='Import Limit kW'
+            help={controlFieldHelp.importLimitKw}
             value={form.importLimitKw}
             onChange={(v) => setField('importLimitKw', v)}
             step={0.1}
           />
           <NumberField
             label='PV Rated kW'
+            help={controlFieldHelp.pvRatedKw}
             value={form.pvRatedKw}
             onChange={(v) => setField('pvRatedKw', v)}
           />
           <NumberField
             label='Deadband kW'
+            help={controlFieldHelp.deadbandKw}
             value={form.deadbandKw}
             onChange={(v) => setField('deadbandKw', v)}
             step={0.1}
           />
           <NumberField
             label='Control Gain'
+            help={controlFieldHelp.controlGain}
             value={form.controlGain}
             onChange={(v) => setField('controlGain', v)}
             step={0.01}
           />
           <NumberField
             label='Ramp pct Step'
+            help={controlFieldHelp.rampPctStep}
             value={form.rampPctStep}
             onChange={(v) => setField('rampPctStep', v)}
             step={0.1}
           />
           <NumberField
             label='Min PV Percent'
+            help={controlFieldHelp.minPvPercent}
             value={form.minPvPercent}
             onChange={(v) => setField('minPvPercent', v)}
           />
           <NumberField
             label='Max PV Percent'
+            help={controlFieldHelp.maxPvPercent}
             value={form.maxPvPercent}
             onChange={(v) => setField('maxPvPercent', v)}
           />
@@ -228,11 +253,13 @@ export default function EngineerActions({ boardIp }: Props) {
 
 function NumberField({
   label,
+  help,
   value,
   onChange,
   step = 1,
 }: {
   label: string;
+  help?: string;
   value: number;
   onChange: (v: number) => void;
   step?: number;
@@ -240,6 +267,7 @@ function NumberField({
   return (
     <label className='field'>
       <span className='field-label'>{label}</span>
+      {help ? <span className='field-help'>{help}</span> : null}
       <input
         className='field-input'
         type='number'
@@ -253,11 +281,13 @@ function NumberField({
 
 function SelectField({
   label,
+  help,
   value,
   onChange,
   options,
 }: {
   label: string;
+  help?: string;
   value: string;
   onChange: (v: string) => void;
   options: Array<[string, string]>;
@@ -265,6 +295,7 @@ function SelectField({
   return (
     <label className='field'>
       <span className='field-label'>{label}</span>
+      {help ? <span className='field-help'>{help}</span> : null}
       <select
         className='field-select'
         value={value}
@@ -282,16 +313,19 @@ function SelectField({
 
 function ToggleField({
   label,
+  help,
   checked,
   onChange,
 }: {
   label: string;
+  help?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <label className='field'>
       <span className='field-label'>{label}</span>
+      {help ? <span className='field-help'>{help}</span> : null}
       <button
         type='button'
         onClick={() => onChange(!checked)}
