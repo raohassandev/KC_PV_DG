@@ -44,7 +44,7 @@ function safeNumber(value: unknown, fallback = 0) {
 function buildInitialData(): LiveUiData {
   return {
     boardName: mockBoardData.boardName,
-    boardIp: '192.168.1.52',
+    boardIp: '192.168.0.115',
     wifiSsid: mockBoardData.wifiSsid,
     controllerState: mockBoardData.controllerState,
     updatedAt: new Date().toLocaleTimeString(),
@@ -99,16 +99,28 @@ function SourceBadge({
   );
 }
 
-export default function DashboardOverview() {
-  const [data, setData] = useState<LiveUiData>(buildInitialData());
+type Props = {
+  boardIp: string;
+};
+
+export default function DashboardOverview({ boardIp }: Props) {
+  const [data, setData] = useState<LiveUiData>(() => ({
+    ...buildInitialData(),
+    boardIp,
+  }));
   const [connectionMode, setConnectionMode] = useState<'live' | 'mock'>('mock');
+
+  useEffect(() => {
+    setData((prev) => ({ ...prev, boardIp }));
+    setConnectionMode('mock');
+  }, [boardIp]);
 
   useEffect(() => {
     let mounted = true;
 
     const load = async () => {
       try {
-        const board = await fetchBoardSnapshot(data.boardIp);
+        const board = await fetchBoardSnapshot(boardIp);
         if (!mounted) return;
 
         setData((prev) => {
@@ -281,7 +293,7 @@ export default function DashboardOverview() {
       mounted = false;
       clearInterval(timer);
     };
-  }, [data.boardIp]);
+  }, [boardIp]);
 
   return (
     <section className='dashboard-grid'>
@@ -350,6 +362,7 @@ export default function DashboardOverview() {
             >
               {connectionMode === 'live' ? 'Live Connected' : 'Mock Mode'}
             </div>
+            <div className='info-small'>Target IP: {boardIp}</div>
           </div>
 
           <div className='info-box'>

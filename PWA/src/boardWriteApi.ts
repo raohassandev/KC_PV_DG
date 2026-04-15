@@ -77,6 +77,18 @@ export async function setInverterEnable(
   );
 }
 
+export async function setInverterWriteEnable(
+  ip: string,
+  enabled: boolean,
+): Promise<WriteResult> {
+  return postBoard(
+    ip,
+    enabled
+      ? '/switch/Write%20Commands%20To%20Inverter/turn_on'
+      : '/switch/Write%20Commands%20To%20Inverter/turn_off',
+  );
+}
+
 export async function setControlMode(
   ip: string,
   option: string,

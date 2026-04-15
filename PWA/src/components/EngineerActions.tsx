@@ -5,6 +5,7 @@ import {
   setControllerEnable,
   setGridMeterEnable,
   setInverterEnable,
+  setInverterWriteEnable,
 } from '../boardWriteApi';
 
 type Props = {
@@ -15,6 +16,7 @@ type FormState = {
   controllerEnable: boolean;
   gridMeterEnable: boolean;
   inverterEnable: boolean;
+  inverterWriteEnable: boolean;
   controlMode:
     | 'disabled'
     | 'grid_zero_export'
@@ -34,6 +36,7 @@ const initialState: FormState = {
   controllerEnable: false,
   gridMeterEnable: true,
   inverterEnable: true,
+  inverterWriteEnable: false,
   controlMode: 'grid_zero_export',
   exportLimitKw: 0,
   importLimitKw: 0,
@@ -66,6 +69,7 @@ export default function EngineerActions({ boardIp }: Props) {
       setControllerEnable(boardIp, form.controllerEnable),
       setGridMeterEnable(boardIp, form.gridMeterEnable),
       setInverterEnable(boardIp, form.inverterEnable),
+      setInverterWriteEnable(boardIp, form.inverterWriteEnable),
       setControlMode(boardIp, form.controlMode),
     ]);
 
@@ -121,6 +125,11 @@ export default function EngineerActions({ boardIp }: Props) {
             label='Enable Inverter'
             checked={form.inverterEnable}
             onChange={(v) => setField('inverterEnable', v)}
+          />
+          <ToggleField
+            label='Write Commands To Inverter'
+            checked={form.inverterWriteEnable}
+            onChange={(v) => setField('inverterWriteEnable', v)}
           />
           <SelectField
             label='Control Mode'

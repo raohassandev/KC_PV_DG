@@ -32,7 +32,7 @@ export type BoardLiveData = {
 
 export const mockBoardData: BoardLiveData = {
   boardName: 'pv-dg-controller',
-  boardIp: '192.168.1.52',
+  boardIp: '192.168.0.115',
   wifiSsid: 'Rao',
   controllerState: 'GRID ZERO EXPORT',
   updatedAt: new Date().toLocaleTimeString(),

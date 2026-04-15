@@ -99,7 +99,7 @@ function App() {
           ))}
         </nav>
 
-        {tab === 'dashboard' && <DashboardOverview />}
+        {tab === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
         {tab === 'site' && (
           <section className='section-grid'>
