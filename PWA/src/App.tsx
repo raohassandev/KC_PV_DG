@@ -297,14 +297,22 @@ function App() {
           <section className='panel'>
             <div className='panel-header'>
               <h2>Generated Site Export</h2>
-              <button
-                className='tab-button active'
-                onClick={() =>
-                  navigator.clipboard.writeText(yamlPreview).catch(() => {})
-                }
-              >
-                Copy Export
-              </button>
+              <div className='panel-actions'>
+                <button
+                  className='tab-button active'
+                  onClick={() =>
+                    navigator.clipboard.writeText(yamlPreview).catch(() => {})
+                  }
+                >
+                  Copy Export
+                </button>
+                <button
+                  className='tab-button active'
+                  onClick={() => downloadExport(yamlPreview, config.siteName)}
+                >
+                  Download File
+                </button>
+              </div>
             </div>
             <textarea value={yamlPreview} readOnly className='yaml-box' />
           </section>
@@ -327,6 +335,16 @@ function StatCard({ label, value }: { label: string; value: string }) {
       <div className='stat-value'>{value}</div>
     </div>
   );
+}
+
+function downloadExport(content: string, siteName: string) {
+  const blob = new Blob([content], { type: 'text/yaml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_export.yaml`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function TextField({

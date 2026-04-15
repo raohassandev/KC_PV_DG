@@ -140,6 +140,12 @@ textarea {
   flex-wrap: wrap;
 }
 
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .card-wide {
   grid-column: span 1;
 }

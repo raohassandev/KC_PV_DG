@@ -17,6 +17,22 @@ export function generateSiteExport(config: SiteConfig): string {
     notes: slot.notes || null,
   }));
 
+  const enabledDevices = new Set(
+    config.slots
+      .filter((slot) => slot.enabled && slot.deviceType !== 'none')
+      .map((slot) => slot.deviceType),
+  );
+
+  const modules = [
+    'base_board.yaml',
+    'io_board.yaml',
+    'service_ui.yaml',
+    'meter_em500_grid.yaml',
+    'control_core.yaml',
+    'display_oled.yaml',
+    ...(enabledDevices.has('huawei') ? ['inverter_huawei.yaml'] : []),
+  ];
+
   return `site:
   name: ${quote(config.siteName)}
   board_name: ${quote(config.boardName)}
@@ -34,34 +50,59 @@ controller:
   min_pv_percent: ${config.minPvPercent}
   max_pv_percent: ${config.maxPvPercent}
 
+deployment:
+  package_root: Modular_Yaml
+  entry_file: pv-dg-controller.yaml
+  modules:
+${modules.map((m) => `    - ${m}`).join('\n')}
+
 board_contract:
-  read_entities:
-    grid:
-      status: /text_sensor/Grid%20Meter%20Status
-      frequency: /sensor/Grid%20Frequency
-      total_active_power: /sensor/Grid%20Total%20Active%20Power
-      total_power_factor: /sensor/Grid%20Total%20Power%20Factor
-      import_energy: /sensor/Grid%20Import%20Energy
-    inverter:
-      status: /text_sensor/Inverter%20Status
-      actual_power: /sensor/Inverter%20Actual%20Power
-      pmax: /sensor/Inverter%20Pmax
-    controller:
-      state: /text_sensor/Controller%20State
-  write_entities:
-    controller_enable: /switch/Controller%20Enable
-    grid_meter_enable: /switch/Enable%20Grid%20Meter
-    inverter_enable: /switch/Enable%20Inverter
-    inverter_write_enable: /switch/Write%20Commands%20To%20Inverter
-    control_mode: /select/Control%20Mode
-    pv_rated_kw: /number/PV%20Rated%20kW
-    deadband_kw: /number/Deadband%20kW
-    control_gain: /number/Control%20Gain
-    export_limit_kw: /number/Export%20Limit%20kW
-    import_limit_kw: /number/Import%20Limit%20kW
-    ramp_pct_step: /number/Ramp%20pct%20Step
-    min_pv_percent: /number/Min%20PV%20Percent
-    max_pv_percent: /number/Max%20PV%20Percent
+  read:
+    - name: Grid Meter Status
+      path: /text_sensor/Grid%20Meter%20Status
+    - name: Grid Frequency
+      path: /sensor/Grid%20Frequency
+    - name: Grid Total Active Power
+      path: /sensor/Grid%20Total%20Active%20Power
+    - name: Grid Total Power Factor
+      path: /sensor/Grid%20Total%20Power%20Factor
+    - name: Grid Import Energy
+      path: /sensor/Grid%20Import%20Energy
+    - name: Controller State
+      path: /text_sensor/Controller%20State
+    - name: Inverter Status
+      path: /text_sensor/Inverter%20Status
+    - name: Inverter Actual Power
+      path: /sensor/Inverter%20Actual%20Power
+    - name: Inverter Pmax
+      path: /sensor/Inverter%20Pmax
+  write:
+    - name: Controller Enable
+      path: /switch/Controller%20Enable
+    - name: Enable Grid Meter
+      path: /switch/Enable%20Grid%20Meter
+    - name: Enable Inverter
+      path: /switch/Enable%20Inverter
+    - name: Write Commands To Inverter
+      path: /switch/Write%20Commands%20To%20Inverter
+    - name: Control Mode
+      path: /select/Control%20Mode
+    - name: PV Rated kW
+      path: /number/PV%20Rated%20kW
+    - name: Deadband kW
+      path: /number/Deadband%20kW
+    - name: Control Gain
+      path: /number/Control%20Gain
+    - name: Export Limit kW
+      path: /number/Export%20Limit%20kW
+    - name: Import Limit kW
+      path: /number/Import%20Limit%20kW
+    - name: Ramp pct Step
+      path: /number/Ramp%20pct%20Step
+    - name: Min PV Percent
+      path: /number/Min%20PV%20Percent
+    - name: Max PV Percent
+      path: /number/Max%20PV%20Percent
 
 slots:
 ${slots
