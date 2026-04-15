@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import './App.css';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
+import { generateSiteExport } from './siteExport';
 import {
   type DeviceType,
   type SourceRole,
@@ -30,7 +31,7 @@ function App() {
     };
   }, [config.slots]);
 
-  const yamlPreview = useMemo(() => generateYamlPreview(config), [config]);
+  const yamlPreview = useMemo(() => generateSiteExport(config), [config]);
 
   const updateSiteField = <K extends keyof SiteConfig>(
     key: K,
@@ -294,7 +295,17 @@ function App() {
 
         {tab === 'yaml' && (
           <section className='panel'>
-            <h2>Generated Site YAML Preview</h2>
+            <div className='panel-header'>
+              <h2>Generated Site Export</h2>
+              <button
+                className='tab-button active'
+                onClick={() =>
+                  navigator.clipboard.writeText(yamlPreview).catch(() => {})
+                }
+              >
+                Copy Export
+              </button>
+            </div>
             <textarea value={yamlPreview} readOnly className='yaml-box' />
           </section>
         )}
@@ -308,41 +319,6 @@ const templateHelp: Record<DeviceType, string> = {
   em500: 'Rozwell / EM500 meter template',
   huawei: 'Huawei inverter template',
 };
-
-function generateYamlPreview(config: SiteConfig): string {
-  const slotLines = config.slots
-    .map(
-      (slot) => `  - id: ${slot.id}
-    label: "${slot.label}"
-    enabled: ${slot.enabled}
-    device_type: ${slot.deviceType}
-    role: ${slot.role}
-    modbus_id: ${slot.modbusId}
-    capacity_kw: ${slot.capacityKw}`,
-    )
-    .join('\n');
-
-  return `site:
-  name: "${config.siteName}"
-  board_name: "${config.boardName}"
-  board_ip: "${config.boardIp}"
-  wifi_ssid: "${config.wifiSsid}"
-
-controller:
-  mode: ${config.controllerMode}
-  pv_rated_kw: ${config.pvRatedKw}
-  deadband_kw: ${config.deadbandKw}
-  gain: ${config.controlGain}
-  export_limit_kw: ${config.exportLimitKw}
-  import_limit_kw: ${config.importLimitKw}
-  ramp_pct_step: ${config.rampPctStep}
-  min_pv_percent: ${config.minPvPercent}
-  max_pv_percent: ${config.maxPvPercent}
-
-slots:
-${slotLines}
-`;
-}
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
