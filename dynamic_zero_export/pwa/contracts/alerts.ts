@@ -9,6 +9,7 @@ export type AlertRecord = {
   timestamp: string;
   source: 'controller' | 'meter' | 'inverter' | 'network' | 'commissioning';
   debugDetails?: string;
+  acknowledged?: boolean;
 };
 
 export type AlertFeed = {
@@ -28,4 +29,3 @@ export function summarizeAlertFeed(feed: AlertFeed): string[] {
     `info=${feed.summary.infoCount}`,
   ];
 }
-

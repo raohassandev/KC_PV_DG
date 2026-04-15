@@ -63,6 +63,7 @@ export function toAlertFeed(response: AlertResponse): AlertFeed {
       timestamp: item.timestamp,
       source: 'controller',
       debugDetails: item.debugMessage,
+      acknowledged: item.acknowledged,
     })),
     history: response.recent.map((item) => ({
       id: item.id,

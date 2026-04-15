@@ -28,7 +28,7 @@ test('api provider can shape live status and fall back locally', async () => {
     const live = await provider.loadLiveStatus('user');
     const connectivity = await provider.loadConnectivity('user');
     assert.equal(live.siteName, 'Demo Plant');
-    assert.equal(connectivity.deviceName, 'Dynamic Zero Export Controller');
+    assert.equal(connectivity.deviceName, 'Installer Controller');
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
@@ -37,4 +37,3 @@ test('api provider can shape live status and fall back locally', async () => {
   const live = await fallback.loadLiveStatus('user');
   assert.equal(live.siteName.length > 0, true);
 });
-

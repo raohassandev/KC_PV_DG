@@ -1,21 +1,58 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildConnectivityViewModel } from '../view-models/connectivity';
-import { useEffect, useState } from 'react';
-import { buildConnectivityViewModelFromProvider, loadConnectivityProviderMode } from '../services/connectivityService';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  buildConnectivityViewModelFromProvider,
+  loadConnectivityProviderMode,
+  saveConnectivityProviderMode,
+  saveConnectivitySnapshot,
+} from '../services/connectivityService';
+import { createLocalDeviceService } from '../services/localDeviceService';
 import type { PwaRole } from '../roles';
 
 export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
   const [view, setView] = useState(() => buildConnectivityViewModel(role));
+  const [providerMode, setProviderMode] = useState(loadConnectivityProviderMode());
+  const [ssid, setSsid] = useState(view.snapshot.wifi.ssid || '');
+  const [deviceName, setDeviceName] = useState(view.snapshot.deviceName);
+  const [apiBaseUrl, setApiBaseUrl] = useState(() => localStorage.getItem('dzx.apiBaseUrl') || '');
+  const service = useMemo(() => createLocalDeviceService(providerMode, apiBaseUrl || undefined), [providerMode, apiBaseUrl]);
 
   useEffect(() => {
     let active = true;
     buildConnectivityViewModelFromProvider(role, loadConnectivityProviderMode()).then((next) => {
       if (active) setView(next);
+      if (active) {
+        setSsid(next.snapshot.wifi.ssid || '');
+        setDeviceName(next.snapshot.deviceName);
+      }
     });
     return () => {
       active = false;
     };
   }, [role]);
+
+  async function saveSettings() {
+    saveConnectivityProviderMode(providerMode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dzx.apiBaseUrl', apiBaseUrl);
+    }
+    await service.setProviderMode(providerMode);
+    await service.updateConnectivitySettings({
+      deviceName,
+      wifi: { ssid },
+      lan: view.snapshot.lan,
+      reconnectState: view.snapshot.reachability.localApi ? 'stable' : 'retrying',
+      reachability: view.snapshot.reachability,
+      firmwareVersion: view.snapshot.firmwareVersion,
+      buildId: view.snapshot.buildId,
+      uptimeSec: view.snapshot.uptimeSec,
+    });
+    const next = await buildConnectivityViewModelFromProvider(role, providerMode);
+    setView(next);
+    saveConnectivitySnapshot(next.snapshot);
+  }
+
   return (
     <div className='feature-page-grid'>
       <FeatureCard
@@ -39,6 +76,33 @@ export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
           <li>Upstream meter: {view.snapshot.reachability.upstreamMeter ? 'reachable' : 'down'}</li>
           <li>Downstream inverter: {view.snapshot.reachability.downstreamInverter ? 'reachable' : 'down'}</li>
         </ul>
+      </FeatureCard>
+      <FeatureCard title='Settings' subtitle={role === 'user' ? 'Read only' : 'Installer controls'}>
+        <div className='feature-form'>
+          <label>
+            Device name
+            <input value={deviceName} onChange={(event) => setDeviceName(event.target.value)} readOnly={role === 'user'} />
+          </label>
+          <label>
+            Provider mode
+            <select value={providerMode} onChange={(event) => setProviderMode(event.target.value as typeof providerMode)} disabled={role === 'user'}>
+              <option value='auto'>Auto</option>
+              <option value='api'>API</option>
+              <option value='mock'>Mock</option>
+            </select>
+          </label>
+          <label>
+            API base URL
+            <input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} readOnly={role === 'user'} />
+          </label>
+          <label>
+            Wi-Fi SSID
+            <input value={ssid} onChange={(event) => setSsid(event.target.value)} readOnly={role === 'user'} />
+          </label>
+          <button type='button' onClick={saveSettings} disabled={role === 'user'}>
+            Save Local Settings
+          </button>
+        </div>
       </FeatureCard>
     </div>
   );
