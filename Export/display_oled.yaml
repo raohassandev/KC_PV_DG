@@ -1,0 +1,16 @@
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 10
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    update_interval: 1s
+    lambda: |-
+      it.printf(0, 0, id(font_small), "PV-DG Controller");
+      it.printf(0, 12, id(font_small), "IP: %s", id(ip_addr).state.c_str());
+      it.printf(0, 24, id(font_small), "SSID: %s", id(wifi_ssid_sensor).state.c_str());
+      it.printf(0, 36, id(font_small), "Grid: %.2f kW", id(grid_total_kw).state);
+      it.printf(0, 48, id(font_small), "E: %.2f kWh", id(grid_import_kwh).state);

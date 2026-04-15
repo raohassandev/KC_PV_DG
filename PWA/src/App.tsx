@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import './App.css';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
-import { generateSiteExport } from './siteExport';
+import { generateSiteBundle } from './siteBundleGenerator';
 import {
   type DeviceType,
   type SourceRole,
@@ -31,7 +31,8 @@ function App() {
     };
   }, [config.slots]);
 
-  const yamlPreview = useMemo(() => generateSiteExport(config), [config]);
+  const siteBundle = useMemo(() => generateSiteBundle(config), [config]);
+  const yamlPreview = siteBundle[0]?.content ?? '';
 
   const updateSiteField = <K extends keyof SiteConfig>(
     key: K,
@@ -296,7 +297,7 @@ function App() {
         {tab === 'yaml' && (
           <section className='panel'>
             <div className='panel-header'>
-              <h2>Generated Site Export</h2>
+              <h2>Generated ESPHome Package Manifest</h2>
               <div className='panel-actions'>
                 <button
                   className='tab-button active'
@@ -304,17 +305,23 @@ function App() {
                     navigator.clipboard.writeText(yamlPreview).catch(() => {})
                   }
                 >
-                  Copy Export
+                  Copy Root YAML
                 </button>
                 <button
                   className='tab-button active'
-                  onClick={() => downloadExport(yamlPreview, config.siteName)}
+                  onClick={() => downloadBundle(siteBundle, config.siteName)}
                 >
-                  Download File
+                  Download Bundle
                 </button>
               </div>
             </div>
             <textarea value={yamlPreview} readOnly className='yaml-box' />
+            <div className='info-box' style={{ marginTop: 12 }}>
+              <div className='info-label'>Bundle Contents</div>
+              <div className='info-small'>
+                {siteBundle.map((file) => file.name).join(' · ')}
+              </div>
+            </div>
           </section>
         )}
       </div>
@@ -337,12 +344,21 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function downloadExport(content: string, siteName: string) {
-  const blob = new Blob([content], { type: 'text/yaml;charset=utf-8' });
+function downloadBundle(
+  files: Array<{ name: string; content: string }>,
+  siteName: string,
+) {
+  const payload = files
+    .map(
+      (file) => `--- ${file.name} ---
+${file.content}`,
+    )
+    .join('\n');
+  const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_export.yaml`;
+  link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_bundle.txt`;
   link.click();
   URL.revokeObjectURL(url);
 }

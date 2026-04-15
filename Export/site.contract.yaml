@@ -1,0 +1,60 @@
+web_ui:
+  supported: true
+  transport: esphome_web_server_v3
+  groups:
+    - Overview
+    - Control
+    - Grid Meter
+    - Huawei Inverter
+    - Energy
+    - Service
+    - I/O
+    - Debug
+
+board_contract:
+  read:
+    - name: Grid Meter Status
+      path: /text_sensor/Grid%20Meter%20Status
+    - name: Grid Frequency
+      path: /sensor/Grid%20Frequency
+    - name: Grid Total Active Power
+      path: /sensor/Grid%20Total%20Active%20Power
+    - name: Grid Total Power Factor
+      path: /sensor/Grid%20Total%20Power%20Factor
+    - name: Grid Import Energy
+      path: /sensor/Grid%20Import%20Energy
+    - name: Controller State
+      path: /text_sensor/Controller%20State
+    - name: Inverter Status
+      path: /text_sensor/Inverter%20Status
+    - name: Inverter Actual Power
+      path: /sensor/Inverter%20Actual%20Power
+    - name: Inverter Pmax
+      path: /sensor/Inverter%20Pmax
+  write:
+    - name: Controller Enable
+      path: /switch/Controller%20Enable
+    - name: Enable Grid Meter
+      path: /switch/Enable%20Grid%20Meter
+    - name: Enable Inverter
+      path: /switch/Enable%20Inverter
+    - name: Write Commands To Inverter
+      path: /switch/Write%20Commands%20To%20Inverter
+    - name: Control Mode
+      path: /select/Control%20Mode
+    - name: PV Rated kW
+      path: /number/PV%20Rated%20kW
+    - name: Deadband kW
+      path: /number/Deadband%20kW
+    - name: Control Gain
+      path: /number/Control%20Gain
+    - name: Export Limit kW
+      path: /number/Export%20Limit%20kW
+    - name: Import Limit kW
+      path: /number/Import%20Limit%20kW
+    - name: Ramp pct Step
+      path: /number/Ramp%20pct%20Step
+    - name: Min PV Percent
+      path: /number/Min%20PV%20Percent
+    - name: Max PV Percent
+      path: /number/Max%20PV%20Percent

@@ -1,38 +1,63 @@
 import { type SiteConfig } from './siteTemplates';
 
+export type SiteBundleFile = {
+  name: string;
+  content: string;
+};
+
 function quote(value: string) {
   return JSON.stringify(value);
 }
 
-export function generateSiteExport(config: SiteConfig): string {
-  const slots = config.slots.map((slot) => ({
-    id: slot.id,
-    label: slot.label,
-    enabled: slot.enabled,
-    device_type: slot.deviceType,
-    role: slot.role,
-    modbus_id: slot.modbusId,
-    capacity_kw: slot.capacityKw,
-    ip_hint: slot.ipHint || null,
-    notes: slot.notes || null,
-  }));
-
+function enabledPackages(config: SiteConfig) {
   const enabledDevices = new Set(
     config.slots
       .filter((slot) => slot.enabled && slot.deviceType !== 'none')
       .map((slot) => slot.deviceType),
   );
 
-  const modules = [
-    'base_board.yaml',
-    'io_board.yaml',
-    'service_ui.yaml',
-    'meter_em500_grid.yaml',
-    'control_core.yaml',
-    'display_oled.yaml',
-    ...(enabledDevices.has('huawei') ? ['inverter_huawei.yaml'] : []),
+  return [
+    'base_board: !include ../Modular_Yaml/base_board.yaml',
+    'io_board: !include ../Modular_Yaml/io_board.yaml',
+    'service_ui: !include ../Modular_Yaml/service_ui.yaml',
+    'meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml',
+    'control_core: !include ../Modular_Yaml/control_core.yaml',
+    'display_oled: !include ../Modular_Yaml/display_oled.yaml',
+    ...(enabledDevices.has('huawei')
+      ? ['inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml']
+      : []),
   ];
+}
 
+function slotSummary(config: SiteConfig) {
+  return config.slots
+    .map(
+      (slot) => `  - id: ${quote(slot.id)}
+    label: ${quote(slot.label)}
+    enabled: ${slot.enabled}
+    device_type: ${quote(slot.deviceType)}
+    role: ${quote(slot.role)}
+    modbus_id: ${slot.modbusId}
+    capacity_kw: ${slot.capacityKw}
+    ip_hint: ${slot.ipHint ? quote(slot.ipHint) : 'null'}
+    notes: ${slot.notes ? quote(slot.notes) : 'null'}`,
+    )
+    .join('\n');
+}
+
+function manifestYaml(config: SiteConfig): string {
+  const packages = enabledPackages(config);
+
+  return `substitutions:
+  devicename: ${quote(config.boardName)}
+  friendly_name: ${quote(config.siteName)}
+
+packages:
+${packages.map((line) => `  ${line}`).join('\n')}
+`;
+}
+
+function configYaml(config: SiteConfig): string {
   return `site:
   name: ${quote(config.siteName)}
   board_name: ${quote(config.boardName)}
@@ -50,11 +75,24 @@ controller:
   min_pv_percent: ${config.minPvPercent}
   max_pv_percent: ${config.maxPvPercent}
 
-deployment:
-  package_root: Modular_Yaml
-  entry_file: pv-dg-controller.yaml
-  modules:
-${modules.map((m) => `    - ${m}`).join('\n')}
+slots:
+${slotSummary(config)}
+`;
+}
+
+function contractYaml(): string {
+  return `web_ui:
+  supported: true
+  transport: esphome_web_server_v3
+  groups:
+    - Overview
+    - Control
+    - Grid Meter
+    - Huawei Inverter
+    - Energy
+    - Service
+    - I/O
+    - Debug
 
 board_contract:
   read:
@@ -103,20 +141,13 @@ board_contract:
       path: /number/Min%20PV%20Percent
     - name: Max PV Percent
       path: /number/Max%20PV%20Percent
-
-slots:
-${slots
-  .map(
-    (slot) => `  - id: ${quote(slot.id)}
-    label: ${quote(slot.label)}
-    enabled: ${slot.enabled}
-    device_type: ${quote(slot.device_type)}
-    role: ${quote(slot.role)}
-    modbus_id: ${slot.modbus_id}
-    capacity_kw: ${slot.capacity_kw}
-    ip_hint: ${slot.ip_hint === null ? 'null' : quote(slot.ip_hint)}
-    notes: ${slot.notes === null ? 'null' : quote(slot.notes)}`,
-  )
-  .join('\n')}
 `;
+}
+
+export function generateSiteBundle(config: SiteConfig): SiteBundleFile[] {
+  return [
+    { name: 'pv-dg-controller.generated.yaml', content: manifestYaml(config) },
+    { name: 'site.config.yaml', content: configYaml(config) },
+    { name: 'site.contract.yaml', content: contractYaml() },
+  ];
 }

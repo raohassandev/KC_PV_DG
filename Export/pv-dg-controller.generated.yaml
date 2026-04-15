@@ -1,0 +1,39 @@
+substitutions:
+  devicename: "pv-dg-controller"
+  friendly_name: "New Site"
+
+packages:
+  base_board: !include ../Modular_Yaml/base_board.yaml
+  io_board: !include ../Modular_Yaml/io_board.yaml
+  service_ui: !include ../Modular_Yaml/service_ui.yaml
+  meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml
+  control_core: !include ../Modular_Yaml/control_core.yaml
+  display_oled: !include ../Modular_Yaml/display_oled.yaml
+  inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml
+
+# Commissioning summary:
+#   board_ip: 192.168.0.115
+#   wifi_ssid: Rao
+#   controller_mode: grid_zero_export
+#   pv_rated_kw: 100
+#   deadband_kw: 1
+#   control_gain: 0.2
+#   export_limit_kw: 0
+#   import_limit_kw: 0
+#   ramp_pct_step: 3
+#   min_pv_percent: 0
+#   max_pv_percent: 100
+#
+# Web UI contract is defined in Modular_Yaml/base_board.yaml and
+# per-module web_server sorting_group_id blocks.
+#
+# Slots:
+#   - id: grid_1, label: Grid Meter 1, enabled: true, device_type: em500, role: grid_meter, modbus_id: 1, capacity_kw: 0
+#   - id: grid_2, label: Grid Meter 2, enabled: false, device_type: none, role: none, modbus_id: 2, capacity_kw: 0
+#   - id: gen_1, label: Generator Meter 1, enabled: false, device_type: none, role: generator_meter, modbus_id: 3, capacity_kw: 500
+#   - id: gen_2, label: Generator Meter 2, enabled: false, device_type: none, role: generator_meter, modbus_id: 4, capacity_kw: 500
+#   - id: gen_3, label: Generator Meter 3, enabled: false, device_type: none, role: generator_meter, modbus_id: 5, capacity_kw: 500
+#   - id: gen_4, label: Generator Meter 4, enabled: false, device_type: none, role: generator_meter, modbus_id: 6, capacity_kw: 500
+#   - id: inv_1, label: Inverter 1, enabled: true, device_type: huawei, role: inverter, modbus_id: 10, capacity_kw: 100
+#   - id: inv_2, label: Inverter 2, enabled: false, device_type: none, role: inverter, modbus_id: 11, capacity_kw: 100
+#   - id: inv_3, label: Inverter 3, enabled: false, device_type: none, role: inverter, modbus_id: 12, capacity_kw: 100
