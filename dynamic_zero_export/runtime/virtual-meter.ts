@@ -24,18 +24,6 @@ export function computeVirtualMeterState(
     return { kw: real.kw, mode: 'pass_through', notes: ['pass-through mode'] };
   }
 
-  if (real.kw > 0) {
-    return {
-      kw: Math.max(real.kw - minLoadKw, 0),
-      mode: 'adjusted',
-      notes: [
-        `generator minimum-load protection (${topology.mode})`,
-        `minimum load ${minLoadKw.toFixed(2)} kW`,
-        'reverse protection assist',
-      ],
-    };
-  }
-
   if (!config.policy.netMeteringEnabled || config.policy.gridMode === 'zero_export') {
     const adjustment = Math.max(real.kw - config.policy.zeroExportDeadbandKw, 0);
     return {
@@ -50,6 +38,18 @@ export function computeVirtualMeterState(
       kw: config.policy.exportSetpointKw,
       mode: 'adjusted',
       notes: ['export setpoint policy'],
+    };
+  }
+
+  if (real.kw > 0 && config.generators.length > 0) {
+    return {
+      kw: Math.max(real.kw - minLoadKw, 0),
+      mode: 'adjusted',
+      notes: [
+        `generator minimum-load protection (${topology.mode})`,
+        `minimum load ${minLoadKw.toFixed(2)} kW`,
+        'reverse protection assist',
+      ],
     };
   }
 

@@ -5,10 +5,10 @@ import { defaultDynamicZeroExportConfig } from '../schema/site-config.types';
 import fs from 'node:fs';
 import path from 'node:path';
 
+const fixturesDir = path.resolve(process.cwd(), 'examples');
+
 test('example config validates', () => {
-  const raw = JSON.parse(
-    fs.readFileSync(path.join(process.cwd(), 'dynamic_zero_export/examples/site-single-grid-gen.json'), 'utf8'),
-  );
+  const raw = JSON.parse(fs.readFileSync(path.join(fixturesDir, 'site-single-grid-gen.json'), 'utf8'));
   const config = loadSiteConfig({
     ...defaultDynamicZeroExportConfig,
     ...raw,
@@ -16,4 +16,3 @@ test('example config validates', () => {
   const result = validateSiteConfig(config);
   assert.equal(result.errors.length, 0);
 });
-

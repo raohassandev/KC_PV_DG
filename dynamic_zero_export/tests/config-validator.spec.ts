@@ -5,10 +5,10 @@ import path from 'node:path';
 import { loadSiteConfig } from '../runtime/site-config';
 import { validateNormalizedConfig } from '../runtime/config-validator';
 
+const fixturesDir = path.resolve(process.cwd(), 'examples');
+
 test('valid config passes validation', () => {
-  const raw = JSON.parse(
-    fs.readFileSync(path.join(process.cwd(), 'dynamic_zero_export/examples/site-single-grid-gen.json'), 'utf8'),
-  );
+  const raw = JSON.parse(fs.readFileSync(path.join(fixturesDir, 'site-single-grid-gen.json'), 'utf8'));
   const config = loadSiteConfig(raw);
   const result = validateNormalizedConfig(config);
   assert.equal(result.ok, true);
@@ -43,4 +43,3 @@ test('bad config fails validation', () => {
   assert.equal(result.ok, false);
   assert.ok(result.errors.length > 0);
 });
-

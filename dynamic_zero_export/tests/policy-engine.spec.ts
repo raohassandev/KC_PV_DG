@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultDynamicZeroExportConfig } from '../schema/site-config.types';
+import { defaultDynamicZeroExportConfig, type DynamicZeroExportSiteConfig } from '../schema/site-config.types';
 import { buildSiteRuntime } from '../runtime/site-model';
 import { evaluatePolicy } from '../runtime/policy-engine';
 import { deriveTopology } from '../runtime/topology';
 
 test('zero export clamps positive real meter power', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     policy: { ...defaultDynamicZeroExportConfig.policy, netMeteringEnabled: false, gridMode: 'zero_export' },
   };
@@ -17,7 +17,7 @@ test('zero export clamps positive real meter power', () => {
 });
 
 test('limited export uses configured setpoint', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     policy: { ...defaultDynamicZeroExportConfig.policy, gridMode: 'export_setpoint', exportSetpointKw: 42 },
   };
@@ -28,7 +28,7 @@ test('limited export uses configured setpoint', () => {
 });
 
 test('generator minimum-load mode reduces virtual meter', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     policy: { ...defaultDynamicZeroExportConfig.policy, netMeteringEnabled: true, gridMode: 'export_setpoint' },
   };
@@ -46,7 +46,7 @@ test('stale data enters safe fallback', () => {
 });
 
 test('reverse protection assist changes mode', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     policy: { ...defaultDynamicZeroExportConfig.policy, reverseMarginKw: 500 },
   };
@@ -57,7 +57,7 @@ test('reverse protection assist changes mode', () => {
 });
 
 test('dual bus combined derives one zone', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     topology: { type: 'DUAL_BUS_COMBINED', busCount: 2, tieSignalPresent: true },
   };
@@ -67,7 +67,7 @@ test('dual bus combined derives one zone', () => {
 });
 
 test('dual bus separate derives two zones', () => {
-  const config = {
+  const config: DynamicZeroExportSiteConfig = {
     ...defaultDynamicZeroExportConfig,
     topology: { type: 'DUAL_BUS_SEPARATE', busCount: 2, tieSignalPresent: true },
   };
