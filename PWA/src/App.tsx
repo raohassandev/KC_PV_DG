@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
+import { ProductArea } from './features/dynamic-zero-export/ProductArea';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
   deriveZones as deriveCommissioningZones,
@@ -28,6 +29,7 @@ function cx(...xs: Array<string | false | undefined>) {
 
 function App() {
   const [tab, setTab] = useState<
+    | 'product'
     | 'dashboard'
     | 'site'
     | 'topology'
@@ -36,7 +38,7 @@ function App() {
     | 'review'
     | 'engineer'
     | 'yaml'
-  >('dashboard');
+  >('product');
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -146,6 +148,7 @@ function App() {
 
         <nav className='tab-bar'>
           {[
+            ['product', 'Dynamic Zero Export'],
             ['dashboard', 'Dashboard'],
             ['site', 'Site Setup'],
             ['topology', 'Topology'],
@@ -174,6 +177,7 @@ function App() {
           </div>
         ) : null}
 
+        {tab === 'product' && <ProductArea />}
         {tab === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
         {tab === 'site' && (

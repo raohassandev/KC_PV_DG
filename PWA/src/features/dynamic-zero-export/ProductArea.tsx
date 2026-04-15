@@ -1,0 +1,83 @@
+import { useMemo, useState } from 'react';
+import { type PwaRole, roleLabels } from './roles';
+import { featureNavigationByRole, type FeaturePageId } from './navigation';
+import { buildFeatureRoutes } from './routes';
+import { OverviewPage } from './pages/OverviewPage';
+import { EnergyHistoryPage } from './pages/EnergyHistoryPage';
+import { ConnectivityPage } from './pages/ConnectivityPage';
+import { AlertsPage } from './pages/AlertsPage';
+import { CommissioningPage } from './pages/CommissioningPage';
+import { DiagnosticsPage } from './pages/DiagnosticsPage';
+import { useFeatureSession } from './hooks/useFeatureSession';
+import { RolePill } from './components/RolePill';
+
+function renderPage(page: FeaturePageId, role: PwaRole) {
+  switch (page) {
+    case 'overview':
+      return <OverviewPage />;
+    case 'energy-history':
+      return <EnergyHistoryPage />;
+    case 'connectivity':
+      return <ConnectivityPage />;
+    case 'alerts':
+      return <AlertsPage role={role} />;
+    case 'commissioning':
+      return <CommissioningPage />;
+    case 'diagnostics':
+      return <DiagnosticsPage />;
+    default:
+      return <OverviewPage />;
+  }
+}
+
+export function ProductArea() {
+  const { session, setSession, role } = useFeatureSession();
+  const [page, setPage] = useState<FeaturePageId>('overview');
+  const navItems = useMemo(() => featureNavigationByRole[role], [role]);
+  const routes = useMemo(() => buildFeatureRoutes(role), [role]);
+
+  return (
+    <section className='feature-shell'>
+      <div className='feature-shell-header'>
+        <div>
+          <div className='app-kicker'>Dynamic Zero Export</div>
+          <h2 className='feature-title'>Role-based local PWA</h2>
+          <p className='help-text'>
+            Manufacturer, installer, and owner views share the same local LAN/Wi-Fi experience.
+          </p>
+        </div>
+        <div className='feature-role-switcher'>
+          {(Object.keys(roleLabels) as PwaRole[]).map((item) => (
+            <button
+              key={item}
+              className={item === role ? 'tab-button active' : 'tab-button'}
+              onClick={() => setSession((prev) => ({ ...prev, role: item }))}
+            >
+              <RolePill role={item} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className='feature-shell-nav'>
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            className={page === item.id ? 'tab-button active' : 'tab-button'}
+            onClick={() => setPage(item.id)}
+            title={item.description}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className='feature-shell-summary'>
+        <span>Session: {session.accessMode}</span>
+        <span>Routes: {routes.length}</span>
+      </div>
+
+      <div className='feature-shell-body'>{renderPage(page, role)}</div>
+    </section>
+  );
+}
