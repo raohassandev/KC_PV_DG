@@ -14,19 +14,19 @@ import { RolePill } from './components/RolePill';
 function renderPage(page: FeaturePageId, role: PwaRole) {
   switch (page) {
     case 'overview':
-      return <OverviewPage />;
+      return <OverviewPage role={role} />;
     case 'energy-history':
-      return <EnergyHistoryPage />;
+      return <EnergyHistoryPage role={role} />;
     case 'connectivity':
-      return <ConnectivityPage />;
+      return <ConnectivityPage role={role} />;
     case 'alerts':
       return <AlertsPage role={role} />;
     case 'commissioning':
-      return <CommissioningPage />;
+      return <CommissioningPage role={role} />;
     case 'diagnostics':
-      return <DiagnosticsPage />;
+      return <DiagnosticsPage role={role} />;
     default:
-      return <OverviewPage />;
+      return <OverviewPage role={role} />;
   }
 }
 

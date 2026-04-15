@@ -1,6 +1,6 @@
 import { FeatureCard } from '../components/FeatureCard';
-import { buildEnergyHistoryViewModel } from '../view-models/energy-history';
-import { lifetimeHistoryFixture, monthHistoryFixture, todayHistoryFixture } from '../mock/history';
+import { buildEnergyHistoryViewModel } from '../view-models/history';
+import type { PwaRole } from '../roles';
 
 type HistoryPoint = {
   timestamp: string;
@@ -30,12 +30,8 @@ function historyTable(title: string, points: HistoryPoint[]) {
   );
 }
 
-export function EnergyHistoryPage() {
-  const model = buildEnergyHistoryViewModel(
-    todayHistoryFixture,
-    monthHistoryFixture,
-    lifetimeHistoryFixture,
-  );
+export function EnergyHistoryPage({ role = 'user' }: { role?: PwaRole }) {
+  const model = buildEnergyHistoryViewModel(role);
 
   return (
     <div className='feature-page-grid'>

@@ -1,16 +1,18 @@
 # PWA Owner Features
 
-The owner-facing PWA must show:
+The owner experience is first-class in the Dynamic Zero Export product surface.
 
-- real-time plant power
-- solar generation
-- grid import/export
-- generator contribution where present
-- device online/offline state
-- Wi-Fi and LAN connectivity status
-- alerts and history
-- energy today / month / lifetime
-- friendly system summaries
+Owner views include:
+- overview dashboard
+- energy history
+- connectivity and Wi-Fi status
+- alerts and recent events
+- device/system status
 
-The owner experience should remain readable and should not expose commissioning-only controls by default.
+Owner-friendly wording:
+- prefer plant status language over commissioning language
+- show friendly summaries first
+- keep technical details available only when needed
+
+Installer/manufacturer views remain available in the same PWA, but they expose deeper diagnostics, commissioning, and support information.
 

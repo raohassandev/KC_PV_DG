@@ -1,9 +1,6 @@
-import {
-  buildAlertViewModel as buildContractAlertViewModel,
-  type AlertFeed,
-  type PwaRole,
-} from '../../../../../dynamic_zero_export/pwa';
+import { buildAlertsViewModel, loadAlertFeed } from '../services/alertsService';
+import type { PwaRole } from '../roles';
 
-export function buildAlertViewModel(feed: AlertFeed, role: PwaRole) {
-  return buildContractAlertViewModel(feed, role);
+export function buildAlertViewModel(role: PwaRole) {
+  return buildAlertsViewModel(role, loadAlertFeed());
 }

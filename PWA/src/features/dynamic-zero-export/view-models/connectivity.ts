@@ -1,13 +1,6 @@
-import {
-  connectivitySummary,
-  type ConnectivitySnapshot,
-} from '../../../../../dynamic_zero_export/pwa';
+import { buildConnectivityViewModel as buildServiceConnectivityViewModel, loadConnectivitySnapshot } from '../services/connectivityService';
+import type { PwaRole } from '../roles';
 
-export function buildConnectivityViewModel(snapshot: ConnectivitySnapshot) {
-  return {
-    title: snapshot.deviceName,
-    summary: connectivitySummary(snapshot),
-    connected: snapshot.wifi.state === 'connected' && snapshot.lan.state === 'connected',
-    snapshot,
-  };
+export function buildConnectivityViewModel(role: PwaRole) {
+  return buildServiceConnectivityViewModel(role, loadConnectivitySnapshot());
 }

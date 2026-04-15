@@ -1,12 +1,13 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildCommissioningViewModel } from '../view-models/commissioning';
+import type { PwaRole } from '../roles';
 
-export function CommissioningPage() {
+export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
   const summary = buildCommissioningViewModel();
 
   return (
     <div className='feature-page-grid'>
-      <FeatureCard title='Commissioning Summary' subtitle={summary.siteName}>
+      <FeatureCard title='Commissioning Summary' subtitle={`${summary.siteName} · ${role}`}>
         <ul className='list-block'>
           {summary.cards.map((card) => (
             <li key={card.label}>

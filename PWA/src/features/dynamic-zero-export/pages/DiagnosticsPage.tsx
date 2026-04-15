@@ -1,10 +1,11 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { liveStatusFixture } from '../mock/liveStatus';
+import type { PwaRole } from '../roles';
 
-export function DiagnosticsPage() {
+export function DiagnosticsPage({ role = 'installer' }: { role?: PwaRole }) {
   return (
     <div className='feature-page-grid'>
-      <FeatureCard title='Diagnostics' subtitle='Installer / manufacturer only'>
+      <FeatureCard title='Diagnostics' subtitle={`${role} / manufacturer only`}>
         <ul className='list-block'>
           <li>System state: {liveStatusFixture.systemState}</li>
           <li>Controller: {liveStatusFixture.deviceOnline ? 'online' : 'offline'}</li>
@@ -23,4 +24,3 @@ export function DiagnosticsPage() {
     </div>
   );
 }
-
