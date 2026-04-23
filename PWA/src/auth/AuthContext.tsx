@@ -26,6 +26,10 @@ type AuthContextValue = {
   session: SessionState;
   role: ReturnType<typeof resolveRole>;
   authenticated: boolean;
+  /** True when signed in with a real gateway token (not local-dev) and role may use fleet site APIs. */
+  siteGatewaySyncAvailable: boolean;
+  /** Authenticated `fetch` against `VITE_GATEWAY_URL` with Bearer token. */
+  fetchGateway: (path: string, init?: RequestInit) => Promise<Response>;
   login: (
     channel: LoginChannel,
     password: string,
@@ -94,6 +98,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authenticated = session.authenticated === true;
 
   const role = useMemo(() => resolveRole(session.role), [session.role]);
+
+  const siteGatewaySyncAvailable = useMemo(() => {
+    if (!gatewayUrl || !session.authenticated) return false;
+    const s = readStored();
+    if (!s?.token || s.token === 'local-dev') return false;
+    return role === 'installer' || role === 'manufacturer';
+  }, [session.authenticated, role]);
+
+  const fetchGateway = useCallback(async (path: string, init?: RequestInit) => {
+    if (!gatewayUrl) throw new Error('Gateway not configured');
+    const stored = readStored();
+    if (!stored?.token || stored.token === 'local-dev') {
+      throw new Error('Not signed in with gateway token.');
+    }
+    const url = `${gatewayUrl}${path.startsWith('/') ? path : `/${path}`}`;
+    const headers = new Headers(init?.headers as HeadersInit | undefined);
+    if (!headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${stored.token}`);
+    }
+    return fetch(url, { ...init, headers });
+  }, []);
 
   const logout = useCallback(() => {
     writeStored(null);
@@ -267,13 +292,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       role,
       authenticated,
+      siteGatewaySyncAvailable,
+      fetchGateway,
       login,
       changePassword,
       adminResetPassword,
       logout,
       error,
     }),
-    [session, role, authenticated, login, changePassword, adminResetPassword, logout, error],
+    [
+      session,
+      role,
+      authenticated,
+      siteGatewaySyncAvailable,
+      fetchGateway,
+      login,
+      changePassword,
+      adminResetPassword,
+      logout,
+      error,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

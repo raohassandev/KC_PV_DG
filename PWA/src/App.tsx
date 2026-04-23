@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
@@ -6,6 +6,7 @@ import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
 import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
 import { useAuth } from './auth/AuthContext';
+import { mergePwaSiteConfigFromGatewayPayload } from './auth/gatewaySiteConfig';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
@@ -58,7 +59,14 @@ const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
 ) as Record<AppTab, string>;
 
 function App() {
-  const { authenticated, logout, role } = useAuth();
+  const {
+    authenticated,
+    logout,
+    role,
+    session,
+    fetchGateway,
+    siteGatewaySyncAvailable,
+  } = useAuth();
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [adminResetOpen, setAdminResetOpen] = useState(false);
   const [tab, setTab] = useState<AppTab>('product');
@@ -67,6 +75,9 @@ function App() {
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [notice, setNotice] = useState<string | null>('Profile loaded');
+  const [gatewaySiteList, setGatewaySiteList] = useState<Array<{ siteId: string }>>([]);
+  const [gatewaySyncSiteId, setGatewaySyncSiteId] = useState(session.siteId);
+  const [gatewaySyncBusy, setGatewaySyncBusy] = useState(false);
 
   const enabledCounts = useMemo(() => {
     const enabled = config.slots.filter((s) => s.enabled);
@@ -134,6 +145,46 @@ function App() {
       // Keep defaults if persisted state is invalid.
     }
   }, []);
+
+  useEffect(() => {
+    setGatewaySyncSiteId(session.siteId);
+  }, [session.siteId]);
+
+  const refreshGatewaySites = useCallback(async () => {
+    if (!siteGatewaySyncAvailable) return;
+    setGatewaySyncBusy(true);
+    try {
+      const res = await fetchGateway('/api/sites');
+      if (!res.ok) {
+        setNotice('Could not load gateway site list');
+        return;
+      }
+      const data = (await res.json()) as { sites: Array<{ siteId: string }> };
+      setGatewaySiteList(data.sites ?? []);
+    } catch {
+      setNotice('Could not load gateway site list');
+    } finally {
+      setGatewaySyncBusy(false);
+    }
+  }, [siteGatewaySyncAvailable, fetchGateway]);
+
+  useEffect(() => {
+    if (tab !== 'site' || !siteGatewaySyncAvailable) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchGateway('/api/sites');
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as { sites: Array<{ siteId: string }> };
+        if (!cancelled) setGatewaySiteList(data.sites ?? []);
+      } catch {
+        /* offline */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, siteGatewaySyncAvailable, fetchGateway]);
 
   useEffect(() => {
     if (!notice) return;
@@ -335,6 +386,122 @@ function App() {
 
         {tab === 'site' && (
           <section className='section-grid'>
+            {siteGatewaySyncAvailable ? (
+              <div className='panel'>
+                <h2>Gateway commissioning</h2>
+                <p className='help-text'>
+                  Load or save the PWA commissioning profile to the VPS gateway under{' '}
+                  <code>sites/&lt;siteId&gt;.json</code> as <code>pwaSiteConfig</code>, alongside MQTT
+                  discovery data.
+                </p>
+                <div className='form-grid'>
+                  <label className='field' htmlFor='gateway-site-id'>
+                    <span className='field-label'>Fleet site ID</span>
+                    <span className='field-help'>
+                      Defaults to your session site ID. Refresh list after new MQTT discovery.
+                    </span>
+                    <input
+                      id='gateway-site-id'
+                      className='field-input'
+                      data-testid='gateway-site-id'
+                      list='gateway-site-datalist'
+                      value={gatewaySyncSiteId}
+                      onChange={(e) => setGatewaySyncSiteId(e.target.value)}
+                      autoComplete='off'
+                    />
+                    <datalist id='gateway-site-datalist'>
+                      {gatewaySiteList.map((s) => (
+                        <option key={s.siteId} value={s.siteId} />
+                      ))}
+                    </datalist>
+                  </label>
+                </div>
+                <div className='panel-actions u-mt-md'>
+                  <button
+                    type='button'
+                    className='btn btn--secondary'
+                    disabled={gatewaySyncBusy}
+                    onClick={() => void refreshGatewaySites()}
+                    data-testid='gateway-sites-refresh'
+                  >
+                    Refresh list
+                  </button>
+                  <button
+                    type='button'
+                    className='btn btn--secondary'
+                    disabled={gatewaySyncBusy || !gatewaySyncSiteId.trim()}
+                    onClick={async () => {
+                      const id = gatewaySyncSiteId.trim();
+                      if (!id) return;
+                      setGatewaySyncBusy(true);
+                      try {
+                        const res = await fetchGateway(
+                          `/api/sites/${encodeURIComponent(id)}`,
+                        );
+                        if (!res.ok) {
+                          setNotice(
+                            res.status === 404
+                              ? 'Site file not found on gateway'
+                              : 'Could not load site from gateway',
+                          );
+                          return;
+                        }
+                        const payload = (await res.json()) as Record<string, unknown>;
+                        const merged = mergePwaSiteConfigFromGatewayPayload(payload);
+                        if (!merged) {
+                          setNotice('No pwaSiteConfig stored for this site yet');
+                          return;
+                        }
+                        setConfig(merged);
+                        setNotice(`Loaded commissioning from gateway (${id})`);
+                      } catch {
+                        setNotice('Could not load site from gateway');
+                      } finally {
+                        setGatewaySyncBusy(false);
+                      }
+                    }}
+                    data-testid='gateway-site-load'
+                  >
+                    Load from gateway
+                  </button>
+                  <button
+                    type='button'
+                    className='btn btn--primary'
+                    disabled={gatewaySyncBusy || !gatewaySyncSiteId.trim()}
+                    onClick={async () => {
+                      const id = gatewaySyncSiteId.trim();
+                      if (!id) return;
+                      setGatewaySyncBusy(true);
+                      try {
+                        const res = await fetchGateway(
+                          `/api/sites/${encodeURIComponent(id)}`,
+                          {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pwaSiteConfig: config }),
+                          },
+                        );
+                        if (!res.ok) {
+                          const err = (await res.json().catch(() => ({}))) as {
+                            error?: string;
+                          };
+                          setNotice(err.error ?? 'Save to gateway failed');
+                          return;
+                        }
+                        setNotice(`Saved commissioning to gateway (${id})`);
+                      } catch {
+                        setNotice('Save to gateway failed');
+                      } finally {
+                        setGatewaySyncBusy(false);
+                      }
+                    }}
+                    data-testid='gateway-site-save'
+                  >
+                    Save to gateway
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className='panel'>
               <h2>Site Identity</h2>
               <p className='help-text'>

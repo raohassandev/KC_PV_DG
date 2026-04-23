@@ -1,9 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import cors from 'cors';
 import express from 'express';
 import type { SessionState } from '../../dynamic_zero_export/pwa/contracts/session.js';
-import { appendAuditLine } from './atomicFile.js';
+import { appendAuditLine, writeJsonAtomic } from './atomicFile.js';
 import {
   changeOwnPassword,
   loadOrInitAuth,
@@ -44,6 +44,27 @@ function toSessionState(rec: {
     authenticated: true,
     accessMode: rec.accessMode,
   };
+}
+
+function safeSiteIdParam(raw: string): string | null {
+  if (!raw || raw.length > 96) return null;
+  if (!/^[a-zA-Z0-9_-]+$/.test(raw)) return null;
+  return raw;
+}
+
+function canAccessSiteJson(
+  rec: { role: 'user' | 'installer' | 'manufacturer'; installerId?: string },
+  j: Record<string, unknown>,
+): boolean {
+  if (rec.role === 'manufacturer') return true;
+  if (rec.role === 'user') return false;
+  if (rec.role === 'installer') {
+    if (!rec.installerId) return false;
+    const iid = j.installer_id ?? j.installerId;
+    if (typeof iid !== 'string' || iid !== rec.installerId) return false;
+    return true;
+  }
+  return false;
 }
 
 function listSites(installerId: string | undefined, role: 'user' | 'installer' | 'manufacturer'): unknown[] {
@@ -258,6 +279,104 @@ app.get('/api/sites', (req, res) => {
   }
   const sites = listSites(rec.installerId, rec.role);
   res.json({ sites });
+});
+
+/** Single site JSON (discovery + optional `pwaSiteConfig`). Installer scope enforced. */
+app.get('/api/sites/:siteId', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role === 'user') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  const siteId = safeSiteIdParam(req.params.siteId ?? '');
+  if (!siteId) {
+    res.status(400).json({ error: 'invalid siteId' });
+    return;
+  }
+  const full = join(SITES_DIR, `${siteId}.json`);
+  if (!existsSync(full)) {
+    res.status(404).json({ error: 'not found' });
+    return;
+  }
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(readFileSync(full, 'utf8')) as Record<string, unknown>;
+  } catch {
+    res.status(500).json({ error: 'corrupt site file' });
+    return;
+  }
+  if (!canAccessSiteJson(rec, j)) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  res.json({ siteId, ...j });
+});
+
+/**
+ * Merge `pwaSiteConfig` into `sites/<siteId>.json` (creates file if allowed).
+ * Preserves MQTT discovery fields; commissioning blob is under `pwaSiteConfig`.
+ */
+app.put('/api/sites/:siteId', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role === 'user') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  const siteId = safeSiteIdParam(req.params.siteId ?? '');
+  if (!siteId) {
+    res.status(400).json({ error: 'invalid siteId' });
+    return;
+  }
+  const body = req.body as { pwaSiteConfig?: unknown };
+  if (
+    body?.pwaSiteConfig === undefined ||
+    typeof body.pwaSiteConfig !== 'object' ||
+    body.pwaSiteConfig === null ||
+    Array.isArray(body.pwaSiteConfig)
+  ) {
+    res.status(400).json({ error: 'pwaSiteConfig object required' });
+    return;
+  }
+  const full = join(SITES_DIR, `${siteId}.json`);
+  let base: Record<string, unknown> = {};
+  if (existsSync(full)) {
+    try {
+      base = JSON.parse(readFileSync(full, 'utf8')) as Record<string, unknown>;
+    } catch {
+      res.status(500).json({ error: 'corrupt site file' });
+      return;
+    }
+    if (!canAccessSiteJson(rec, base)) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+  } else if (rec.role === 'installer') {
+    if (!rec.installerId) {
+      res.status(403).json({ error: 'installerId required on session' });
+      return;
+    }
+    base.installer_id = rec.installerId;
+  }
+  const next = { ...base, pwaSiteConfig: body.pwaSiteConfig };
+  writeJsonAtomic(full, next);
+  appendAuditLine(CONFIG_DIR, {
+    type: 'site.config.write',
+    siteId,
+    role: rec.role,
+    ts: new Date().toISOString(),
+    ip: req.ip,
+  });
+  res.json({ ok: true, siteId });
 });
 
 startMqttDiscovery({

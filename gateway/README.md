@@ -34,9 +34,11 @@ Health: `GET http://127.0.0.1:8788/api/health`
 - `POST /api/auth/password` — Bearer + `{ currentPassword, newPassword }` (min 8 chars); updates the **logged-in role’s** bcrypt hash (`user` / `installer` / `manufacturer` only).
 - `POST /api/auth/admin/reset-password` — Bearer + **manufacturer** session + `{ target, newPassword }` where `target` is `user` \| `installer` \| `support_override` \| `manufacturer`; writes new bcrypt hash (audited).
 - `GET /api/sites` — Bearer; installer list filtered by `installerId` from discovery JSON / login.
+- `GET /api/sites/:siteId` — Bearer; **installer** / **manufacturer** only; returns merged JSON (discovery + optional `pwaSiteConfig`).
+- `PUT /api/sites/:siteId` — Bearer; same roles; body `{ pwaSiteConfig }` (object); merges into `sites/<siteId>.json` (atomic write, audited). Installer creates new files scoped to their `installer_id`.
 
 ## Storage
 
 - `auth.json` — bcrypt hashes; written with **atomic temp + rename**.
 - `audit.log` — JSON lines; append + `fsync`.
-- `sites/<siteId>.json` — retained discovery payloads.
+- `sites/<siteId>.json` — MQTT discovery payload plus optional commissioning blob **`pwaSiteConfig`** (PWA `SiteConfig` JSON) written by the PWA or API.
