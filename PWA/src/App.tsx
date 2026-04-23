@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import { LoginScreen } from './auth/LoginScreen';
+import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
+import { useAuth } from './auth/AuthContext';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
@@ -27,16 +30,7 @@ function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
-type AppTab =
-  | 'product'
-  | 'dashboard'
-  | 'site'
-  | 'topology'
-  | 'slots'
-  | 'templates'
-  | 'review'
-  | 'engineer'
-  | 'yaml';
+type AppTab = AppShellTab;
 
 const TAB_ITEMS: Array<{
   id: AppTab;
@@ -61,6 +55,7 @@ const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
 ) as Record<AppTab, string>;
 
 function App() {
+  const { authenticated, logout, role } = useAuth();
   const [tab, setTab] = useState<AppTab>('product');
   const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
@@ -150,6 +145,22 @@ function App() {
     mainRef.current?.focus({ preventScroll: true });
   }, [tab]);
 
+  const visibleTabs = useMemo(
+    () => TAB_ITEMS.filter((item) => isTabAllowed(role, item.id)),
+    [role],
+  );
+
+  useEffect(() => {
+    if (!authenticated) return;
+    if (!isTabAllowed(role, tab)) {
+      setTab(tabsForRole(role)[0] ?? 'product');
+    }
+  }, [authenticated, role, tab]);
+
+  if (!authenticated) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className='app-shell'>
       <div className='app-energy-ambient' aria-hidden='true'>
@@ -209,6 +220,14 @@ function App() {
             </div>
 
             <div className='header-stats'>
+              <button
+                type='button'
+                className='btn btn--secondary'
+                onClick={() => logout()}
+                data-testid='logout-button'
+              >
+                Sign out
+              </button>
               <StatCard
                 label='Enabled Sources'
                 value={String(enabledCounts.total)}
@@ -227,7 +246,7 @@ function App() {
         </header>
 
         <nav className='tab-bar' aria-label='Application sections' data-testid='app-nav'>
-          {TAB_ITEMS.map((item) => (
+          {visibleTabs.map((item) => (
             <div key={item.id} className='tab-bar-item'>
               {item.groupStart ? (
                 <span className='tab-bar-sep' aria-hidden='true' />

@@ -4,6 +4,7 @@
   "description": "Scripts to verify subprojects without hardware",
   "scripts": {
     "dev:pwa": "cd PWA && npm run dev",
+    "dev:gateway": "cd gateway && npm run start",
     "check:dzx": "cd dynamic_zero_export && npm run check",
     "test:dzx": "cd dynamic_zero_export && npm test",
     "test:pwa": "cd PWA && npm test",

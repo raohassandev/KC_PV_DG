@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab } from './helpers';
+import { freshApp, gotoTab, loginAs } from './helpers';
 
 test.describe('Dashboard & Dynamic Zero Export', () => {
   test.beforeEach(async ({ page }) => {
     await freshApp(page);
+    await loginAs(page, 'user');
   });
 
   test('dashboard shows demo/live pill and live metrics region', async ({ page }) => {

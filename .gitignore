@@ -12,5 +12,9 @@
 # Node (dynamic_zero_export has no package-local .gitignore)
 /dynamic_zero_export/node_modules/
 
+/gateway/node_modules/
+/gateway/data/
+
 # PDFs (ignore all PDF files)
 *.pdf
+

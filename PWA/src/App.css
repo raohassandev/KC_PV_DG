@@ -1667,3 +1667,24 @@ button:focus:not(:focus-visible) {
     animation: none !important;
   }
 }
+
+/* --- Login (RBAC) --- */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-app);
+}
+
+.login-panel {
+  width: min(420px, 100%);
+  padding: 28px;
+}
+
+.notice-inline {
+  margin: 0 0 8px;
+  color: var(--warning);
+  font-size: 0.9rem;
+}

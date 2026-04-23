@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab } from './helpers';
+import { freshApp, gotoTab, loginAs } from './helpers';
 
 test.describe('Device catalog & validation logic', () => {
   test.beforeEach(async ({ page }) => {
     await freshApp(page);
+    await loginAs(page, 'installer');
   });
 
   test('Source Slots exposes WM15 and bundle warns until firmware exists', async ({ page }) => {

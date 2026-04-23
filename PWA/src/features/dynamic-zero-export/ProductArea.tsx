@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { type PwaRole, roleLabels } from './roles';
+import { type PwaRole } from './roles';
 import { featureNavigationByRole, type FeaturePageId } from './navigation';
 import { buildFeatureRoutes } from './routes';
 import { OverviewPage } from './pages/OverviewPage';
@@ -8,8 +8,8 @@ import { ConnectivityPage } from './pages/ConnectivityPage';
 import { AlertsPage } from './pages/AlertsPage';
 import { CommissioningPage } from './pages/CommissioningPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
-import { useFeatureSession } from './hooks/useFeatureSession';
 import { RolePill } from './components/RolePill';
+import { useAuth } from '../../auth/AuthContext';
 
 function renderPage(page: FeaturePageId, role: PwaRole) {
   switch (page) {
@@ -31,7 +31,7 @@ function renderPage(page: FeaturePageId, role: PwaRole) {
 }
 
 export function ProductArea() {
-  const { session, setSession, role } = useFeatureSession();
+  const { session, role } = useAuth();
   const [page, setPage] = useState<FeaturePageId>('overview');
   const navItems = useMemo(() => featureNavigationByRole[role], [role]);
   const routes = useMemo(() => buildFeatureRoutes(role), [role]);
@@ -46,18 +46,10 @@ export function ProductArea() {
             Manufacturer, installer, and owner views share the same local LAN/Wi-Fi experience.
           </p>
         </div>
-        <div className='feature-role-switcher'>
-          {(Object.keys(roleLabels) as PwaRole[]).map((item) => (
-            <button
-              key={item}
-              type='button'
-              className={item === role ? 'tab-button active' : 'tab-button'}
-              onClick={() => setSession((prev) => ({ ...prev, role: item }))}
-              aria-pressed={item === role}
-            >
-              <RolePill role={item} />
-            </button>
-          ))}
+        <div className='feature-role-switcher' aria-label='Signed-in role'>
+          <span className='tab-button active' title='Role is set at login'>
+            <RolePill role={role} />
+          </span>
         </div>
       </div>
 

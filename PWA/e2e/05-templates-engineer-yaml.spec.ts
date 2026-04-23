@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab } from './helpers';
+import { freshApp, gotoTab, loginAs } from './helpers';
 
 test.describe('Templates, engineer, YAML export', () => {
   test.beforeEach(async ({ page }) => {
     await freshApp(page);
+    await loginAs(page, 'manufacturer');
   });
 
   test('templates tab documents analyzers and inverters', async ({ page }) => {

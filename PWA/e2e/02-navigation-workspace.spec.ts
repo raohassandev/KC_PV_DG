@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab } from './helpers';
+import { freshApp, gotoTab, loginAs } from './helpers';
 
 const tabs = [
   'Dynamic Zero Export',
@@ -16,6 +16,7 @@ const tabs = [
 test.describe('Primary navigation', () => {
   test.beforeEach(async ({ page }) => {
     await freshApp(page);
+    await loginAs(page, 'manufacturer');
   });
 
   for (const label of tabs) {

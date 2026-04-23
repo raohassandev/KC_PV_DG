@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export async function gotoTab(page: Page, label: string) {
   await page.getByTestId('app-nav').getByRole('button', { name: label }).click();
@@ -24,4 +24,17 @@ export async function freshApp(page: Page) {
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await dismissNoticeIfPresent(page);
+}
+
+const E2E_LOGIN: Record<'user' | 'installer' | 'manufacturer', string> = {
+  user: 'DevUser!1',
+  installer: 'DevInstall!1',
+  manufacturer: 'DevMfg!1',
+};
+
+export async function loginAs(page: Page, role: keyof typeof E2E_LOGIN) {
+  await page.getByTestId('login-channel').selectOption(role);
+  await page.getByTestId('login-password').fill(E2E_LOGIN[role]);
+  await page.getByTestId('login-submit').click();
+  await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 30_000 });
 }
