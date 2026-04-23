@@ -30,6 +30,8 @@ type AuthContextValue = {
     password: string,
     opts?: { installerId?: string; siteId?: string },
   ) => Promise<void>;
+  /** Updates password on the gateway (requires `VITE_GATEWAY_URL` and a valid bearer token). */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   error: string | null;
 };
@@ -96,6 +98,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }, []);
+
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      if (!gatewayUrl) {
+        return { ok: false, message: 'Password change requires the gateway (set VITE_GATEWAY_URL).' };
+      }
+      const stored = readStored();
+      if (!stored?.token || stored.token === 'local-dev') {
+        return { ok: false, message: 'Not signed in with gateway token.' };
+      }
+      const res = await fetch(`${gatewayUrl}/api/auth/password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${stored.token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, message: err.error ?? 'Password change failed' };
+      }
+      return { ok: true };
+    },
+    [],
+  );
 
   const login = useCallback(
     async (channel: LoginChannel, password: string, opts?: { installerId?: string; siteId?: string }) => {
@@ -205,10 +233,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       authenticated,
       login,
+      changePassword,
       logout,
       error,
     }),
-    [session, role, authenticated, login, logout, error],
+    [session, role, authenticated, login, changePassword, logout, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
