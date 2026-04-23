@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
+import { LocalDevPasswordHintDialog } from './auth/LocalDevPasswordHintDialog';
 import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
 import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
@@ -278,7 +279,7 @@ function App() {
             </div>
 
             <div className='header-stats'>
-              {gatewayAuth ? (
+              {gatewayAuth || import.meta.env.DEV ? (
                 <button
                   type='button'
                   className='btn btn--secondary'
@@ -355,7 +356,7 @@ function App() {
           </div>
         ) : null}
 
-        {changePwOpen ? (
+        {changePwOpen && gatewayAuth ? (
           <ChangePasswordDialog
             onClose={() => setChangePwOpen(false)}
             onSuccess={(msg) => {
@@ -363,6 +364,9 @@ function App() {
               setChangePwOpen(false);
             }}
           />
+        ) : null}
+        {changePwOpen && !gatewayAuth && import.meta.env.DEV ? (
+          <LocalDevPasswordHintDialog onClose={() => setChangePwOpen(false)} />
         ) : null}
 
         {adminResetOpen ? (

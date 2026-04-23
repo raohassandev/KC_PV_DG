@@ -2,6 +2,8 @@
 
 Last updated: 2026-04-15
 
+**Agent / status overview:** see **`docs/AGENT_IMPLEMENTATION_PLAN.md`** (single narrative: history, auth, password UX, gateway APIs, done vs next).
+
 This checklist is the repo-aware migration order for the current ESPHome + PWA commissioning product.
 
 ## Stage A. Stabilize current board contract
