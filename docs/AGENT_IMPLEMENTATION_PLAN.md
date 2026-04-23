@@ -35,6 +35,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 10. **Local dev “Change password” UX** — Header always shows **Change password** in dev builds without gateway; opens `LocalDevPasswordHintDialog` explaining gateway is required for real updates (`PWA/src/auth/LocalDevPasswordHintDialog.tsx`).
 11. **Field help on hover** — `TextField` / `NumberField` / `SelectField` / `ToggleField` use `HelpHint` (`PWA/src/components/HelpHint.tsx`): compact “i” glyph, tooltip bubble on hover, full text still exposed to assistive tech via `aria-describedby` + visually hidden span.
 12. **Gateway `tsc`** — `dynamic_zero_export/pwa/contracts/session.ts` uses `../roles.js` import so `npx tsc -p gateway` passes under `moduleResolution: NodeNext`. Root **`npm run check:gateway`** and **`verify`** include it.
+13. **Node-safe Vite env** — `PWA/src/viteMetaEnv.ts` (`viteEnv`, `viteIsDev`) so `AuthContext` / `gatewayEnv` load under Node unit tests; DZX API simulator tests bind **port 0** to avoid clashes with local gateway dev servers.
 
 ---
 

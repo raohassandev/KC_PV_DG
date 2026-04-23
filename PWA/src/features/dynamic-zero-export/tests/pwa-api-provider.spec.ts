@@ -1,5 +1,6 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import type { Server } from 'node:http';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,12 +8,19 @@ import { createDzxApiClient } from '../services/apiClient';
 import { createDzxProvider } from '../services/provider';
 import { createApiServer } from '../../../../../dynamic_zero_export/api_simulator';
 
+function boundPort(server: Server): number {
+  const addr = server.address();
+  if (addr && typeof addr === 'object') return addr.port;
+  throw new Error('Expected TCP listen address');
+}
+
 test('api client returns the expected snapshot payloads', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-api-'));
-  const sim = createApiServer(8788, stateDir);
+  const sim = createApiServer(0, stateDir);
   const server = await sim.listen();
+  const port = boundPort(server);
   try {
-    const client = createDzxApiClient('http://127.0.0.1:8788');
+    const client = createDzxApiClient(`http://127.0.0.1:${port}`);
     const live = await client.getLiveStatus();
     const device = await client.getDeviceInfo();
     const alerts = await client.getAlerts();
@@ -27,10 +35,11 @@ test('api client returns the expected snapshot payloads', async () => {
 
 test('api provider can shape live status and fall back locally', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-api-'));
-  const sim = createApiServer(8789, stateDir);
+  const sim = createApiServer(0, stateDir);
   const server = await sim.listen();
+  const port = boundPort(server);
   try {
-    const provider = createDzxProvider('api', 'http://127.0.0.1:8789');
+    const provider = createDzxProvider('api', `http://127.0.0.1:${port}`);
     const live = await provider.loadLiveStatus('user');
     const connectivity = await provider.loadConnectivity('user');
     assert.equal(live.siteName, 'Demo Plant');

@@ -10,6 +10,7 @@ import {
 import { defaultSessionState, type SessionState } from '../../../dynamic_zero_export/pwa';
 import { resolveRole } from '../features/dynamic-zero-export/roles';
 import type { CredentialSlot } from './credentials';
+import { viteEnv, viteIsDev } from '../viteMetaEnv';
 
 const AUTH_KEY = 'pvdg.auth';
 const DZX_KEY = 'dzx.session';
@@ -80,16 +81,16 @@ function syncDzxSession(session: SessionState) {
   }
 }
 
-const gatewayUrl = (import.meta.env.VITE_GATEWAY_URL as string | undefined)?.replace(/\/$/, '');
+const gatewayRaw = viteEnv('VITE_GATEWAY_URL');
+const gatewayUrl = gatewayRaw ? gatewayRaw.replace(/\/$/, '') : '';
 
 const devPasswords: Record<LoginChannel, string> = {
-  user: (import.meta.env.VITE_DEV_AUTH_USER as string) || 'DevUser!1',
-  installer: (import.meta.env.VITE_DEV_AUTH_INSTALLER as string) || 'DevInstall!1',
-  manufacturer: (import.meta.env.VITE_DEV_AUTH_MANUFACTURER as string) || 'DevMfg!1',
+  user: viteEnv('VITE_DEV_AUTH_USER') ?? 'DevUser!1',
+  installer: viteEnv('VITE_DEV_AUTH_INSTALLER') ?? 'DevInstall!1',
+  manufacturer: viteEnv('VITE_DEV_AUTH_MANUFACTURER') ?? 'DevMfg!1',
 };
 
-const devSupportOverride =
-  (import.meta.env.VITE_DEV_AUTH_SUPPORT as string) || 'DevSupport!1';
+const devSupportOverride = viteEnv('VITE_DEV_AUTH_SUPPORT') ?? 'DevSupport!1';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionState>(() => readStored()?.session ?? defaultSessionState);
@@ -225,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Local dev auth (no VPS): plaintext compare — only for development builds.
-      if (!import.meta.env.DEV) {
+      if (!viteIsDev()) {
         setError('Gateway not configured');
         return;
       }
