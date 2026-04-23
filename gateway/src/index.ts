@@ -14,7 +14,12 @@ import {
   type LoginChannel,
 } from './authStore.js';
 import { startMqttDiscovery } from './mqttDiscovery.js';
-import { createSession, deleteSession, getSession } from './sessions.js';
+import {
+  configureSessionPersistence,
+  createSession,
+  deleteSession,
+  getSession,
+} from './sessions.js';
 
 const PORT = Number(process.env.PORT ?? 8788);
 const CONFIG_DIR = process.env.CONFIG_DIR ?? join(process.cwd(), 'data', 'config');
@@ -24,6 +29,7 @@ const MQTT_URL = process.env.MQTT_URL;
 const MQTT_DISCOVERY_TOPIC = process.env.MQTT_DISCOVERY_TOPIC ?? 'automatrix/discovery/+/+';
 
 let authRecord = await loadOrInitAuth(CONFIG_DIR);
+configureSessionPersistence(CONFIG_DIR);
 
 function bearer(req: express.Request): string | undefined {
   const h = req.headers.authorization;

@@ -23,7 +23,7 @@ Typecheck (from repo root): `npm run check:gateway` → runs `npx tsc -p gateway
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `8788` | HTTP listen port |
-| `CONFIG_DIR` | `<cwd>/data/config` | `auth.json`, `audit.log`, `sites/` |
+| `CONFIG_DIR` | `<cwd>/data/config` | `auth.json`, `audit.log`, `sites/`, `sessions.json` |
 | `MQTT_URL` | _(empty)_ | e.g. `mqtt://user:pass@host:1883` |
 | `MQTT_DISCOVERY_TOPIC` | `automatrix/discovery/+/+` | Discovery subscription |
 | `CORS_ORIGIN` | `*` | Comma-separated origins or `*` |
@@ -47,4 +47,5 @@ Typecheck (from repo root): `npm run check:gateway` → runs `npx tsc -p gateway
 
 - `auth.json` — bcrypt hashes; written with **atomic temp + rename**.
 - `audit.log` — JSON lines; append + `fsync`.
+- `sessions.json` — active bearer sessions (`version` + `sessions` map); rewritten on login/logout; survives process restart.
 - `sites/<siteId>.json` — MQTT discovery payload plus optional commissioning blob **`pwaSiteConfig`** (PWA `SiteConfig` JSON) written by the PWA or API.

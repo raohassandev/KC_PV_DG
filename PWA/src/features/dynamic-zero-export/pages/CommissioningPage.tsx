@@ -1,5 +1,6 @@
-import { isGatewayAuthEnabled } from '../../../auth/gatewayEnv';
 import { useAuth } from '../../../auth/AuthContext';
+import { isGatewayAuthEnabled } from '../../../auth/gatewayEnv';
+import { mergePwaSiteConfigFromGatewayPayload } from '../../../auth/gatewaySiteConfig';
 import { FeatureCard } from '../components/FeatureCard';
 import {
   buildCommissioningViewModel,
@@ -12,11 +13,12 @@ import type { CommissioningSummaryModel } from '../../../../../dynamic_zero_expo
 import type { PwaRole } from '../roles';
 
 export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
-  const { siteGatewaySyncAvailable } = useAuth();
+  const { siteGatewaySyncAvailable, fetchGateway, session } = useAuth();
   const [summary, setSummary] = useState<CommissioningSummaryModel>(() =>
     buildCommissioningViewModel(role),
   );
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'offline'>('loading');
+  const [gatewayPwaSiteName, setGatewayPwaSiteName] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -42,13 +44,43 @@ export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
     };
   }, [role]);
 
+  useEffect(() => {
+    if (!siteGatewaySyncAvailable) {
+      setGatewayPwaSiteName(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetchGateway(
+          `/api/sites/${encodeURIComponent(session.siteId)}`,
+        );
+        if (cancelled) return;
+        if (!res.ok) {
+          setGatewayPwaSiteName(null);
+          return;
+        }
+        const payload = (await res.json()) as Record<string, unknown>;
+        const merged = mergePwaSiteConfigFromGatewayPayload(payload);
+        if (!cancelled) setGatewayPwaSiteName(merged?.siteName ?? null);
+      } catch {
+        if (!cancelled) setGatewayPwaSiteName(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [siteGatewaySyncAvailable, fetchGateway, session.siteId]);
+
   return (
     <div className='feature-page-grid'>
       <FeatureCard
         title='Commissioning Summary'
         subtitle={`${summary.siteName} · ${role}${
           loadState === 'loading' ? ' · loading…' : ''
-        }${loadState === 'offline' ? ' · fixture preview (no API)' : ''}`}
+        }${loadState === 'offline' ? ' · fixture preview (no API)' : ''}${
+          gatewayPwaSiteName ? ` · gateway pwaSiteConfig: ${gatewayPwaSiteName}` : ''
+        }`}
       >
         <ul className='list-block'>
           {summary.cards.map((card) => (

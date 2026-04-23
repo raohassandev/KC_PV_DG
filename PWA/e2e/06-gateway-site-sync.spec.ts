@@ -53,4 +53,27 @@ test.describe('Gateway commissioning sync', () => {
     });
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(siteTitle);
   });
+
+  test('commissioning tab shows gateway pwaSiteConfig site name', async ({ page }) => {
+    /** Must match default `siteId` on the gateway session (`site-001`) so Commissioning fetches the same file. */
+    const siteId = 'site-001';
+    const siteName = 'E2E Commissioning Gateway Site';
+
+    await freshApp(page);
+    await loginAs(page, 'manufacturer');
+    await gotoTab(page, 'Site Setup');
+    await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('gateway-site-id').fill(siteId);
+    await page.getByLabel('Site Name').fill(siteName);
+    await page.getByTestId('gateway-site-save').click();
+    await expect(page.getByText(/Saved commissioning to gateway/)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await gotoTab(page, 'Dynamic Zero Export');
+    await page.locator('.feature-shell-nav').getByRole('button', { name: 'Commissioning' }).click();
+    await expect(
+      page.getByText(new RegExp(`gateway pwaSiteConfig:\\s*${siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)),
+    ).toBeVisible({ timeout: 15_000 });
+  });
 });

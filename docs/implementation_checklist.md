@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-15
 
-**Agent / status overview:** see **`docs/AGENT_IMPLEMENTATION_PLAN.md`** (single narrative: history, auth, password UX, gateway APIs, done vs next).
+**Agent / status overview:** see **`docs/AGENT_IMPLEMENTATION_PLAN.md`** — gateway + PWA software milestones are **complete**; remaining checklist rows are mainly **board / ESPHome** field work.
 
 This checklist is the repo-aware migration order for the current ESPHome + PWA commissioning product.
 
