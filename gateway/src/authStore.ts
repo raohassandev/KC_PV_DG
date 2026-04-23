@@ -84,3 +84,12 @@ export async function changeOwnPassword(
   };
   return { ok: true, record: next };
 }
+
+/** Set a credential slot to a new password (no current-password check) — manufacturer admin only. */
+export async function setSlotPasswordPlain(
+  record: AuthRecord,
+  slot: CredentialSlot,
+  newPlain: string,
+): Promise<AuthRecord> {
+  return { ...record, [slot]: { hash: await hash(newPlain) } };
+}

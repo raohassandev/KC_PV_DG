@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { defaultSessionState, type SessionState } from '../../../dynamic_zero_export/pwa';
 import { resolveRole } from '../features/dynamic-zero-export/roles';
+import type { CredentialSlot } from './credentials';
 
 const AUTH_KEY = 'pvdg.auth';
 const DZX_KEY = 'dzx.session';
@@ -32,6 +33,11 @@ type AuthContextValue = {
   ) => Promise<void>;
   /** Updates password on the gateway (requires `VITE_GATEWAY_URL` and a valid bearer token). */
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; message?: string }>;
+  /** Manufacturer only: reset a credential slot on the gateway. */
+  adminResetPassword: (
+    target: CredentialSlot,
+    newPassword: string,
+  ) => Promise<{ ok: boolean; message?: string }>;
   logout: () => void;
   error: string | null;
 };
@@ -98,6 +104,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }, []);
+
+  const adminResetPassword = useCallback(
+    async (target: CredentialSlot, newPassword: string) => {
+      if (!gatewayUrl) {
+        return { ok: false, message: 'Gateway not configured.' };
+      }
+      const stored = readStored();
+      if (!stored?.token || stored.token === 'local-dev') {
+        return { ok: false, message: 'Not signed in with gateway token.' };
+      }
+      if (resolveRole(stored.session.role) !== 'manufacturer') {
+        return { ok: false, message: 'Manufacturer role required.' };
+      }
+      const res = await fetch(`${gatewayUrl}/api/auth/admin/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${stored.token}`,
+        },
+        body: JSON.stringify({ target, newPassword }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, message: err.error ?? 'Reset failed' };
+      }
+      return { ok: true };
+    },
+    [],
+  );
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string) => {
@@ -234,10 +269,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authenticated,
       login,
       changePassword,
+      adminResetPassword,
       logout,
       error,
     }),
-    [session, role, authenticated, login, changePassword, logout, error],
+    [session, role, authenticated, login, changePassword, adminResetPassword, logout, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

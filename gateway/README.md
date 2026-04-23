@@ -32,6 +32,7 @@ Health: `GET http://127.0.0.1:8788/api/health`
 - `POST /api/auth/logout` — `Authorization: Bearer <token>` or `{ token }`
 - `GET /api/session` — Bearer
 - `POST /api/auth/password` — Bearer + `{ currentPassword, newPassword }` (min 8 chars); updates the **logged-in role’s** bcrypt hash (`user` / `installer` / `manufacturer` only).
+- `POST /api/auth/admin/reset-password` — Bearer + **manufacturer** session + `{ target, newPassword }` where `target` is `user` \| `installer` \| `support_override` \| `manufacturer`; writes new bcrypt hash (audited).
 - `GET /api/sites` — Bearer; installer list filtered by `installerId` from discovery JSON / login.
 
 ## Storage

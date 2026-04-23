@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
 import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
@@ -59,6 +60,7 @@ const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
 function App() {
   const { authenticated, logout, role } = useAuth();
   const [changePwOpen, setChangePwOpen] = useState(false);
+  const [adminResetOpen, setAdminResetOpen] = useState(false);
   const [tab, setTab] = useState<AppTab>('product');
   const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
@@ -235,6 +237,16 @@ function App() {
                   Change password
                 </button>
               ) : null}
+              {gatewayAuth && role === 'manufacturer' ? (
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  onClick={() => setAdminResetOpen(true)}
+                  data-testid='admin-reset-open'
+                >
+                  Reset accounts
+                </button>
+              ) : null}
               <button
                 type='button'
                 className='btn btn--secondary'
@@ -298,6 +310,16 @@ function App() {
             onSuccess={(msg) => {
               setNotice(msg);
               setChangePwOpen(false);
+            }}
+          />
+        ) : null}
+
+        {adminResetOpen ? (
+          <AdminResetPasswordDialog
+            onClose={() => setAdminResetOpen(false)}
+            onSuccess={(msg) => {
+              setNotice(msg);
+              setAdminResetOpen(false);
             }}
           />
         ) : null}

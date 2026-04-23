@@ -8,7 +8,9 @@ import {
   changeOwnPassword,
   loadOrInitAuth,
   saveAuth,
+  setSlotPasswordPlain,
   verifyLogin,
+  type CredentialSlot,
   type LoginChannel,
 } from './authStore.js';
 import { startMqttDiscovery } from './mqttDiscovery.js';
@@ -186,6 +188,39 @@ app.post('/api/auth/password', async (req, res) => {
   appendAuditLine(CONFIG_DIR, {
     type: 'password.change.success',
     role: rec.role,
+    ts: new Date().toISOString(),
+    ip: req.ip,
+  });
+  res.json({ ok: true });
+});
+
+/** Manufacturer only: reset any credential slot (user / installer / support_override / manufacturer). */
+app.post('/api/auth/admin/reset-password', async (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec || rec.role !== 'manufacturer') {
+    res.status(403).json({ error: 'manufacturer role required' });
+    return;
+  }
+  const body = req.body as { target?: CredentialSlot; newPassword?: string };
+  const target = body.target;
+  const newPassword = body.newPassword ?? '';
+  const allowed: CredentialSlot[] = ['user', 'installer', 'support_override', 'manufacturer'];
+  if (!target || !allowed.includes(target)) {
+    res.status(400).json({ error: 'invalid target' });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+    return;
+  }
+  authRecord = await setSlotPasswordPlain(authRecord, target, newPassword);
+  saveAuth(CONFIG_DIR, authRecord);
+  appendAuditLine(CONFIG_DIR, {
+    type: 'password.admin_reset',
+    target,
+    actor: 'manufacturer',
+    siteId: rec.siteId,
     ts: new Date().toISOString(),
     ip: req.ip,
   });
