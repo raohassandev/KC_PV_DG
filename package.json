@@ -7,11 +7,12 @@
     "dev:pwa": "cd PWA && npm run dev",
     "dev:gateway": "cd gateway && npm run start",
     "check:dzx": "cd dynamic_zero_export && npm run check",
+    "check:gateway": "cd gateway && npx tsc -p .",
     "test:dzx": "cd dynamic_zero_export && npm test",
     "test:pwa": "cd PWA && npm test",
     "test:e2e:pwa": "cd PWA && CI=1 npm run test:e2e",
     "test:e2e:gateway:pwa": "cd PWA && CI=1 npm run test:e2e:gateway",
     "build:pwa": "cd PWA && npm run build",
-    "verify": "npm run check:dzx && npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run test:e2e:pwa && npm run test:e2e:gateway:pwa"
+    "verify": "npm run check:dzx && npm run check:gateway && npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run test:e2e:pwa && npm run test:e2e:gateway:pwa"
   }
 }

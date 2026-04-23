@@ -29,11 +29,12 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 4. **PWA ↔ gateway auth** — `VITE_GATEWAY_URL` enables real login; `AuthContext` stores bearer token; local dev uses plaintext compare to dev strings when gateway URL unset **and** `import.meta.env.DEV`.
 5. **Change password** — `POST /api/auth/password` + `ChangePasswordDialog` (gateway sessions only). **Manufacturer admin reset** — `POST /api/auth/admin/reset-password` + `AdminResetPasswordDialog` (manufacturer only).
 6. **Site commissioning sync** — `pwaSiteConfig` merged into `sites/<siteId>.json`; `GET/PUT /api/sites/:siteId`; PWA Site Setup panel (installer/manufacturer + remote token) with load/save; `mergePwaSiteConfigFromGatewayPayload` in `PWA/src/auth/gatewaySiteConfig.ts`.
-7. **Playwright** — Default 18 tests (sim + Vite, no gateway). **`E2E_WITH_GATEWAY=1`**: dual webServer + `06-gateway-site-sync.spec.ts` (manufacturer round-trip). CI installs `gateway/` deps and `verify` runs both E2E suites.
+7. **Playwright** — Default 18 tests (sim + Vite, no gateway). **`E2E_WITH_GATEWAY=1`**: dual webServer + `06-gateway-site-sync.spec.ts` (manufacturer + **installer + `installerId`** round-trips). CI installs `gateway/` deps and `verify` runs both E2E suites.
 8. **Credentials docs** — `CREDENTIALS.local.example` (tracked), `CREDENTIALS.local.md` (gitignored copy). No default installer ID in code; fleet label is user-chosen at login.
 9. **Root `npm run dev`** — `test:dzx` + `test:pwa` + `build:pwa` + `dev:pwa`.
 10. **Local dev “Change password” UX** — Header always shows **Change password** in dev builds without gateway; opens `LocalDevPasswordHintDialog` explaining gateway is required for real updates (`PWA/src/auth/LocalDevPasswordHintDialog.tsx`).
 11. **Field help on hover** — `TextField` / `NumberField` / `SelectField` / `ToggleField` use `HelpHint` (`PWA/src/components/HelpHint.tsx`): compact “i” glyph, tooltip bubble on hover, full text still exposed to assistive tech via `aria-describedby` + visually hidden span.
+12. **Gateway `tsc`** — `dynamic_zero_export/pwa/contracts/session.ts` uses `../roles.js` import so `npx tsc -p gateway` passes under `moduleResolution: NodeNext`. Root **`npm run check:gateway`** and **`verify`** include it.
 
 ---
 
@@ -89,7 +90,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 | Playwright default + gateway | **Done** | |
 | ESP32 / board live sync with `SiteConfig` | **Not done** | Board APIs exist separately; no automatic push/pull to gateway sites |
 | Commissioning summary API ↔ gateway sites | **Partial** | DZX simulator + `CommissioningPage`; in-app card links fleet file to **Site Setup → Gateway commissioning**; deeper payload merge still optional |
-| CI / verify | **Done** | Includes gateway `npm ci` + dual E2E |
+| CI / verify | **Done** | Includes gateway `npm ci`, **`check:gateway`**, dual E2E |
 
 ---
 
@@ -97,8 +98,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 
 1. **Board / fleet continuity** — Define how `boardIp` reads and optional push of slot maps align with `sites/*.json` or ESPHome packages (ESP32-side topology deferred).
 2. **Session persistence on gateway** — Optional Redis/file session store if VPS restart should not log everyone out.
-3. **Installer E2E** — Optional second spec: login with `installerId`, PUT site with `installer_id`, list sites.
-4. **Gateway `tsc`** — Fix upstream `dynamic_zero_export/pwa` import extensions if `npx tsc -p gateway` should pass in CI.
+3. **Commissioning payload merge** — Optionally drive `CommissioningPage` summary fields from `pwaSiteConfig` when a fleet site id is selected (single source of truth in UI).
 
 ---
 

@@ -28,4 +28,29 @@ test.describe('Gateway commissioning sync', () => {
     });
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(savedTitle);
   });
+
+  test('installer saves commissioning with fleet installerId', async ({ page }) => {
+    const fleetId = 'e2e_installer_acme';
+    const siteFileId = 'e2e_installer_site_a';
+    const siteTitle = 'Installer Gateway E2E Title';
+
+    await freshApp(page);
+    await loginAs(page, 'installer', { installerId: fleetId });
+    await gotoTab(page, 'Site Setup');
+
+    await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('gateway-site-id').fill(siteFileId);
+    await page.getByLabel('Site Name').fill(siteTitle);
+    await page.getByTestId('gateway-site-save').click();
+    await expect(page.getByText(/Saved commissioning to gateway/)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.getByLabel('Site Name').fill('Wrong local title');
+    await page.getByTestId('gateway-site-load').click();
+    await expect(page.getByText(/Loaded commissioning from gateway/)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(siteTitle);
+  });
 });

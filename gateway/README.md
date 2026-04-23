@@ -16,6 +16,8 @@ From `PWA/`, `npm run test:e2e:gateway` starts a **fresh** `CONFIG_DIR` under `P
 
 Health: `GET http://127.0.0.1:8788/api/health`
 
+Typecheck (from repo root): `npm run check:gateway` → runs `npx tsc -p gateway`.
+
 ## Environment
 
 | Variable | Default | Purpose |

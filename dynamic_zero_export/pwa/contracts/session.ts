@@ -1,4 +1,4 @@
-import type { PwaRole } from '../roles';
+import type { PwaRole } from '../roles.js';
 
 export type SessionState = {
   role: PwaRole;
