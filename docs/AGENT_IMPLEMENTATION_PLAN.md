@@ -33,6 +33,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 8. **Credentials docs** — `CREDENTIALS.local.example` (tracked), `CREDENTIALS.local.md` (gitignored copy). No default installer ID in code; fleet label is user-chosen at login.
 9. **Root `npm run dev`** — `test:dzx` + `test:pwa` + `build:pwa` + `dev:pwa`.
 10. **Local dev “Change password” UX** — Header always shows **Change password** in dev builds without gateway; opens `LocalDevPasswordHintDialog` explaining gateway is required for real updates (`PWA/src/auth/LocalDevPasswordHintDialog.tsx`).
+11. **Field help on hover** — `TextField` / `NumberField` / `SelectField` / `ToggleField` use `HelpHint` (`PWA/src/components/HelpHint.tsx`): compact “i” glyph, tooltip bubble on hover, full text still exposed to assistive tech via `aria-describedby` + visually hidden span.
 
 ---
 
@@ -69,6 +70,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 - **`PWA/src/App.tsx`** — shell, notices, change-password / admin-reset modals, gateway site sync panel on Site tab
 - **`PWA/playwright.config.ts`** — conditional `E2E_WITH_GATEWAY` webServer stack
 - **`PWA/scripts/e2e-gateway-server.mjs`** — fresh `CONFIG_DIR` for gateway E2E
+- **`PWA/src/components/HelpHint.tsx`** — field-level help: hover bubble + `aria-describedby` / `.sr-only` text
 
 ---
 
@@ -86,7 +88,7 @@ This is a condensed timeline of work that landed in-repo (including prior sessio
 | Site `pwaSiteConfig` sync | **Done** | Installer/manufacturer + bearer |
 | Playwright default + gateway | **Done** | |
 | ESP32 / board live sync with `SiteConfig` | **Not done** | Board APIs exist separately; no automatic push/pull to gateway sites |
-| Commissioning summary API ↔ gateway sites | **Partial** | DZX simulator + `CommissioningPage`; not unified with `pwaSiteConfig` file shape |
+| Commissioning summary API ↔ gateway sites | **Partial** | DZX simulator + `CommissioningPage`; in-app card links fleet file to **Site Setup → Gateway commissioning**; deeper payload merge still optional |
 | CI / verify | **Done** | Includes gateway `npm ci` + dual E2E |
 
 ---

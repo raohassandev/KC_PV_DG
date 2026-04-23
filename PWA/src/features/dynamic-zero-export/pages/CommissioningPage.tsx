@@ -1,3 +1,5 @@
+import { isGatewayAuthEnabled } from '../../../auth/gatewayEnv';
+import { useAuth } from '../../../auth/AuthContext';
 import { FeatureCard } from '../components/FeatureCard';
 import {
   buildCommissioningViewModel,
@@ -10,6 +12,7 @@ import type { CommissioningSummaryModel } from '../../../../../dynamic_zero_expo
 import type { PwaRole } from '../roles';
 
 export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
+  const { siteGatewaySyncAvailable } = useAuth();
   const [summary, setSummary] = useState<CommissioningSummaryModel>(() =>
     buildCommissioningViewModel(role),
   );
@@ -56,6 +59,18 @@ export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
           ))}
         </ul>
       </FeatureCard>
+      {isGatewayAuthEnabled() && siteGatewaySyncAvailable ? (
+        <FeatureCard title='Fleet commissioning file' subtitle='Same model as Site Setup sync'>
+          <p className='help-text'>
+            This summary comes from the Dynamic Zero Export API (or fixtures). The long-lived
+            commissioning profile for fleet operations is stored on the gateway under{' '}
+            <code className='inline-code'>sites/&lt;siteId&gt;.json</code> as{' '}
+            <code className='inline-code'>pwaSiteConfig</code>. Open the main app{' '}
+            <strong>Site Setup</strong> tab and use <strong>Gateway commissioning</strong> to load or
+            save that JSON.
+          </p>
+        </FeatureCard>
+      ) : null}
       <FeatureCard title='Readiness Checklist' subtitle='Installer tasks'>
         <ul className='list-block'>
           {summary.checklist.map((item) => (

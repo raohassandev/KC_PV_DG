@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
@@ -9,6 +9,7 @@ import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
 import { useAuth } from './auth/AuthContext';
 import { mergePwaSiteConfigFromGatewayPayload } from './auth/gatewaySiteConfig';
 import DashboardOverview from './components/DashboardOverview';
+import { HelpHint } from './components/HelpHint';
 import EngineerActions from './components/EngineerActions';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
 import { generateSiteBundle } from './siteBundleGenerator';
@@ -1334,14 +1335,18 @@ function TextField({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const hintId = useId();
   return (
     <label className='field'>
-      <span className='field-label'>{label}</span>
-      {help ? <span className='field-help'>{help}</span> : null}
+      <span className='field-label field-label--with-hint'>
+        <span className='field-label-text'>{label}</span>
+        {help ? <HelpHint id={hintId} text={help} /> : null}
+      </span>
       <input
         className='field-input'
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        aria-describedby={help ? hintId : undefined}
       />
     </label>
   );
@@ -1360,16 +1365,20 @@ function NumberField({
   onChange: (v: number) => void;
   step?: number;
 }) {
+  const hintId = useId();
   return (
     <label className='field'>
-      <span className='field-label'>{label}</span>
-      {help ? <span className='field-help'>{help}</span> : null}
+      <span className='field-label field-label--with-hint'>
+        <span className='field-label-text'>{label}</span>
+        {help ? <HelpHint id={hintId} text={help} /> : null}
+      </span>
       <input
         className='field-input'
         type='number'
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        aria-describedby={help ? hintId : undefined}
       />
     </label>
   );
@@ -1390,15 +1399,19 @@ function SelectField({
   options: Array<[string, string]>;
   dataTestId?: string;
 }) {
+  const hintId = useId();
   return (
     <label className='field'>
-      <span className='field-label'>{label}</span>
-      {help ? <span className='field-help'>{help}</span> : null}
+      <span className='field-label field-label--with-hint'>
+        <span className='field-label-text'>{label}</span>
+        {help ? <HelpHint id={hintId} text={help} /> : null}
+      </span>
       <select
         className='field-select'
         value={value}
         data-testid={dataTestId}
         onChange={(e) => onChange(e.target.value)}
+        aria-describedby={help ? hintId : undefined}
       >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
@@ -1421,15 +1434,19 @@ function ToggleField({
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const hintId = useId();
   return (
     <label className='field'>
-      <span className='field-label'>{label}</span>
-      {help ? <span className='field-help'>{help}</span> : null}
+      <span className='field-label field-label--with-hint'>
+        <span className='field-label-text'>{label}</span>
+        {help ? <HelpHint id={hintId} text={help} /> : null}
+      </span>
       <button
         type='button'
         onClick={() => onChange(!checked)}
         className={cx('toggle-button', checked ? 'enabled' : 'disabled')}
         aria-pressed={checked}
+        aria-describedby={help ? hintId : undefined}
       >
         {checked ? 'Enabled' : 'Disabled'}
       </button>
