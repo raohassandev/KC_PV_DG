@@ -9,9 +9,53 @@ const e2eVitePort = '5183';
 const e2eSimPort = process.env.E2E_SIM_PORT ?? '18983';
 const e2eOrigin = `http://127.0.0.1:${e2eVitePort}`;
 
+const useGatewayStack = process.env.E2E_WITH_GATEWAY === '1';
+const gatewayPort = process.env.E2E_GATEWAY_PORT ?? '8789';
+const gatewayHealthUrl = `http://127.0.0.1:${gatewayPort}/api/health`;
+const gatewayOrigin = `http://127.0.0.1:${gatewayPort}`;
+
+const simAndPortEnv = {
+  ...process.env,
+  PORT: e2eSimPort,
+  E2E_SIM_PORT: e2eSimPort,
+};
+
+const defaultWebServer = {
+  command: 'npm run dev:e2e',
+  cwd: pwaRoot,
+  url: e2eOrigin,
+  reuseExistingServer: !process.env.CI,
+  env: simAndPortEnv,
+  stdout: 'pipe' as const,
+  stderr: 'pipe' as const,
+  timeout: 180_000,
+};
+
+const gatewayWebServer = {
+  command: `node "${path.join(pwaRoot, 'scripts/e2e-gateway-server.mjs')}"`,
+  cwd: pwaRoot,
+  url: gatewayHealthUrl,
+  reuseExistingServer: !process.env.CI,
+  env: { ...process.env, E2E_GATEWAY_PORT: gatewayPort },
+  stdout: 'pipe' as const,
+  stderr: 'pipe' as const,
+  timeout: 120_000,
+};
+
+const viteWithGatewayWebServer = {
+  command: 'npm run dev:e2e',
+  cwd: pwaRoot,
+  url: e2eOrigin,
+  reuseExistingServer: !process.env.CI,
+  env: { ...simAndPortEnv, VITE_GATEWAY_URL: gatewayOrigin },
+  stdout: 'pipe' as const,
+  stderr: 'pipe' as const,
+  timeout: 180_000,
+};
+
 /**
- * E2E: starts Vite + API simulator (same as local `npm run dev`).
- * One-time: `npx playwright install chromium` (or use system Chrome via PW_CHANNEL=chrome).
+ * Default: Vite + API simulator (local auth).
+ * `E2E_WITH_GATEWAY=1`: parallel gateway (fresh auth) + Vite with `VITE_GATEWAY_URL` for fleet sync E2E.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -30,19 +74,10 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     ...(process.env.PW_CHANNEL === 'chrome' ? { channel: 'chrome' as const } : {}),
   },
-  projects: [{ name: 'chromium', use: {} }],
-  webServer: {
-    command: 'npm run dev:e2e',
-    cwd: pwaRoot,
-    url: e2eOrigin,
-    reuseExistingServer: !process.env.CI,
-    env: {
-      ...process.env,
-      PORT: e2eSimPort,
-      E2E_SIM_PORT: e2eSimPort,
-    },
-    stdout: 'pipe',
-    stderr: 'pipe',
-    timeout: 180_000,
-  },
+  projects: useGatewayStack
+    ? [{ name: 'gateway-sync', testMatch: '**/06-gateway-site-sync.spec.ts' }]
+    : [{ name: 'chromium', testIgnore: '**/06-gateway-site-sync.spec.ts' }],
+  webServer: useGatewayStack
+    ? [gatewayWebServer, viteWithGatewayWebServer]
+    : defaultWebServer,
 });

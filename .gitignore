@@ -15,6 +15,9 @@
 /gateway/node_modules/
 /gateway/data/
 
+# Playwright gateway E2E (ephemeral auth + sites)
+/PWA/.e2e-gateway-config/
+
 # PDFs (ignore all PDF files)
 *.pdf
 

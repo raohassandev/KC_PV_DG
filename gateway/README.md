@@ -10,6 +10,10 @@ npm install
 npm start
 ```
 
+## PWA E2E (commissioning sync)
+
+From `PWA/`, `npm run test:e2e:gateway` starts a **fresh** `CONFIG_DIR` under `PWA/.e2e-gateway-config/`, runs this service on port **8789** (override with `E2E_GATEWAY_PORT`), and runs Playwright against Vite with `VITE_GATEWAY_URL` set. Default passwords match the PWA dev login strings (`DevMfg!1`, etc.).
+
 Health: `GET http://127.0.0.1:8788/api/health`
 
 ## Environment

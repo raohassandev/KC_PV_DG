@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "test": "node --test --import tsx src/features/dynamic-zero-export/tests/*.spec.ts",
     "test:e2e": "playwright test",
+    "test:e2e:gateway": "E2E_WITH_GATEWAY=1 playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run build && npm run test:e2e",
     "lint": "eslint .",
