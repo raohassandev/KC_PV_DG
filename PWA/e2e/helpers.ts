@@ -35,11 +35,15 @@ const E2E_LOGIN: Record<'user' | 'installer' | 'manufacturer', string> = {
 export async function loginAs(
   page: Page,
   role: keyof typeof E2E_LOGIN,
-  opts?: { installerId?: string },
+  opts?: { installerId?: string; siteId?: string },
 ) {
   await page.getByTestId('login-channel').selectOption(role);
   if (role === 'installer' && opts?.installerId) {
     await page.getByTestId('login-installer-id').fill(opts.installerId);
+  }
+  const siteField = page.getByTestId('login-site-id');
+  if (opts?.siteId && (await siteField.isVisible().catch(() => false))) {
+    await siteField.fill(opts.siteId);
   }
   await page.getByTestId('login-password').fill(E2E_LOGIN[role]);
   await page.getByTestId('login-submit').click();

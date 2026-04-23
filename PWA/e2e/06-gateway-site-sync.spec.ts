@@ -7,11 +7,11 @@ const fleetSiteId = 'e2e_gateway_sync_site';
 test.describe('Gateway commissioning sync', () => {
   test('saves and reloads SiteConfig via VPS gateway', async ({ page }) => {
     await freshApp(page);
-    await loginAs(page, 'manufacturer');
+    await loginAs(page, 'manufacturer', { siteId: fleetSiteId });
     await gotoTab(page, 'Site Setup');
 
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('gateway-site-id').fill(fleetSiteId);
+    await expect(page.getByTestId('gateway-site-id')).toHaveValue(fleetSiteId);
 
     await page.getByLabel('Site Name').fill(savedTitle);
     await page.getByTestId('gateway-site-save').click();
@@ -35,11 +35,11 @@ test.describe('Gateway commissioning sync', () => {
     const siteTitle = 'Installer Gateway E2E Title';
 
     await freshApp(page);
-    await loginAs(page, 'installer', { installerId: fleetId });
+    await loginAs(page, 'installer', { installerId: fleetId, siteId: siteFileId });
     await gotoTab(page, 'Site Setup');
 
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('gateway-site-id').fill(siteFileId);
+    await expect(page.getByTestId('gateway-site-id')).toHaveValue(siteFileId);
     await page.getByLabel('Site Name').fill(siteTitle);
     await page.getByTestId('gateway-site-save').click();
     await expect(page.getByText(/Saved commissioning to gateway/)).toBeVisible({
@@ -60,10 +60,10 @@ test.describe('Gateway commissioning sync', () => {
     const siteName = 'E2E Commissioning Gateway Site';
 
     await freshApp(page);
-    await loginAs(page, 'manufacturer');
+    await loginAs(page, 'manufacturer', { siteId });
     await gotoTab(page, 'Site Setup');
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
-    await page.getByTestId('gateway-site-id').fill(siteId);
+    await expect(page.getByTestId('gateway-site-id')).toHaveValue(siteId);
     await page.getByLabel('Site Name').fill(siteName);
     await page.getByTestId('gateway-site-save').click();
     await expect(page.getByText(/Saved commissioning to gateway/)).toBeVisible({

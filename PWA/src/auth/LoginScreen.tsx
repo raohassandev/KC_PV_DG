@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import type { LoginChannel } from './AuthContext';
 import { useAuth } from './AuthContext';
+import { isGatewayAuthEnabled } from './gatewayEnv';
+import { viteIsDev } from '../viteMetaEnv';
 
 export function LoginScreen() {
   const { login, error } = useAuth();
   const [channel, setChannel] = useState<LoginChannel>('user');
   const [password, setPassword] = useState('');
   const [installerId, setInstallerId] = useState('');
+  const [siteId, setSiteId] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const showSiteId = isGatewayAuthEnabled() || viteIsDev();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,6 +20,7 @@ export function LoginScreen() {
     try {
       await login(channel, password, {
         installerId: channel === 'installer' ? installerId.trim() || undefined : undefined,
+        siteId: siteId.trim() || undefined,
       });
     } finally {
       setBusy(false);
@@ -25,7 +31,17 @@ export function LoginScreen() {
     <div className='login-screen'>
       <form className='login-panel panel' onSubmit={submit}>
         <h1 className='app-title'>PV-DG</h1>
-        <p className='help-text'>Sign in with your role. Support override may be used for User or Installer.</p>
+        <p className='help-text'>
+          Sign in with your role. Support override may be used for User or Installer.
+          {isGatewayAuthEnabled() ? (
+            <>
+              {' '}
+              <strong>Site ID</strong> picks the gateway file{' '}
+              <code className='inline-code'>sites/&lt;id&gt;.json</code>; leave blank for{' '}
+              <code className='inline-code'>site-001</code>.
+            </>
+          ) : null}
+        </p>
         <div className='form-grid'>
           <label className='field'>
             <span className='field-label'>Role</span>
@@ -50,6 +66,19 @@ export function LoginScreen() {
                 onChange={(ev) => setInstallerId(ev.target.value)}
                 placeholder='optional in local dev'
                 autoComplete='username'
+              />
+            </label>
+          ) : null}
+          {showSiteId ? (
+            <label className='field'>
+              <span className='field-label'>Site ID (fleet)</span>
+              <input
+                data-testid='login-site-id'
+                className='field-input'
+                value={siteId}
+                onChange={(ev) => setSiteId(ev.target.value)}
+                placeholder='site-001 (default if empty)'
+                autoComplete='off'
               />
             </label>
           ) : null}

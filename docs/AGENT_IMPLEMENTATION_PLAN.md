@@ -42,6 +42,7 @@ Root **`package.json`** scripts: `verify` (full CI gate), `dev` (unit tests + PW
 13. **Node-safe Vite env** — `viteMetaEnv.ts`; API sim tests use **port 0**.
 14. **Session disk persistence** — `gateway/src/sessions.ts`: `configureSessionPersistence(CONFIG_DIR)`, `sessions.json` (`{ version: 1, sessions }`), hydrate on boot, atomic rewrite on login/logout.
 15. **Commissioning + gateway** — `CommissioningPage` fetches `GET /api/sites/:session.siteId` when `siteGatewaySyncAvailable`; subtitle includes **`gateway pwaSiteConfig: &lt;name&gt;`** when stored; fleet card still explains Site Setup sync.
+16. **Login Site ID** — PWA login exposes **Site ID (fleet)** (gateway or dev); `README.md` documents PWA-specific flows end-to-end.
 
 ---
 
@@ -76,6 +77,7 @@ Root **`package.json`** scripts: `verify` (full CI gate), `dev` (unit tests + PW
 - **`PWA/src/auth/AuthContext.tsx`** — session, `fetchGateway`, `siteGatewaySyncAvailable`, login, passwords
 - **`PWA/src/App.tsx`** — shell, gateway site sync on Site tab
 - **`PWA/src/features/dynamic-zero-export/pages/CommissioningPage.tsx`** — DZX API + gateway `pwaSiteConfig` subtitle overlay
+- **`PWA/src/auth/LoginScreen.tsx`** — **Site ID (fleet)** on login when gateway or dev build; aligns session with `sites/<id>.json` for Site Setup + commissioning
 - **`PWA/playwright.config.ts`**, **`PWA/scripts/e2e-gateway-server.mjs`** — gateway E2E
 - **`PWA/src/components/HelpHint.tsx`**
 
