@@ -21,21 +21,24 @@ export type DzxProvider = {
   loadAlerts(_role: PwaRole): Promise<AlertFeed>;
 };
 
-function resolveBaseUrl(): string | undefined {
+/** Shared resolver for simulator, on-device API, or Vite `/api` proxy (empty string in dev). */
+export function resolveDzxApiBaseUrl(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   const stored = localStorage.getItem('dzx.apiBaseUrl');
   if (stored && stored.trim()) return stored.trim();
   const envBase = import.meta.env.VITE_DZX_API_BASE_URL as string | undefined;
-  return envBase?.trim() || undefined;
+  if (envBase?.trim()) return envBase.trim();
+  if (import.meta.env.DEV) return '';
+  return undefined;
 }
 
 function snapshotFallback(): LiveStatusSnapshot {
   return liveStatusFixture;
 }
 
-export function createDzxProvider(mode: ProviderMode = 'auto', baseUrl = resolveBaseUrl()): DzxProvider {
-  const useApi = mode === 'api' || (mode === 'auto' && Boolean(baseUrl));
-  const client = useApi && baseUrl ? createDzxApiClient(baseUrl) : undefined;
+export function createDzxProvider(mode: ProviderMode = 'auto', baseUrl = resolveDzxApiBaseUrl()): DzxProvider {
+  const useApi = mode !== 'mock' && baseUrl !== undefined;
+  const client = useApi ? createDzxApiClient(baseUrl) : undefined;
   return {
     mode,
     baseUrl,

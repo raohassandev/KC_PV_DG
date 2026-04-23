@@ -1,7 +1,7 @@
 site:
   name: "New Site"
   board_name: "pv-dg-controller"
-  board_ip: "192.168.0.115"
+  board_ip: "192.168.0.111"
   wifi_ssid: "Rao"
 
 controller:

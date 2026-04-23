@@ -12,7 +12,7 @@ packages:
   inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml
 
 # Commissioning summary:
-#   board_ip: 192.168.0.115
+#   board_ip: 192.168.0.111
 #   wifi_ssid: Rao
 #   controller_mode: grid_zero_export
 #   pv_rated_kw: 100

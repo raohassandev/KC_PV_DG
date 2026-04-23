@@ -3,8 +3,20 @@ export type DeviceType =
   | 'em500'
   | 'em500_v2'
   | 'em500_generator'
+  | 'wm15'
+  | 'kpm37'
+  | 'iskra_mc3'
+  | 'm4m'
+  | 'gc_multiline'
   | 'huawei'
   | 'huawei_smartlogger'
+  | 'sma'
+  | 'solaredge'
+  | 'growatt'
+  | 'solax'
+  | 'sungrow'
+  | 'cps_chint'
+  | 'knox_asw'
   | 'generic_modbus';
 
 export type SourceRole = 'none' | 'grid_meter' | 'generator_meter' | 'inverter';
@@ -73,7 +85,7 @@ export type SiteConfig = {
 export const defaultSite: SiteConfig = {
   siteName: 'New Site',
   boardName: 'pv-dg-controller',
-  boardIp: '192.168.0.115',
+  boardIp: '192.168.0.111',
   wifiSsid: 'Rao',
   customerName: '',
   timezone: 'Asia/Karachi',

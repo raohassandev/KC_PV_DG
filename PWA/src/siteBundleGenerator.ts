@@ -1,4 +1,5 @@
 import { type SiteConfig } from './siteProfileSchema';
+import { inverterDeviceHasBundledYaml, meterDeviceHasBundledYaml } from './deviceFirmware';
 import { deviceCatalog, deviceOptionsForRole } from './siteTemplates';
 import { deriveZones, policyWarnings } from './policySchema';
 
@@ -25,7 +26,7 @@ function enabledPackages(config: SiteConfig) {
     'meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml',
     'control_core: !include ../Modular_Yaml/control_core.yaml',
     'display_oled: !include ../Modular_Yaml/display_oled.yaml',
-    ...(enabledDevices.has('huawei')
+    ...(enabledDevices.has('huawei') || enabledDevices.has('huawei_smartlogger')
       ? ['inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml']
       : []),
   ];
@@ -110,6 +111,27 @@ ${zones
   .join('\n')}`;
 }
 
+function slotFirmwareStatus(config: SiteConfig) {
+  const lines = config.slots
+    .filter((slot) => slot.enabled && slot.deviceType !== 'none')
+    .map((slot) => {
+      const yaml =
+        slot.role === 'inverter'
+          ? inverterDeviceHasBundledYaml(slot.deviceType)
+          : slot.role === 'grid_meter' || slot.role === 'generator_meter'
+            ? meterDeviceHasBundledYaml(slot.deviceType)
+            : false;
+      return `  - slot_id: ${quote(slot.id)}
+    role: ${quote(slot.role)}
+    device_type: ${quote(slot.deviceType)}
+    bundled_modular_yaml: ${yaml}`;
+    });
+  if (lines.length === 0) {
+    return '  []';
+  }
+  return lines.join('\n');
+}
+
 function validationBlock(config: SiteConfig) {
   const topologySummary =
     config.topologyType === 'DUAL_BUS_COMBINED'
@@ -183,9 +205,12 @@ ${deviceCatalog
     label: ${quote(item.label)}
     description: ${quote(item.description)}
     ui_hint: ${quote(item.uiHint)}
-    roles: [${item.roles.map((role) => quote(role)).join(', ')}]`,
+    roles: [${item.roles.map((role) => quote(role)).join(', ')}]${item.docPath ? `\n    doc_path: ${quote(item.docPath)}` : ''}`,
   )
   .join('\n')}
+
+slot_firmware_bundles:
+${slotFirmwareStatus(config)}
 
 role_device_options:
   grid_meter: [${deviceOptionsForRole('grid_meter')

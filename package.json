@@ -1,0 +1,14 @@
+{
+  "name": "kc-pv-dg",
+  "private": true,
+  "description": "Scripts to verify subprojects without hardware",
+  "scripts": {
+    "dev:pwa": "cd PWA && npm run dev",
+    "check:dzx": "cd dynamic_zero_export && npm run check",
+    "test:dzx": "cd dynamic_zero_export && npm test",
+    "test:pwa": "cd PWA && npm test",
+    "test:e2e:pwa": "cd PWA && CI=1 npm run test:e2e",
+    "build:pwa": "cd PWA && npm run build",
+    "verify": "npm run check:dzx && npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run test:e2e:pwa"
+  }
+}

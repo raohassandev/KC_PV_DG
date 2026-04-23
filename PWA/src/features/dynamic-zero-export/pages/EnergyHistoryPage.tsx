@@ -1,7 +1,8 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildEnergyHistoryViewModel } from '../view-models/history';
 import { useEffect, useState } from 'react';
-import { buildHistoryViewModelFromProvider, loadHistoryProviderMode } from '../services/historyService';
+import { buildHistoryViewModelFromProvider } from '../services/historyService';
+import { loadProviderMode } from '../services/liveStatusService';
 import type { PwaRole } from '../roles';
 
 type HistoryPoint = {
@@ -37,7 +38,7 @@ export function EnergyHistoryPage({ role = 'user' }: { role?: PwaRole }) {
 
   useEffect(() => {
     let active = true;
-    buildHistoryViewModelFromProvider(role, loadHistoryProviderMode()).then((next) => {
+    buildHistoryViewModelFromProvider(role, loadProviderMode()).then((next) => {
       if (active) setModel(next);
     });
     return () => {

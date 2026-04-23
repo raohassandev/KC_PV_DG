@@ -1,22 +1,37 @@
 import http from 'node:http';
-import { buildSnapshot } from './fixtures';
+import path from 'node:path';
 import { createDeviceServiceRuntime } from './runtime';
 import { createDeviceServiceStorage } from './storage';
+
+/** Lets the PWA hit the simulator from another origin during local commissioning. */
+const CORS_HEADERS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-headers': 'content-type',
+} as const;
 
 function json(res: http.ServerResponse, status: number, payload: unknown) {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
+    ...CORS_HEADERS,
     'content-type': 'application/json',
     'content-length': Buffer.byteLength(body),
   });
   res.end(body);
 }
 
-export function createApiServer(port = 8787) {
-  const storage = createDeviceServiceStorage();
+export function createApiServer(port = 8787, storageRoot?: string) {
+  const storage = createDeviceServiceStorage(
+    storageRoot ?? path.join(process.cwd(), 'state'),
+  );
   const runtime = createDeviceServiceRuntime(storage);
   const server = http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { ...CORS_HEADERS });
+      res.end();
+      return;
+    }
     const snapshot = runtime.load();
     if (req.method === 'GET' && (url.pathname === '/api/device/info' || url.pathname === '/api/device')) return json(res, 200, runtime.handlers.getDevice());
     if (req.method === 'GET' && url.pathname === '/api/live-status') return json(res, 200, runtime.handlers.getLiveStatus());

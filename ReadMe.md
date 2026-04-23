@@ -10,6 +10,8 @@ esphome config /Users/israrulhaq/Desktop/DEV/KC_PV_DG/Modular_Yaml/pv-dg-control
 
 esphome run /Users/israrulhaq/Desktop/DEV/KC_PV_DG/Modular_Yaml/pv-dg-controller.yaml --device /dev/cu.usbserial-1110
 
+Offline checks (no board): `npm ci` (or `npm install`) in `dynamic_zero_export/` and `PWA/`, then from repo root `npm run verify` (includes Playwright E2E). First time locally, install the browser from `PWA/`: `npx playwright install chromium`.
+
 # KC_PV_DG
 
 # KC_PV_DG

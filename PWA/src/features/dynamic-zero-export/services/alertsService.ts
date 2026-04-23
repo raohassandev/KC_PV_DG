@@ -6,9 +6,9 @@ import {
 } from '../../../../../dynamic_zero_export/pwa';
 import { alertsFixture } from '../mock/alerts';
 import { createDzxProvider, type ProviderMode } from './provider';
+import { loadProviderMode } from './liveStatusService';
 
 const ALERTS_KEY = 'dzx.alerts';
-const ALERTS_PROVIDER_KEY = 'dzx.alertsProviderMode';
 
 export function loadAlertFeed(): AlertFeed {
   if (typeof window === 'undefined') return alertsFixture;
@@ -32,25 +32,7 @@ export function saveAlertFeed(feed: AlertFeed): AlertFeed {
   return feed;
 }
 
-export function loadAlertsProviderMode(): ProviderMode {
-  if (typeof window === 'undefined') return 'auto';
-  const stored = localStorage.getItem(ALERTS_PROVIDER_KEY);
-  if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
-  return 'auto';
-}
-
-export function saveAlertsProviderMode(mode: ProviderMode): ProviderMode {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(ALERTS_PROVIDER_KEY, mode);
-    } catch {
-      // ignore
-    }
-  }
-  return mode;
-}
-
-export async function loadAlertFeedFromProvider(mode: ProviderMode = loadAlertsProviderMode()) {
+export async function loadAlertFeedFromProvider(mode: ProviderMode = loadProviderMode()) {
   const provider = createDzxProvider(mode);
   const feed = await provider.loadAlerts('user');
   return saveAlertFeed(feed);
@@ -65,7 +47,7 @@ export function buildAlertsViewModel(role: PwaRole, feed = loadAlertFeed()) {
   };
 }
 
-export async function buildAlertsViewModelFromProvider(role: PwaRole, mode: ProviderMode = loadAlertsProviderMode()) {
+export async function buildAlertsViewModelFromProvider(role: PwaRole, mode: ProviderMode = loadProviderMode()) {
   const feed = await loadAlertFeedFromProvider(mode);
   return buildAlertsViewModel(role, feed);
 }

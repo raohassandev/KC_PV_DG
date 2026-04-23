@@ -3,16 +3,15 @@ import { buildConnectivityViewModel } from '../view-models/connectivity';
 import { useEffect, useMemo, useState } from 'react';
 import {
   buildConnectivityViewModelFromProvider,
-  loadConnectivityProviderMode,
-  saveConnectivityProviderMode,
   saveConnectivitySnapshot,
 } from '../services/connectivityService';
+import { loadProviderMode, saveProviderMode } from '../services/liveStatusService';
 import { createLocalDeviceService } from '../services/localDeviceService';
 import type { PwaRole } from '../roles';
 
 export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
   const [view, setView] = useState(() => buildConnectivityViewModel(role));
-  const [providerMode, setProviderMode] = useState(loadConnectivityProviderMode());
+  const [providerMode, setProviderMode] = useState(loadProviderMode());
   const [ssid, setSsid] = useState(view.snapshot.wifi.ssid || '');
   const [deviceName, setDeviceName] = useState(view.snapshot.deviceName);
   const [apiBaseUrl, setApiBaseUrl] = useState(() => localStorage.getItem('dzx.apiBaseUrl') || '');
@@ -20,7 +19,7 @@ export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
 
   useEffect(() => {
     let active = true;
-    buildConnectivityViewModelFromProvider(role, loadConnectivityProviderMode()).then((next) => {
+    buildConnectivityViewModelFromProvider(role, loadProviderMode()).then((next) => {
       if (active) setView(next);
       if (active) {
         setSsid(next.snapshot.wifi.ssid || '');
@@ -33,7 +32,7 @@ export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
   }, [role]);
 
   async function saveSettings() {
-    saveConnectivityProviderMode(providerMode);
+    saveProviderMode(providerMode);
     if (typeof window !== 'undefined') {
       localStorage.setItem('dzx.apiBaseUrl', apiBaseUrl);
     }
@@ -85,7 +84,15 @@ export function ConnectivityPage({ role = 'user' }: { role?: PwaRole }) {
           </label>
           <label>
             Provider mode
-            <select value={providerMode} onChange={(event) => setProviderMode(event.target.value as typeof providerMode)} disabled={role === 'user'}>
+            <select
+              value={providerMode}
+              onChange={(event) => {
+                const next = event.target.value as typeof providerMode;
+                setProviderMode(next);
+                saveProviderMode(next);
+              }}
+              disabled={role === 'user'}
+            >
               <option value='auto'>Auto</option>
               <option value='api'>API</option>
               <option value='mock'>Mock</option>

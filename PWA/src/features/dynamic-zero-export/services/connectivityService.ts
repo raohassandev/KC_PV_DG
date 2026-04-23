@@ -5,9 +5,9 @@ import {
 } from '../../../../../dynamic_zero_export/pwa';
 import { connectivityFixture } from '../mock/connectivity';
 import { createDzxProvider, type ProviderMode } from './provider';
+import { loadProviderMode } from './liveStatusService';
 
 const CONNECTIVITY_KEY = 'dzx.connectivity';
-const CONNECTIVITY_PROVIDER_KEY = 'dzx.connectivityProviderMode';
 
 export function loadConnectivitySnapshot(): ConnectivitySnapshot {
   if (typeof window === 'undefined') return connectivityFixture;
@@ -31,25 +31,7 @@ export function saveConnectivitySnapshot(snapshot: ConnectivitySnapshot): Connec
   return snapshot;
 }
 
-export function loadConnectivityProviderMode(): ProviderMode {
-  if (typeof window === 'undefined') return 'auto';
-  const stored = localStorage.getItem(CONNECTIVITY_PROVIDER_KEY);
-  if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
-  return 'auto';
-}
-
-export function saveConnectivityProviderMode(mode: ProviderMode): ProviderMode {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(CONNECTIVITY_PROVIDER_KEY, mode);
-    } catch {
-      // ignore
-    }
-  }
-  return mode;
-}
-
-export async function loadConnectivitySnapshotFromProvider(mode: ProviderMode = loadConnectivityProviderMode()) {
+export async function loadConnectivitySnapshotFromProvider(mode: ProviderMode = loadProviderMode()) {
   const provider = createDzxProvider(mode);
   const snapshot = await provider.loadConnectivity('user');
   return saveConnectivitySnapshot(snapshot);
@@ -71,7 +53,7 @@ export function buildConnectivityViewModel(role: PwaRole, snapshot = loadConnect
   };
 }
 
-export async function buildConnectivityViewModelFromProvider(role: PwaRole, mode: ProviderMode = loadConnectivityProviderMode()) {
+export async function buildConnectivityViewModelFromProvider(role: PwaRole, mode: ProviderMode = loadProviderMode()) {
   const snapshot = await loadConnectivitySnapshotFromProvider(mode);
   return buildConnectivityViewModel(role, snapshot);
 }

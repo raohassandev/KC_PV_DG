@@ -1,3 +1,4 @@
+import type { ApiSnapshotResponse } from '../api_contract';
 import {
   alertsExample,
   commissioningExample,
@@ -8,7 +9,6 @@ import {
   configReviewExample,
   sessionExample,
   topologyExample,
-  type ApiSnapshotResponse,
 } from '../api_contract/examples';
 
 export function buildSnapshot(): ApiSnapshotResponse {

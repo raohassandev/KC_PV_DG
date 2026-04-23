@@ -6,3 +6,5 @@ export * from './connectivityService';
 export * from './historyService';
 export * from './liveStatusService';
 export * from './sessionService';
+export * from './commissioningService';
+export * from './diagnosticsService';

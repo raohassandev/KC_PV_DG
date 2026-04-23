@@ -1,5 +1,12 @@
 # React + TypeScript + Vite
 
+## End-to-end tests (Playwright)
+
+- **From this folder:** `npm run test:e2e` — Playwright starts **`npm run dev:e2e`** (Vite on **127.0.0.1:5183**, API simulator on **`PORT` / `E2E_SIM_PORT`**, default **18983** in `playwright.config.ts`). Use **`CI=1 npm run test:e2e`** so the dev server is always started by Playwright (recommended in automation).
+- **Normal app dev** stays **`npm run dev`** (default Vite **5173**, simulator **8787**).
+- **One-time browser install:** `npx playwright install chromium` (or set `PW_CHANNEL=chrome` in the environment to use a local Chrome install; see `playwright.config.ts`).
+- **From repo root:** `npm run test:e2e:pwa` runs the same suite with `CI=1`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

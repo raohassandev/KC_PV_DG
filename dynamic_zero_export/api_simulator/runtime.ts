@@ -90,7 +90,7 @@ export function createDeviceServiceRuntime(storage: DeviceServiceStorage): Devic
           firmwareVersion: patch.firmwareVersion as string | undefined,
           buildId: patch.buildId as string | undefined,
           uptimeSec: typeof patch.uptimeSec === 'number' ? patch.uptimeSec : undefined,
-        });
+        } as Parameters<typeof updateConnectivitySettings>[1]);
         persist();
         return state.connectivity;
       },

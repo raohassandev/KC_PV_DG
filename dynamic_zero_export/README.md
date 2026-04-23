@@ -23,6 +23,12 @@ npm test
 npm run check
 ```
 
+`npm test` includes `api_simulator` HTTP tests. From the repository root, `npm run verify` runs Dynamic Zero Export checks plus PWA tests and production build.
+
+Local stack with the commissioning PWA (two terminals): run `npm run sim` here (port 8787), then from `PWA` run `npm run dev`. The Vite dev server proxies `/api` to the simulator, and the PWA uses same-origin `/api` in development when no `dzx.apiBaseUrl` is set.
+
+On-site or lab with a **real controller** that exposes this contract over HTTP, set `dzx.apiBaseUrl` in the Connectivity screen (or `VITE_DZX_API_BASE_URL` at build time) to `http://<board-ip>` so the Dynamic Zero Export tabs call the device instead of the simulator.
+
 ## Scope
 
 - upstream meter input via RTU or TCP

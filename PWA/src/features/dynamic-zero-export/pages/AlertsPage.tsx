@@ -1,23 +1,19 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { buildAlertViewModel } from '../view-models/alerts';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  buildAlertsViewModelFromProvider,
-  loadAlertsProviderMode,
-  saveAlertsProviderMode,
-  saveAlertFeed,
-} from '../services/alertsService';
+import { buildAlertsViewModelFromProvider, saveAlertFeed } from '../services/alertsService';
+import { loadProviderMode, saveProviderMode } from '../services/liveStatusService';
 import { createLocalDeviceService } from '../services/localDeviceService';
 import type { PwaRole } from '../roles';
 
 export function AlertsPage({ role }: { role: PwaRole }) {
   const [view, setView] = useState(() => buildAlertViewModel(role));
-  const [providerMode, setProviderMode] = useState(loadAlertsProviderMode());
+  const [providerMode, setProviderMode] = useState(loadProviderMode());
   const service = useMemo(() => createLocalDeviceService(providerMode), [providerMode]);
 
   useEffect(() => {
     let active = true;
-    buildAlertsViewModelFromProvider(role, loadAlertsProviderMode()).then((next) => {
+    buildAlertsViewModelFromProvider(role, loadProviderMode()).then((next) => {
       if (active) setView(next);
     });
     return () => {
@@ -44,7 +40,12 @@ export function AlertsPage({ role }: { role: PwaRole }) {
               <div className='alert-message'>{alert.message}</div>
               {alert.debugDetails ? <div className='alert-debug'>{alert.debugDetails}</div> : null}
               <div className='alert-actions'>
-                <button type='button' onClick={() => acknowledge(alert.id)} disabled={role === 'user'}>
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  onClick={() => acknowledge(alert.id)}
+                  disabled={role === 'user'}
+                >
                   Acknowledge
                 </button>
               </div>
@@ -60,7 +61,7 @@ export function AlertsPage({ role }: { role: PwaRole }) {
             onChange={(event) => {
               const next = event.target.value as typeof providerMode;
               setProviderMode(next);
-              saveAlertsProviderMode(next);
+              saveProviderMode(next);
             }}
           >
             <option value='auto'>Auto</option>

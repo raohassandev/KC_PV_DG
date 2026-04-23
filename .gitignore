@@ -3,3 +3,10 @@
 # You can modify this file to suit your needs.
 /.esphome/
 /secrets.yaml
+
+# Dynamic Zero Export API simulator persisted state (local dev)
+/dynamic_zero_export/state/
+/PWA/state/
+
+# Node (dynamic_zero_export has no package-local .gitignore)
+/dynamic_zero_export/node_modules/

@@ -68,7 +68,8 @@ export function createDzxApiClient(baseUrl: string): DzxApiClient {
     getConnectivity: () => getJson<ConnectivityResponse>(normalized, '/api/connectivity'),
     getAlerts: () => getJson<AlertResponse>(normalized, '/api/alerts'),
     getHistory: () => getJson<HistorySummaryResponse>(normalized, '/api/history'),
-    getCommissioning: () => getJson<CommissioningSummaryResponse>(normalized, '/api/commissioning'),
+    getCommissioning: () =>
+      getJson<CommissioningSummaryResponse>(normalized, '/api/commissioning-summary'),
     getConfigReview: () => getJson<ConfigReviewResponse>(normalized, '/api/config-review'),
     getSession: () => getJson<SessionResponse>(normalized, '/api/session'),
     getSnapshot: () => getJson<ApiSnapshotResponse>(normalized, '/api/snapshot'),

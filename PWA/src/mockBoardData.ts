@@ -2,7 +2,7 @@ export type LiveMetric = {
   label: string;
   value: number | string;
   unit?: string;
-  status?: 'ok' | 'warn' | 'offline';
+  status?: 'ok' | 'warn' | 'offline' | 'idle';
 };
 
 export type SourceLiveData = {
@@ -32,7 +32,7 @@ export type BoardLiveData = {
 
 export const mockBoardData: BoardLiveData = {
   boardName: 'pv-dg-controller',
-  boardIp: '192.168.0.115',
+  boardIp: '192.168.0.111',
   wifiSsid: 'Rao',
   controllerState: 'GRID ZERO EXPORT',
   updatedAt: new Date().toLocaleTimeString(),
@@ -65,8 +65,8 @@ export const mockBoardData: BoardLiveData = {
       enabled: true,
       online: false,
       metrics: [
-        { label: 'Actual Power', value: 'NA', unit: 'kW', status: 'offline' },
-        { label: 'Pmax', value: 'NA', unit: 'kW', status: 'offline' },
+        { label: 'Actual Power', value: 'NA', unit: 'kW', status: 'idle' },
+        { label: 'Pmax', value: 'NA', unit: 'kW', status: 'idle' },
       ],
     },
   ],

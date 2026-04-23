@@ -114,7 +114,9 @@ export default function EngineerActions({ boardIp }: Props) {
         <p className='help-text'>
           These toggles map directly to board switches. Use them for control
           enable, meter enable, and inverter gate testing. The inverter write
-          gate is still pending until site validation.
+          gate is still pending until site validation. If no inverter is on the
+          RS485 bus yet, turn off <strong>Enable Inverter</strong> to reduce
+          Modbus timeout noise while you validate the grid meter path.
         </p>
         <div className='form-grid'>
           <ToggleField
@@ -157,9 +159,10 @@ export default function EngineerActions({ boardIp }: Props) {
           />
         </div>
 
-        <div style={{ marginTop: 16 }}>
+        <div className='u-mt-md'>
           <button
-            className='tab-button active'
+            type='button'
+            className='btn btn--primary'
             onClick={handleApplyToggles}
             disabled={busy}
           >
@@ -232,9 +235,10 @@ export default function EngineerActions({ boardIp }: Props) {
           />
         </div>
 
-        <div style={{ marginTop: 16 }}>
+        <div className='u-mt-md'>
           <button
-            className='tab-button active'
+            type='button'
+            className='btn btn--primary'
             onClick={handleApplyNumbers}
             disabled={busy}
           >
@@ -242,7 +246,7 @@ export default function EngineerActions({ boardIp }: Props) {
           </button>
         </div>
 
-        <div style={{ marginTop: 16 }} className='info-box'>
+        <div className='info-box u-mt-md'>
           <div className='info-label'>Status</div>
           <div className={cx('info-small', busy && 'text-warn')}>{status}</div>
         </div>

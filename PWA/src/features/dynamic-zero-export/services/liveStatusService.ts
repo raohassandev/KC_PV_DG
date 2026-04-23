@@ -11,6 +11,11 @@ import { createDzxProvider, type ProviderMode } from './provider';
 
 const LIVE_KEY = 'dzx.liveStatus';
 const PROVIDER_KEY = 'dzx.providerMode';
+const LEGACY_PROVIDER_KEYS = [
+  'dzx.connectivityProviderMode',
+  'dzx.alertsProviderMode',
+  'dzx.historyProviderMode',
+] as const;
 
 export function loadLiveStatus(): LiveStatusSnapshot {
   if (typeof window === 'undefined') return liveStatusFixture;
@@ -38,6 +43,20 @@ export function loadProviderMode(): ProviderMode {
   if (typeof window === 'undefined') return 'auto';
   const stored = localStorage.getItem(PROVIDER_KEY);
   if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
+  for (const key of LEGACY_PROVIDER_KEYS) {
+    const legacy = localStorage.getItem(key);
+    if (legacy === 'api' || legacy === 'mock' || legacy === 'auto') {
+      try {
+        localStorage.setItem(PROVIDER_KEY, legacy);
+        for (const k of LEGACY_PROVIDER_KEYS) {
+          localStorage.removeItem(k);
+        }
+      } catch {
+        // ignore
+      }
+      return legacy;
+    }
+  }
   return 'auto';
 }
 
@@ -45,6 +64,9 @@ export function saveProviderMode(mode: ProviderMode): ProviderMode {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(PROVIDER_KEY, mode);
+      for (const k of LEGACY_PROVIDER_KEYS) {
+        localStorage.removeItem(k);
+      }
     } catch {
       // ignore
     }

@@ -1,10 +1,14 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiServer } from '../../../../../dynamic_zero_export/api_simulator';
 import { createLocalDeviceService } from '../services/localDeviceService';
 
 test('provider mode and connectivity settings update through the api service', async () => {
-  const sim = createApiServer(8791);
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-mut-'));
+  const sim = createApiServer(8791, stateDir);
   const server = await sim.listen();
   try {
     const service = createLocalDeviceService('api', 'http://127.0.0.1:8791');
@@ -19,11 +23,13 @@ test('provider mode and connectivity settings update through the api service', a
     assert.equal(connectivity.wifi.ssid, 'PlantLAN');
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    rmSync(stateDir, { recursive: true, force: true });
   }
 });
 
 test('alert acknowledgement and history append are accepted', async () => {
-  const sim = createApiServer(8792);
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-mut-'));
+  const sim = createApiServer(8792, stateDir);
   const server = await sim.listen();
   try {
     const service = createLocalDeviceService('api', 'http://127.0.0.1:8792');
@@ -39,6 +45,7 @@ test('alert acknowledgement and history append are accepted', async () => {
     assert.ok(history.today.points.length >= 3);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
+    rmSync(stateDir, { recursive: true, force: true });
   }
 });
 

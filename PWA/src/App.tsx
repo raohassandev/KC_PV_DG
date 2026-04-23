@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import DashboardOverview from './components/DashboardOverview';
 import EngineerActions from './components/EngineerActions';
@@ -27,18 +27,42 @@ function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
+type AppTab =
+  | 'product'
+  | 'dashboard'
+  | 'site'
+  | 'topology'
+  | 'slots'
+  | 'templates'
+  | 'review'
+  | 'engineer'
+  | 'yaml';
+
+const TAB_ITEMS: Array<{
+  id: AppTab;
+  label: string;
+  /** Visual / semantic break before this item (desktop). */
+  groupStart?: boolean;
+  groupLabel?: string;
+}> = [
+  { id: 'product', label: 'Dynamic Zero Export' },
+  { id: 'dashboard', label: 'Dashboard', groupStart: true, groupLabel: 'Commissioning' },
+  { id: 'site', label: 'Site Setup' },
+  { id: 'topology', label: 'Topology' },
+  { id: 'slots', label: 'Source Slots' },
+  { id: 'templates', label: 'Templates' },
+  { id: 'review', label: 'Validation' },
+  { id: 'engineer', label: 'Engineer Actions', groupStart: true, groupLabel: 'Field ops' },
+  { id: 'yaml', label: 'YAML Preview' },
+];
+
+const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
+  TAB_ITEMS.map((t) => [t.id, t.label]),
+) as Record<AppTab, string>;
+
 function App() {
-  const [tab, setTab] = useState<
-    | 'product'
-    | 'dashboard'
-    | 'site'
-    | 'topology'
-    | 'slots'
-    | 'templates'
-    | 'review'
-    | 'engineer'
-    | 'yaml'
-  >('product');
+  const [tab, setTab] = useState<AppTab>('product');
+  const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -55,7 +79,10 @@ function App() {
   }, [config.slots]);
 
   const siteBundle = useMemo(() => generateSiteBundle(config), [config]);
-  const yamlPreview = siteBundle[0]?.content ?? '';
+  const rootPackageManifest = siteBundle[0]?.content ?? '';
+  const siteConfigYaml =
+    siteBundle.find((f) => f.name === 'site.config.yaml')?.content ?? '';
+  const yamlPreview = siteConfigYaml || rootPackageManifest;
   const zones = useMemo(() => deriveCommissioningZones(config), [config]);
   const gridSources = useMemo(
     () => config.slots.filter((slot) => slot.enabled && slot.role === 'grid_meter'),
@@ -114,9 +141,56 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    document.title = `PV-DG · ${TAB_LABEL[tab]}`;
+  }, [tab]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    mainRef.current?.focus({ preventScroll: true });
+  }, [tab]);
+
   return (
     <div className='app-shell'>
+      <div className='app-energy-ambient' aria-hidden='true'>
+        <svg
+          className='app-energy-svg'
+          viewBox='0 0 1200 200'
+          preserveAspectRatio='none'
+          xmlns='http://www.w3.org/2000/svg'
+        >
+          <defs>
+            <linearGradient id='pvdg-solar-fade' x1='0%' y1='0%' x2='100%' y2='0%'>
+              <stop offset='0%' stopColor='#fbbf24' stopOpacity='0' />
+              <stop offset='35%' stopColor='#f59e0b' stopOpacity='0.55' />
+              <stop offset='70%' stopColor='#34d399' stopOpacity='0.35' />
+              <stop offset='100%' stopColor='#38bdf8' stopOpacity='0' />
+            </linearGradient>
+          </defs>
+          <path
+            className='app-energy-wave app-energy-wave--a'
+            d='M0,120 C200,40 400,180 600,100 S1000,20 1200,90'
+            fill='none'
+            stroke='url(#pvdg-solar-fade)'
+            strokeWidth='2'
+            strokeLinecap='round'
+          />
+          <path
+            className='app-energy-wave app-energy-wave--b'
+            d='M0,150 C250,190 450,60 700,130 S950,170 1200,110'
+            fill='none'
+            stroke='url(#pvdg-solar-fade)'
+            strokeWidth='1.2'
+            strokeLinecap='round'
+            opacity='0.65'
+          />
+        </svg>
+        <div className='app-energy-orbit' />
+      </div>
       <div className='app-container'>
+        <a href='#main-content' className='skip-link'>
+          Skip to main content
+        </a>
         <header className='app-header'>
           <div className='app-header-top'>
             <div>
@@ -125,6 +199,12 @@ function App() {
               <div className='app-subtitle'>
                 Board: {config.boardName} · IP: {config.boardIp} · Wi-Fi:{' '}
                 {config.wifiSsid || 'NA'}
+              </div>
+              <div className='app-context' aria-live='polite'>
+                <span className='app-context-label'>Workspace</span>
+                <span className='app-context-value' data-testid='workspace-active'>
+                  {TAB_LABEL[tab]}
+                </span>
               </div>
             </div>
 
@@ -146,37 +226,44 @@ function App() {
           </div>
         </header>
 
-        <nav className='tab-bar'>
-          {[
-            ['product', 'Dynamic Zero Export'],
-            ['dashboard', 'Dashboard'],
-            ['site', 'Site Setup'],
-            ['topology', 'Topology'],
-            ['slots', 'Source Slots'],
-            ['templates', 'Templates'],
-            ['review', 'Validation'],
-            ['engineer', 'Engineer Actions'],
-            ['yaml', 'YAML Preview'],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTab(key as typeof tab)}
-              className={cx('tab-button', tab === key && 'active')}
-            >
-              {label}
-            </button>
+        <nav className='tab-bar' aria-label='Application sections' data-testid='app-nav'>
+          {TAB_ITEMS.map((item) => (
+            <div key={item.id} className='tab-bar-item'>
+              {item.groupStart ? (
+                <span className='tab-bar-sep' aria-hidden='true' />
+              ) : null}
+              <button
+                type='button'
+                onClick={() => setTab(item.id)}
+                className={cx('tab-button', tab === item.id && 'active')}
+                aria-current={tab === item.id ? 'page' : undefined}
+                title={item.groupLabel ? `${item.groupLabel}: ${item.label}` : item.label}
+              >
+                {item.label}
+              </button>
+            </div>
           ))}
         </nav>
 
         {notice ? (
           <div className='notice-bar' role='status' aria-live='polite'>
             <span>{notice}</span>
-            <button className='notice-close' onClick={() => setNotice(null)}>
+            <button
+              type='button'
+              className='notice-close'
+              onClick={() => setNotice(null)}
+            >
               Dismiss
             </button>
           </div>
         ) : null}
 
+        <main
+          id='main-content'
+          ref={mainRef}
+          className='app-main'
+          tabIndex={-1}
+        >
         {tab === 'product' && <ProductArea />}
         {tab === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
@@ -502,7 +589,8 @@ function App() {
                   </p>
                 </div>
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--secondary'
                   onClick={() => setShowAdvanced((prev) => !prev)}
                 >
                   {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
@@ -560,6 +648,38 @@ function App() {
                 <li>Actual power</li>
                 <li>Command write path</li>
                 <li>Deeper live testing deferred until site visit</li>
+              </ul>
+            </div>
+
+            <div className='panel'>
+              <h2>Energy analyzers (catalog)</h2>
+              <p className='help-text'>
+                Additional grid / generator meters are selectable in Source
+                Slots. Each entry points at register manuals under{' '}
+                <code className='inline-code'>docs/Energy Analyzer/</code> until a
+                matching <code className='inline-code'>Modular_Yaml/meter_*.yaml</code>{' '}
+                exists.
+              </p>
+              <ul className='list-block'>
+                <li>WM15, KPM37, Iskra MC3, M4M map, GC/DST multiline family</li>
+                <li>Exported bundle lists <code className='inline-code'>doc_path</code> per device and flags slots without bundled YAML</li>
+                <li>Validation warns when a slot type has no firmware package yet</li>
+              </ul>
+            </div>
+
+            <div className='panel'>
+              <h2>Inverters (catalog)</h2>
+              <p className='help-text'>
+                SMA, SolarEdge, Growatt, Solax, Sungrow, Chint/CPS, Knox/ASW are
+                commissioning labels tied to PDFs under{' '}
+                <code className='inline-code'>docs/Inverter/</code>. Only Huawei
+                maps to bundled <code className='inline-code'>inverter_huawei.yaml</code>{' '}
+                today.
+              </p>
+              <ul className='list-block'>
+                <li>Use Source Slots → Inverter Mapping to assign vendor per bus</li>
+                <li>SmartLogger uses the same bundled Huawei include as a gateway placeholder</li>
+                <li>Site-specific register work stays in firmware + bench validation</li>
               </ul>
             </div>
 
@@ -651,19 +771,19 @@ function App() {
                   }
                 />
               </div>
-              <div className='info-box' style={{ marginTop: 16 }}>
+              <div className='info-box u-mt-md'>
                 <div className='info-label'>Warnings</div>
                 <div className='info-small'>
                   {commissioningWarnings(config).join(' · ') || 'None'}
                 </div>
               </div>
-              <div className='info-box' style={{ marginTop: 16 }}>
+              <div className='info-box u-mt-md'>
                 <div className='info-label'>Derived Zones</div>
                 <div className='info-small'>
                   {zones.map((zone) => zone.summary).join(' · ')}
                 </div>
               </div>
-              <div className='panel-actions' style={{ marginTop: 16 }}>
+              <div className='panel-actions u-mt-md'>
                 <TextField
                   label='Profile Name'
                   help='Name used when saving or exporting the commissioning profile.'
@@ -671,7 +791,8 @@ function App() {
                   onChange={setProfileName}
                 />
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--primary'
                   onClick={() => {
                     saveCommissioningProfile(profileName, config);
                     setNotice(`Profile "${profileName}" saved`);
@@ -680,7 +801,8 @@ function App() {
                   Save Profile
                 </button>
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--secondary'
                   onClick={() => {
                     const loaded = loadCommissioningProfile(profileName);
                     if (loaded) {
@@ -694,7 +816,8 @@ function App() {
                   Load Profile
                 </button>
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--secondary'
                   onClick={() => {
                     const blob = new Blob(
                       [
@@ -731,33 +854,45 @@ function App() {
         {tab === 'yaml' && (
           <section className='panel'>
             <div className='panel-header'>
-              <h2>Generated ESPHome Package Manifest</h2>
+              <h2>YAML preview</h2>
               <div className='panel-actions'>
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--secondary'
                   onClick={() =>
-                    navigator.clipboard.writeText(yamlPreview).catch(() => {})
+                    navigator.clipboard.writeText(rootPackageManifest).catch(() => {})
                   }
                 >
-                  Copy Root YAML
+                  Copy package manifest
                 </button>
                 <button
-                  className='tab-button active'
+                  type='button'
+                  className='btn btn--primary'
                   onClick={() => downloadBundle(siteBundle, config.siteName)}
                 >
                   Download Bundle
                 </button>
               </div>
             </div>
-            <textarea value={yamlPreview} readOnly className='yaml-box' />
-            <div className='info-box' style={{ marginTop: 12 }}>
-              <div className='info-label'>Bundle Contents</div>
+            <textarea
+              value={yamlPreview}
+              readOnly
+              className='yaml-box'
+              data-testid='yaml-preview'
+            />
+            <div className='info-box u-mt-sm'>
+              <div className='info-label'>Bundle contents</div>
               <div className='info-small'>
+                Preview shows <strong>site.config.yaml</strong> (catalog, slots,
+                firmware flags). <strong>Copy package manifest</strong> copies the
+                root ESPHome <code className='inline-code'>packages:</code> file for
+                flash. Full bundle:{' '}
                 {siteBundle.map((file) => file.name).join(' · ')}
               </div>
             </div>
           </section>
         )}
+        </main>
       </div>
     </div>
   );
@@ -768,8 +903,20 @@ const templateHelp: Record<DeviceType, string> = {
   em500: 'Validated EM500 / Rozwell meter template',
   em500_v2: 'EM500-compatible meter with alternate mapping',
   em500_generator: 'EM500 profile reused for generator metering',
+  wm15: 'Carlo Gavazzi WM15 — manual in docs/Energy Analyzer/',
+  kpm37: 'KPM37 rail meter — manual in docs/Energy Analyzer/',
+  iskra_mc3: 'Iskra MC3 series — manual in docs/Energy Analyzer/',
+  m4m: 'M4M Modbus map spreadsheet in docs/Energy Analyzer/',
+  gc_multiline: 'GC / DST4602 multiline family — manual in docs/Energy Analyzer/',
   huawei: 'Huawei inverter template, read path only for now',
   huawei_smartlogger: 'Huawei gateway or SmartLogger profile',
+  sma: 'SMA — Modbus/SunSpec docs in docs/Inverter/SMA/',
+  solaredge: 'SolarEdge — interface note in docs/Inverter/Solar edge/',
+  growatt: 'Growatt — protocol PDF in docs/Inverter/',
+  solax: 'Solax Hybrid G4 — Modbus doc in docs/Inverter/Solax/',
+  sungrow: 'Sungrow — protocol PDF in docs/Inverter/',
+  cps_chint: 'Chint / CPS SCH — Modbus map in docs/Inverter/Chint/',
+  knox_asw: 'Knox / ASW LT-G2 — MB001 doc in docs/Inverter/Knox/',
   generic_modbus: 'Fallback profile for a new Modbus device',
 };
 
@@ -818,6 +965,7 @@ function MappingCard({
           value={slot.deviceType}
           onChange={(v) => updateSlot(slot.id, { deviceType: v as DeviceType })}
           options={deviceOptions}
+          dataTestId={`slot-${slot.id}-device-type`}
         />
         <SelectField
           label='Role'
@@ -996,12 +1144,14 @@ function SelectField({
   value,
   onChange,
   options,
+  dataTestId,
 }: {
   label: string;
   help?: string;
   value: string;
   onChange: (v: string) => void;
   options: Array<[string, string]>;
+  dataTestId?: string;
 }) {
   return (
     <label className='field'>
@@ -1010,6 +1160,7 @@ function SelectField({
       <select
         className='field-select'
         value={value}
+        data-testid={dataTestId}
         onChange={(e) => onChange(e.target.value)}
       >
         {options.map(([v, l]) => (
@@ -1041,6 +1192,7 @@ function ToggleField({
         type='button'
         onClick={() => onChange(!checked)}
         className={cx('toggle-button', checked ? 'enabled' : 'disabled')}
+        aria-pressed={checked}
       >
         {checked ? 'Enabled' : 'Disabled'}
       </button>

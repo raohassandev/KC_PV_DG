@@ -1,3 +1,4 @@
+import { inverterDeviceHasBundledYaml, meterDeviceHasBundledYaml } from './deviceFirmware';
 import { type SiteConfig } from './siteProfileSchema';
 
 export type TopologyType =
@@ -143,6 +144,23 @@ export function policyWarnings(config: SiteConfig) {
   }
   if (config.topologyType.startsWith('DUAL_BUS') && dualBusState(config) === 'ambiguous') {
     warnings.push('Dual-bus topology is ambiguous from the current mapping');
+  }
+
+  for (const slot of config.slots) {
+    if (!slot.enabled || slot.deviceType === 'none') continue;
+    if (
+      (slot.role === 'grid_meter' || slot.role === 'generator_meter') &&
+      !meterDeviceHasBundledYaml(slot.deviceType)
+    ) {
+      warnings.push(
+        `Slot ${slot.id}: energy analyzer / meter type "${slot.deviceType}" is catalogued but has no matching Modular_Yaml meter package in this bundle (still using EM500 include at root unless you change packages manually).`,
+      );
+    }
+    if (slot.role === 'inverter' && !inverterDeviceHasBundledYaml(slot.deviceType)) {
+      warnings.push(
+        `Slot ${slot.id}: inverter type "${slot.deviceType}" is catalogued but only Huawei-family YAML is bundled today — add inverter_*.yaml before flash or switch device type for lab.`,
+      );
+    }
   }
 
   return warnings;

@@ -50,8 +50,10 @@ export function ProductArea() {
           {(Object.keys(roleLabels) as PwaRole[]).map((item) => (
             <button
               key={item}
+              type='button'
               className={item === role ? 'tab-button active' : 'tab-button'}
               onClick={() => setSession((prev) => ({ ...prev, role: item }))}
+              aria-pressed={item === role}
             >
               <RolePill role={item} />
             </button>
@@ -63,9 +65,11 @@ export function ProductArea() {
         {navItems.map((item) => (
           <button
             key={item.id}
+            type='button'
             className={page === item.id ? 'tab-button active' : 'tab-button'}
             onClick={() => setPage(item.id)}
             title={item.description}
+            aria-current={page === item.id ? 'page' : undefined}
           >
             {item.label}
           </button>
@@ -77,7 +81,9 @@ export function ProductArea() {
         <span>Routes: {routes.length}</span>
       </div>
 
-      <div className='feature-shell-body'>{renderPage(page, role)}</div>
+      <div id='dzx-workspace' className='feature-shell-body'>
+        {renderPage(page, role)}
+      </div>
     </section>
   );
 }

@@ -21,7 +21,7 @@ Tasks:
 - do not remove the inverter write gate
 
 Acceptance:
-- board reads still work against `192.168.0.115`
+- board reads still work against `192.168.0.111`
 - board writes still work for current validated settings
 - no regression in current EM500 path
 

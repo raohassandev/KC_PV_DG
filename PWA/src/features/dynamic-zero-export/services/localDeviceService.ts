@@ -4,7 +4,12 @@ import type { EnergyHistorySeries } from '../../../../../dynamic_zero_export/pwa
 import type { LiveStatusSnapshot } from '../../../../../dynamic_zero_export/pwa/contracts/dashboard';
 import type { PwaRole } from '../roles';
 import { createDzxApiClient, type DzxApiClient } from './apiClient';
-import { createDzxProvider, type DzxProvider, type ProviderMode } from './provider';
+import {
+  createDzxProvider,
+  resolveDzxApiBaseUrl,
+  type DzxProvider,
+  type ProviderMode,
+} from './provider';
 
 export type LocalDeviceService = {
   mode: ProviderMode;
@@ -23,17 +28,13 @@ export type LocalDeviceService = {
   appendHistory(body: unknown): Promise<void>;
 };
 
-function resolveBaseUrl(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  const stored = localStorage.getItem('dzx.apiBaseUrl');
-  if (stored && stored.trim()) return stored.trim();
-  const envBase = import.meta.env.VITE_DZX_API_BASE_URL as string | undefined;
-  return envBase?.trim() || undefined;
-}
-
-export function createLocalDeviceService(mode: ProviderMode = 'auto', baseUrl = resolveBaseUrl()): LocalDeviceService {
+export function createLocalDeviceService(
+  mode: ProviderMode = 'auto',
+  baseUrl = resolveDzxApiBaseUrl(),
+): LocalDeviceService {
   const provider = createDzxProvider(mode, baseUrl);
-  const client = baseUrl ? createDzxApiClient(baseUrl) : undefined;
+  const client =
+    mode !== 'mock' && baseUrl !== undefined ? createDzxApiClient(baseUrl) : undefined;
   return {
     mode,
     client,
