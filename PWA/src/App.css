@@ -1688,3 +1688,34 @@ button:focus:not(:focus-visible) {
   color: var(--warning);
   font-size: 0.9rem;
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.modal-dialog {
+  width: min(440px, 100%);
+  max-height: min(90vh, 640px);
+  overflow: auto;
+  padding: 22px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.2);
+}
+
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}

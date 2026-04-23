@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
+import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
 import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
 import { useAuth } from './auth/AuthContext';
@@ -56,6 +58,7 @@ const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
 
 function App() {
   const { authenticated, logout, role } = useAuth();
+  const [changePwOpen, setChangePwOpen] = useState(false);
   const [tab, setTab] = useState<AppTab>('product');
   const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
@@ -161,6 +164,8 @@ function App() {
     return <LoginScreen />;
   }
 
+  const gatewayAuth = isGatewayAuthEnabled();
+
   return (
     <div className='app-shell'>
       <div className='app-energy-ambient' aria-hidden='true'>
@@ -220,6 +225,16 @@ function App() {
             </div>
 
             <div className='header-stats'>
+              {gatewayAuth ? (
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  onClick={() => setChangePwOpen(true)}
+                  data-testid='change-password-open'
+                >
+                  Change password
+                </button>
+              ) : null}
               <button
                 type='button'
                 className='btn btn--secondary'
@@ -275,6 +290,16 @@ function App() {
               Dismiss
             </button>
           </div>
+        ) : null}
+
+        {changePwOpen ? (
+          <ChangePasswordDialog
+            onClose={() => setChangePwOpen(false)}
+            onSuccess={(msg) => {
+              setNotice(msg);
+              setChangePwOpen(false);
+            }}
+          />
         ) : null}
 
         <main
