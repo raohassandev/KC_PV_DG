@@ -3,6 +3,7 @@
   "private": true,
   "description": "Scripts to verify subprojects without hardware",
   "scripts": {
+    "dev": "npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run dev:pwa",
     "dev:pwa": "cd PWA && npm run dev",
     "dev:gateway": "cd gateway && npm run start",
     "check:dzx": "cd dynamic_zero_export && npm run check",
