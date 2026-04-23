@@ -5,6 +5,9 @@
 /.esphome/
 /secrets.yaml
 
+# Local-only copy of dev / deployment credentials (see CREDENTIALS.local.example)
+/CREDENTIALS.local.md
+
 # Dynamic Zero Export API simulator persisted state (local dev)
 /dynamic_zero_export/state/
 /PWA/state/
