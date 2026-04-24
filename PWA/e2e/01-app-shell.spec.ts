@@ -33,4 +33,23 @@ test.describe('App shell & accessibility', () => {
     await page.getByRole('button', { name: 'Hardware summary' }).click();
     await expect(page.getByTestId('hardware-summary-dl')).toBeVisible();
   });
+
+  test('theme switcher applies dark mode to document', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'user');
+    await expect(page.getByTestId('theme-preference-select')).toBeVisible();
+    await page.getByTestId('theme-preference-select').selectOption('dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.getByTestId('theme-preference-select').selectOption('light');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  });
+
+  test('scheduled theme exposes local hour range controls', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'user');
+    await page.getByTestId('theme-preference-select').selectOption('schedule');
+    await expect(page.getByTestId('theme-schedule-row')).toBeVisible();
+    await expect(page.getByTestId('theme-schedule-start')).toBeVisible();
+    await expect(page.getByTestId('theme-schedule-end')).toBeVisible();
+  });
 });

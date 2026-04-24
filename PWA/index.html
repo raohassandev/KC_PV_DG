@@ -5,6 +5,38 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#134e4a" />
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('pvdg.themePreference') || 'system';
+          var start = 7;
+          var end = 19;
+          var rawSch = localStorage.getItem('pvdg.themeSchedule');
+          if (rawSch) {
+            var o = JSON.parse(rawSch);
+            if (typeof o.lightStartHour === 'number')
+              start = Math.max(0, Math.min(23, Math.round(o.lightStartHour)));
+            if (typeof o.lightEndHour === 'number')
+              end = Math.max(0, Math.min(23, Math.round(o.lightEndHour)));
+          }
+          function inLightWindow(hour, s, e) {
+            if (s === e) return true;
+            if (s < e) return hour >= s && hour < e;
+            return hour >= s || hour < e;
+          }
+          var dark = false;
+          if (p === 'dark') dark = true;
+          else if (p === 'light') dark = false;
+          else if (p === 'system')
+            dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          else dark = !inLightWindow(new Date().getHours(), start, end);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>PV-DG Commissioning</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

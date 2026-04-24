@@ -6,44 +6,25 @@ import { LocalDevPasswordHintDialog } from './auth/LocalDevPasswordHintDialog';
 import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
 import { useAuth } from './auth/AuthContext';
-import { mergePwaSiteConfigFromGatewayPayload } from './auth/gatewaySiteConfig';
 import DashboardOverview from './components/DashboardOverview';
-import { NumberField, SelectField, TextField, ToggleField } from './components/commissioningFields';
 import EngineerActions from './components/EngineerActions';
+import { ThemeControls } from './components/ThemeControls';
 import { TopologyWizard } from './components/TopologyWizard';
-import { FormGrid } from './layout/FormGrid';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
 import { TemplatesDocumentation } from './pages/TemplatesDocumentation';
+import { CommissioningValidationPage } from './pages/CommissioningValidationPage';
+import { SiteSetupPage } from './pages/SiteSetupPage';
+import { SourceSlotsPage } from './pages/SourceSlotsPage';
+import { YamlExportPage } from './pages/YamlExportPage';
 import { roleLabels } from './features/dynamic-zero-export/roles';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
   boardIpFromBaseUrl,
-  discoveryCandidates,
-  fetchProvisionStatus,
-  probeBoard,
-  provisionWifi,
   type BoardWhoami,
   type ProvisionStatusResponse,
 } from './boardDiscovery';
-import {
-  deriveZones as deriveCommissioningZones,
-  loadProfile as loadCommissioningProfile,
-  policyWarnings as commissioningWarnings,
-  saveProfile as saveCommissioningProfile,
-} from './policySchema';
-import {
-  type DeviceType,
-  type SourceRole,
-  type SourceSlot,
-  type SiteConfig,
-  controllerModeHelp,
-  controllerRuntimeModeHelp,
-  controlFieldHelp,
-  deviceOptionsForRole,
-  deviceHelp,
-  roleHelp,
-  defaultSite,
-} from './siteTemplates';
+import { deriveZones as deriveCommissioningZones } from './policySchema';
+import { type SourceSlot, type SiteConfig, defaultSite } from './siteTemplates';
 import {
   pageById,
   visiblePagesFor,
@@ -51,6 +32,7 @@ import {
   type AppPageId,
   type WorkspaceId,
 } from './navModel';
+import { useTheme } from './theme/useTheme';
 
 function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
@@ -90,6 +72,8 @@ function App() {
   const [gatewaySiteList, setGatewaySiteList] = useState<Array<{ siteId: string }>>([]);
   const [gatewaySyncSiteId, setGatewaySyncSiteId] = useState(session.siteId);
   const [gatewaySyncBusy, setGatewaySyncBusy] = useState(false);
+
+  const theme = useTheme();
 
   const enabledCounts = useMemo(() => {
     const enabled = config.slots.filter((s) => s.enabled);
@@ -403,15 +387,24 @@ function App() {
             ) : (
               <span className='app-header-toolbar-spacer' />
             )}
-            <button
-              type='button'
-              className='btn btn--secondary app-header-summary-toggle'
-              aria-expanded={hardwareSummaryOpen}
-              aria-controls={hardwareSummaryId}
-              onClick={() => setHardwareSummaryOpen((v) => !v)}
-            >
-              {hardwareSummaryOpen ? 'Hide hardware summary' : 'Hardware summary'}
-            </button>
+            <div className='app-header-toolbar-trailing'>
+              <ThemeControls
+                preference={theme.preference}
+                setPreference={theme.setPreference}
+                schedule={theme.schedule}
+                setSchedule={theme.setSchedule}
+                effective={theme.effective}
+              />
+              <button
+                type='button'
+                className='btn btn--secondary app-header-summary-toggle'
+                aria-expanded={hardwareSummaryOpen}
+                aria-controls={hardwareSummaryId}
+                onClick={() => setHardwareSummaryOpen((v) => !v)}
+              >
+                {hardwareSummaryOpen ? 'Hide hardware summary' : 'Hardware summary'}
+              </button>
+            </div>
           </div>
           {hardwareSummaryOpen ? (
             <dl
@@ -534,590 +527,43 @@ function App() {
         {page === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
         {page === 'site' && (
-          <FormGrid>
-            {siteGatewaySyncAvailable ? (
-              <div className='panel'>
-                <h2>Gateway commissioning</h2>
-                <p className='help-text'>
-                  Load or save the PWA commissioning profile to the VPS gateway under{' '}
-                  <code>sites/&lt;siteId&gt;.json</code> as <code>pwaSiteConfig</code>, alongside MQTT
-                  discovery data.
-                </p>
-                <div className='form-grid'>
-                  <label className='field' htmlFor='gateway-site-id'>
-                    <span className='field-label'>Fleet site ID</span>
-                    <span className='field-help'>
-                      Defaults to your session site ID. Refresh list after new MQTT discovery.
-                    </span>
-                    <input
-                      id='gateway-site-id'
-                      className='field-input'
-                      data-testid='gateway-site-id'
-                      list='gateway-site-datalist'
-                      value={gatewaySyncSiteId}
-                      onChange={(e) => setGatewaySyncSiteId(e.target.value)}
-                      autoComplete='off'
-                    />
-                    <datalist id='gateway-site-datalist'>
-                      {gatewaySiteList.map((s) => (
-                        <option key={s.siteId} value={s.siteId} />
-                      ))}
-                    </datalist>
-                  </label>
-                </div>
-                <div className='panel-actions u-mt-md'>
-                  <button
-                    type='button'
-                    className='btn btn--secondary'
-                    disabled={gatewaySyncBusy}
-                    onClick={() => void refreshGatewaySites()}
-                    data-testid='gateway-sites-refresh'
-                  >
-                    Refresh list
-                  </button>
-                  <button
-                    type='button'
-                    className='btn btn--secondary'
-                    disabled={gatewaySyncBusy || !gatewaySyncSiteId.trim()}
-                    onClick={async () => {
-                      const id = gatewaySyncSiteId.trim();
-                      if (!id) return;
-                      setGatewaySyncBusy(true);
-                      try {
-                        const res = await fetchGateway(
-                          `/api/sites/${encodeURIComponent(id)}`,
-                        );
-                        if (!res.ok) {
-                          setNotice(
-                            res.status === 404
-                              ? 'Site file not found on gateway'
-                              : 'Could not load site from gateway',
-                          );
-                          return;
-                        }
-                        const payload = (await res.json()) as Record<string, unknown>;
-                        const merged = mergePwaSiteConfigFromGatewayPayload(payload);
-                        if (!merged) {
-                          setNotice('No pwaSiteConfig stored for this site yet');
-                          return;
-                        }
-                        setConfig(merged);
-                        setNotice(`Loaded commissioning from gateway (${id})`);
-                      } catch {
-                        setNotice('Could not load site from gateway');
-                      } finally {
-                        setGatewaySyncBusy(false);
-                      }
-                    }}
-                    data-testid='gateway-site-load'
-                  >
-                    Load from gateway
-                  </button>
-                  <button
-                    type='button'
-                    className='btn btn--primary'
-                    disabled={gatewaySyncBusy || !gatewaySyncSiteId.trim()}
-                    onClick={async () => {
-                      const id = gatewaySyncSiteId.trim();
-                      if (!id) return;
-                      setGatewaySyncBusy(true);
-                      try {
-                        const res = await fetchGateway(
-                          `/api/sites/${encodeURIComponent(id)}`,
-                          {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ pwaSiteConfig: config }),
-                          },
-                        );
-                        if (!res.ok) {
-                          const err = (await res.json().catch(() => ({}))) as {
-                            error?: string;
-                          };
-                          setNotice(err.error ?? 'Save to gateway failed');
-                          return;
-                        }
-                        setNotice(`Saved commissioning to gateway (${id})`);
-                      } catch {
-                        setNotice('Save to gateway failed');
-                      } finally {
-                        setGatewaySyncBusy(false);
-                      }
-                    }}
-                    data-testid='gateway-site-save'
-                  >
-                    Save to gateway
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            <div className='panel'>
-              <h2>Site Identity</h2>
-              <p className='help-text'>
-                These fields define the site identity used by the PWA and
-                generated export bundle.
-              </p>
-              <div className='form-grid'>
-                <TextField
-                  label='Site Name'
-                  help='Human-readable project name shown at the top of the PWA.'
-                  value={config.siteName}
-                  onChange={(v) => updateSiteField('siteName', v)}
-                />
-                <TextField
-                  label='Board Name'
-                  help='ESPHome device name and firmware identity.'
-                  value={config.boardName}
-                  onChange={(v) => updateSiteField('boardName', v)}
-                />
-                <TextField
-                  label='Board IP'
-                  help='LAN address the PWA uses for live reads. It is stored in your local commissioning profile. After a successful probe on AP or mDNS, use “Apply discovery → Board IP” so this field matches the URL that responded.'
-                  value={config.boardIp}
-                  onChange={(v) => updateSiteField('boardIp', v)}
-                />
-                <TextField
-                  label='Wi-Fi SSID'
-                  help='Wi-Fi network visible to the board.'
-                  value={config.wifiSsid}
-                  onChange={(v) => updateSiteField('wifiSsid', v)}
-                />
-                <TextField
-                  label='Customer / Project'
-                  help='Optional customer or project reference for the commissioning record.'
-                  value={config.customerName}
-                  onChange={(v) => updateSiteField('customerName', v)}
-                />
-                <TextField
-                  label='Timezone'
-                  help='Timezone used for reports and future scheduling features.'
-                  value={config.timezone}
-                  onChange={(v) => updateSiteField('timezone', v)}
-                />
-              </div>
-            </div>
-
-            <div className='panel'>
-              <h2>Find Controller (no OLED)</h2>
-              <p className='help-text'>
-                AP mode uses <code>192.168.4.1</code>. LAN mode uses <code>{config.boardName}.local</code>{' '}
-                (mDNS) or the configured board IP. Probes prefer the gateway <code>/api/board/probe</code>{' '}
-                proxy when available (avoids ESPHome keep-alive stalls in the browser). Successful
-                discovery updates the working base URL; use <strong>Apply discovery → Board IP</strong> to
-                persist the host into <strong>Board IP</strong> for the dashboard and exports.
-              </p>
-              <div className='form-grid'>
-                <TextField
-                  label='Manual Base URL (Advanced)'
-                  help='Example: http://192.168.0.100 or http://pv-dg-controller.local. Use “Apply to Board IP” to save it.'
-                  value={boardProbeManual}
-                  onChange={setBoardProbeManual}
-                />
-              </div>
-              <div className='panel-actions u-mt-md'>
-                {discoveryCandidates(config.boardName).map((c) => (
-                  <button
-                    key={c.label}
-                    type='button'
-                    className='btn btn--secondary'
-                    disabled={boardProbeBusy}
-                    onClick={async () => {
-                      setBoardProbeBusy(true);
-                      setBoardProbeError(null);
-                      setBoardProbeResult(null);
-                      setProvisionError(null);
-                      setProvisionResult(null);
-                      try {
-                        const who = await probeBoard(c.baseUrl);
-                        if (!who) {
-                          setBoardProbeError('No response. Confirm AP/LAN connectivity.');
-                          return;
-                        }
-                        setBoardProbeResult(who);
-                        setBoardBaseUrl(c.baseUrl);
-                        rememberReachableBaseUrl(c.baseUrl);
-                        setNotice(`Found controller at ${c.baseUrl}`);
-                      } finally {
-                        setBoardProbeBusy(false);
-                      }
-                    }}
-                  >
-                    Probe {c.label}
-                  </button>
-                ))}
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !config.boardIp.trim()}
-                  onClick={async () => {
-                    const baseUrl = `http://${config.boardIp.trim()}`;
-                    setBoardProbeBusy(true);
-                    setBoardProbeError(null);
-                    setBoardProbeResult(null);
-                    setProvisionError(null);
-                    setProvisionResult(null);
-                    try {
-                      const who = await probeBoard(baseUrl);
-                      if (!who) {
-                        setBoardProbeError('No response at board IP.');
-                        return;
-                      }
-                      setBoardProbeResult(who);
-                      setBoardBaseUrl(baseUrl);
-                      rememberReachableBaseUrl(baseUrl);
-                      setNotice(`Found controller at ${baseUrl}`);
-                    } finally {
-                      setBoardProbeBusy(false);
-                    }
-                  }}
-                >
-                  Probe board IP
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy}
-                  onClick={async () => {
-                    const current = config.boardIp.trim();
-                    const subnetMatch = current.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/);
-                    const subnet = subnetMatch?.[1] ?? '192.168.0';
-                    setBoardProbeBusy(true);
-                    setBoardProbeError(null);
-                    setBoardProbeResult(null);
-                    setProvisionError(null);
-                    setProvisionResult(null);
-                    try {
-                      const res = await fetch(
-                        `/api/board/scan?subnet=${encodeURIComponent(subnet)}&hosts=${encodeURIComponent(
-                          '100,111,101,102,103,1,10,50,200',
-                        )}`,
-                        { cache: 'no-store', headers: { accept: 'application/json' } },
-                      );
-                      const j = (await res.json().catch(() => null)) as
-                        | { ok?: boolean; baseUrl?: string | null }
-                        | null;
-                      if (!res.ok || !j?.ok || !j.baseUrl) {
-                        setBoardProbeError(`No controller found on ${subnet}.x (quick scan).`);
-                        return;
-                      }
-                      const foundIp = j.baseUrl.replace(/^http:\/\//, '').replace(/\/+$/, '');
-                      updateSiteField('boardIp', foundIp);
-                      persistLastGoodBoardIp(foundIp);
-                      const who = await probeBoard(j.baseUrl);
-                      if (who) {
-                        setBoardProbeResult(who);
-                        setBoardBaseUrl(j.baseUrl);
-                        rememberReachableBaseUrl(j.baseUrl);
-                      }
-                      setNotice(`Found controller at ${j.baseUrl} (applied to Board IP)`);
-                    } finally {
-                      setBoardProbeBusy(false);
-                    }
-                  }}
-                >
-                  Scan LAN (quick)
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--primary'
-                  disabled={boardProbeBusy || !boardProbeManual.trim()}
-                  onClick={async () => {
-                    const baseUrl = boardProbeManual.trim();
-                    setBoardProbeBusy(true);
-                    setBoardProbeError(null);
-                    setBoardProbeResult(null);
-                    setProvisionError(null);
-                    setProvisionResult(null);
-                    try {
-                      const who = await probeBoard(baseUrl);
-                      if (!who) {
-                        setBoardProbeError('No response at manual URL.');
-                        return;
-                      }
-                      setBoardProbeResult(who);
-                      setBoardBaseUrl(baseUrl);
-                      rememberReachableBaseUrl(baseUrl);
-                      setNotice(`Found controller at ${baseUrl}`);
-                    } finally {
-                      setBoardProbeBusy(false);
-                    }
-                  }}
-                >
-                  Probe manual URL
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !boardProbeManual.trim()}
-                  onClick={() => {
-                    const raw = boardProbeManual.trim();
-                    const normalized = raw.replace(/\/+$/, '');
-                    const ipOnly = normalized.replace(/^https?:\/\//, '');
-                    updateSiteField('boardIp', ipOnly);
-                    persistLastGoodBoardIp(ipOnly);
-                    setNotice(`Board IP saved as ${ipOnly}`);
-                  }}
-                >
-                  Apply manual URL → Board IP
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !boardBaseUrl.trim()}
-                  data-testid='apply-discovery-board-ip'
-                  onClick={() => {
-                    const host = boardIpFromBaseUrl(boardBaseUrl);
-                    if (!host) {
-                      setNotice('Could not derive a host from the discovery base URL');
-                      return;
-                    }
-                    updateSiteField('boardIp', host);
-                    persistLastGoodBoardIp(host);
-                    setNotice(`Board IP set to ${host} (from discovery)`);
-                  }}
-                >
-                  Apply discovery → Board IP
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !lastGoodBoardIp.trim()}
-                  data-testid='use-last-good-board-ip'
-                  onClick={() => {
-                    const ip = lastGoodBoardIp.trim();
-                    updateSiteField('boardIp', ip);
-                    setNotice(`Board IP restored to last known good (${ip})`);
-                  }}
-                >
-                  Use last known good IP
-                </button>
-              </div>
-
-              {boardProbeError ? <p className='help-text u-mt-sm'>{boardProbeError}</p> : null}
-              {boardProbeResult ? (
-                <div className='u-mt-sm'>
-                  <div className='feature-shell-summary'>
-                    <span>Device: {boardProbeResult.deviceName}</span>
-                    {boardProbeResult.fwVersion ? <span>FW: {boardProbeResult.fwVersion}</span> : null}
-                    {boardProbeResult.mac ? <span>MAC: {boardProbeResult.mac}</span> : null}
-                  </div>
-                  <div className='u-mt-sm'>
-                    <div className='form-grid'>
-                      <TextField
-                        label='Provision Wi-Fi SSID (AP mode)'
-                        help='When the board is in AP mode, send SSID/password to join the site LAN. If unsupported, use the ESPHome captive portal link below.'
-                        value={provisionSsid}
-                        onChange={setProvisionSsid}
-                      />
-                      <TextField
-                        label='Provision Wi-Fi Password'
-                        help='Sent with POST /provision_wifi (AP mode). Progress is read with GET /provision_status on the same base URL until connected or failed.'
-                        value={provisionPassword}
-                        onChange={setProvisionPassword}
-                      />
-                    </div>
-                    <p className='help-text u-mt-sm'>
-                      After you start provisioning, the board may reboot and leave the AP. Keep this page
-                      open: provisioning polls <code>/provision_status</code> for up to 45 seconds. If the
-                      board moves to site Wi-Fi, connect this computer to that LAN and probe the new address.
-                    </p>
-                    <div className='panel-actions u-mt-md'>
-                      <button
-                        type='button'
-                        className='btn btn--primary'
-                        disabled={
-                          provisionBusy ||
-                          !boardBaseUrl.trim() ||
-                          !provisionSsid.trim() ||
-                          !provisionPassword
-                        }
-                        onClick={async () => {
-                          setProvisionBusy(true);
-                          setProvisionError(null);
-                          setProvisionResult(null);
-                          try {
-                            const res = await provisionWifi(boardBaseUrl, {
-                              ssid: provisionSsid.trim(),
-                              password: provisionPassword,
-                            });
-                            if (!res?.accepted) {
-                              setProvisionError(
-                                'Provisioning not supported on this firmware (or rejected). Use captive portal.',
-                              );
-                              return;
-                            }
-                            setNotice(`Provisioning started (${res.jobId})`);
-                            const start = Date.now();
-                            let last: ProvisionStatusResponse | null = null;
-                            while (Date.now() - start < 45000) {
-                              // eslint-disable-next-line no-await-in-loop
-                              const s = await fetchProvisionStatus(boardBaseUrl);
-                              if (s) {
-                                last = s;
-                                setProvisionResult(s);
-                                if (s.state === 'connected' || s.state === 'failed') break;
-                              }
-                              // eslint-disable-next-line no-await-in-loop
-                              await new Promise((r) => setTimeout(r, 800));
-                            }
-                            if (!last) {
-                              setProvisionError(
-                                'No provisioning status within 45s (board may have rebooted). Re-probe AP or use captive portal.',
-                              );
-                            }
-                          } finally {
-                            setProvisionBusy(false);
-                          }
-                        }}
-                      >
-                        Provision Wi-Fi
-                      </button>
-                      <button
-                        type='button'
-                        className='btn btn--secondary'
-                        disabled={provisionBusy || !boardBaseUrl.trim()}
-                        onClick={async () => {
-                          setProvisionBusy(true);
-                          setProvisionError(null);
-                          try {
-                            const s = await fetchProvisionStatus(boardBaseUrl);
-                            if (!s) {
-                              setProvisionError('No provisioning status response.');
-                              return;
-                            }
-                            setProvisionResult(s);
-                          } finally {
-                            setProvisionBusy(false);
-                          }
-                        }}
-                      >
-                        Refresh status
-                      </button>
-                    </div>
-                    {provisionError ? <p className='help-text u-mt-sm'>{provisionError}</p> : null}
-                    {provisionResult ? (
-                      <p className='help-text u-mt-sm'>
-                        Provision status: <strong>{provisionResult.state}</strong>
-                        {provisionResult.message ? ` — ${provisionResult.message}` : ''}
-                      </p>
-                    ) : null}
-                  </div>
-                  <p className='help-text'>
-                    AP captive portal:{' '}
-                    <a href='http://192.168.4.1' target='_blank' rel='noreferrer'>
-                      http://192.168.4.1
-                    </a>
-                  </p>
-                </div>
-              ) : null}
-            </div>
-
-            <div className='panel'>
-              <h2>Control Defaults</h2>
-              <p className='help-text'>
-                These settings define the PV-DG synch-control behavior.
-              </p>
-              <div className='form-grid'>
-                <SelectField
-                  label='Operating Mode'
-                  help={controllerRuntimeModeHelp[config.controllerRuntimeMode]}
-                  value={config.controllerRuntimeMode}
-                  onChange={(v) =>
-                    updateSiteField(
-                      'controllerRuntimeMode',
-                      v as SiteConfig['controllerRuntimeMode'],
-                    )
-                  }
-                  options={[
-                    ['sync_controller', 'sync_controller'],
-                    ['dzx_virtual_meter', 'dzx_virtual_meter'],
-                  ]}
-                />
-                <TextField
-                  label='Sync Profile ID'
-                  help='Profile ID for inverter write control (Sync mode).'
-                  value={config.syncProfileId}
-                  onChange={(v) => updateSiteField('syncProfileId', v)}
-                />
-                <TextField
-                  label='DZX Profile ID'
-                  help='Profile ID for virtual meter emulation (DZX mode).'
-                  value={config.dzxProfileId}
-                  onChange={(v) => updateSiteField('dzxProfileId', v)}
-                />
-                <SelectField
-                  label='Sync Policy Mode'
-                  help={controllerModeHelp[config.controllerMode]}
-                  value={config.controllerMode}
-                  onChange={(v) =>
-                    updateSiteField(
-                      'controllerMode',
-                      v as SiteConfig['controllerMode'],
-                    )
-                  }
-                  options={[
-                    ['disabled', 'disabled'],
-                    ['grid_zero_export', 'grid_zero_export'],
-                    ['grid_limited_export', 'grid_limited_export'],
-                    ['grid_limited_import', 'grid_limited_import'],
-                  ]}
-                />
-                <NumberField
-                  label='PV Rated kW'
-                  help={controlFieldHelp.pvRatedKw}
-                  value={config.pvRatedKw}
-                  onChange={(v) => updateSiteField('pvRatedKw', v)}
-                />
-                <NumberField
-                  label='Deadband kW'
-                  help={controlFieldHelp.deadbandKw}
-                  value={config.deadbandKw}
-                  onChange={(v) => updateSiteField('deadbandKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Control Gain'
-                  help={controlFieldHelp.controlGain}
-                  value={config.controlGain}
-                  onChange={(v) => updateSiteField('controlGain', v)}
-                  step={0.01}
-                />
-                <NumberField
-                  label='Export Limit kW'
-                  help={controlFieldHelp.exportLimitKw}
-                  value={config.exportLimitKw}
-                  onChange={(v) => updateSiteField('exportLimitKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Import Limit kW'
-                  help={controlFieldHelp.importLimitKw}
-                  value={config.importLimitKw}
-                  onChange={(v) => updateSiteField('importLimitKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Ramp pct Step'
-                  help={controlFieldHelp.rampPctStep}
-                  value={config.rampPctStep}
-                  onChange={(v) => updateSiteField('rampPctStep', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Min PV Percent'
-                  help={controlFieldHelp.minPvPercent}
-                  value={config.minPvPercent}
-                  onChange={(v) => updateSiteField('minPvPercent', v)}
-                />
-                <NumberField
-                  label='Max PV Percent'
-                  help={controlFieldHelp.maxPvPercent}
-                  value={config.maxPvPercent}
-                  onChange={(v) => updateSiteField('maxPvPercent', v)}
-                />
-              </div>
-            </div>
-          </FormGrid>
+          <SiteSetupPage
+            siteGatewaySyncAvailable={siteGatewaySyncAvailable}
+            fetchGateway={fetchGateway}
+            gatewaySyncSiteId={gatewaySyncSiteId}
+            setGatewaySyncSiteId={setGatewaySyncSiteId}
+            gatewaySiteList={gatewaySiteList}
+            gatewaySyncBusy={gatewaySyncBusy}
+            setGatewaySyncBusy={setGatewaySyncBusy}
+            refreshGatewaySites={refreshGatewaySites}
+            config={config}
+            updateSiteField={updateSiteField}
+            setConfig={setConfig}
+            setNotice={setNotice}
+            boardProbeManual={boardProbeManual}
+            setBoardProbeManual={setBoardProbeManual}
+            boardProbeBusy={boardProbeBusy}
+            setBoardProbeBusy={setBoardProbeBusy}
+            boardProbeError={boardProbeError}
+            setBoardProbeError={setBoardProbeError}
+            boardProbeResult={boardProbeResult}
+            setBoardProbeResult={setBoardProbeResult}
+            boardBaseUrl={boardBaseUrl}
+            setBoardBaseUrl={setBoardBaseUrl}
+            lastGoodBoardIp={lastGoodBoardIp}
+            persistLastGoodBoardIp={persistLastGoodBoardIp}
+            rememberReachableBaseUrl={rememberReachableBaseUrl}
+            provisionSsid={provisionSsid}
+            setProvisionSsid={setProvisionSsid}
+            provisionPassword={provisionPassword}
+            setProvisionPassword={setProvisionPassword}
+            provisionBusy={provisionBusy}
+            setProvisionBusy={setProvisionBusy}
+            provisionError={provisionError}
+            setProvisionError={setProvisionError}
+            provisionResult={provisionResult}
+            setProvisionResult={setProvisionResult}
+          />
         )}
 
         {page === 'topology' && (
@@ -1125,499 +571,45 @@ function App() {
         )}
 
         {page === 'slots' && (
-          <FormGrid>
-            <div className='panel'>
-              <h2>Source Mapping</h2>
-              <p className='help-text'>
-                Assign the meters that define grid and generator behavior for
-                the site.
-              </p>
-              <div className='slot-list'>
-                {gridSources.map((slot) => (
-                  <MappingCard
-                    key={slot.id}
-                    slot={slot}
-                    updateSlot={updateSlot}
-                    deviceOptions={deviceOptionsForRole('grid_meter')}
-                  />
-                ))}
-                {generatorSources.map((slot) => (
-                  <MappingCard
-                    key={slot.id}
-                    slot={slot}
-                    updateSlot={updateSlot}
-                    deviceOptions={deviceOptionsForRole('generator_meter')}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className='panel'>
-              <h2>Inverter Mapping</h2>
-              <p className='help-text'>
-                Assign inverter groups, network side, and capacity.
-              </p>
-              <div className='slot-list'>
-                {inverterGroups.map((slot) => (
-                  <MappingCard
-                    key={slot.id}
-                    slot={slot}
-                    updateSlot={updateSlot}
-                    deviceOptions={deviceOptionsForRole('inverter')}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className='panel card-full'>
-              <div className='panel-header'>
-                <div>
-                  <h2>Advanced Slot Catalog</h2>
-                  <p className='help-text'>
-                    Hidden by default. Use this only when you need to inspect
-                    every slot entry directly.
-                  </p>
-                </div>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  onClick={() => setShowAdvanced((prev) => !prev)}
-                >
-                  {showAdvanced ? 'Hide Advanced' : 'Show Advanced'}
-                </button>
-              </div>
-              {showAdvanced ? (
-                <div className='slot-list'>
-                  {config.slots.map((slot) => (
-                    <MappingCard
-                      key={`all-${slot.id}`}
-                      slot={slot}
-                      updateSlot={updateSlot}
-                      deviceOptions={deviceOptionsForRole(slot.role)}
-                      compact
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className='info-box'>
-                  <div className='info-label'>Advanced Hidden</div>
-                  <div className='info-small'>
-                    The source and inverter mapping panels cover the normal
-                    commissioning flow. Expand this section only for low-level
-                    catalog edits.
-                  </div>
-                </div>
-              )}
-            </div>
-          </FormGrid>
+          <SourceSlotsPage
+            config={config}
+            gridSources={gridSources}
+            generatorSources={generatorSources}
+            inverterGroups={inverterGroups}
+            updateSlot={updateSlot}
+            showAdvanced={showAdvanced}
+            setShowAdvanced={setShowAdvanced}
+          />
         )}
 
         {page === 'templates' && <TemplatesDocumentation />}
 
         {page === 'review' && (
-          <FormGrid>
-            <div className='panel card-full'>
-              <h2>Validation Summary</h2>
-              <p className='help-text'>
-                This is the commissioning view. It checks topology, source
-                counts, and pending risk items before export.
-              </p>
-              <div className='summary-grid'>
-                <SummaryItem label='Topology' value={config.topologyType} />
-                <SummaryItem
-                  label='Grid Policy'
-                  value={config.gridOperatingMode}
-                />
-                <SummaryItem
-                  label='Net Metering'
-                  value={config.netMeteringEnabled ? 'ON' : 'OFF'}
-                />
-                <SummaryItem
-                  label='Generators'
-                  value={String(enabledCounts.gens)}
-                />
-                <SummaryItem
-                  label='Inverters'
-                  value={String(enabledCounts.inverters)}
-                />
-                <SummaryItem
-                  label='Tie Signal'
-                  value={config.tieSignalPresent ? 'Present' : 'Not declared'}
-                />
-                <SummaryItem
-                  label='Bus A Sources'
-                  value={String(
-                    config.slots.filter(
-                      (slot) => slot.enabled && (slot.busSide || 'A') === 'A',
-                    ).length,
-                  )}
-                />
-                <SummaryItem
-                  label='Bus B Sources'
-                  value={String(
-                    config.slots.filter(
-                      (slot) => slot.enabled && slot.busSide === 'B',
-                    ).length,
-                  )}
-                />
-                <SummaryItem
-                  label='Network IDs'
-                  value={String(
-                    new Set(
-                      config.slots
-                        .filter((slot) => slot.enabled)
-                        .map((slot) => slot.networkId || 'main'),
-                    ).size,
-                  )}
-                />
-                <SummaryItem
-                  label='Dual-Bus State'
-                  value={
-                    config.topologyType.startsWith('DUAL_BUS')
-                      ? config.topologyType === 'DUAL_BUS_COMBINED'
-                        ? 'combined'
-                        : config.topologyType === 'DUAL_BUS_SEPARATE'
-                          ? 'separate'
-                          : 'derived'
-                      : 'n/a'
-                  }
-                />
-              </div>
-              <div className='info-box u-mt-md'>
-                <div className='info-label'>Warnings</div>
-                <div className='info-small'>
-                  {commissioningWarnings(config).join(' · ') || 'None'}
-                </div>
-              </div>
-              <div className='info-box u-mt-md'>
-                <div className='info-label'>Derived Zones</div>
-                <div className='info-small'>
-                  {zones.map((zone) => zone.summary).join(' · ')}
-                </div>
-              </div>
-              <div className='panel-actions u-mt-md'>
-                <TextField
-                  label='Profile Name'
-                  help='Name used when saving or exporting the commissioning profile.'
-                  value={profileName}
-                  onChange={setProfileName}
-                />
-                <button
-                  type='button'
-                  className='btn btn--primary'
-                  onClick={() => {
-                    saveCommissioningProfile(profileName, config);
-                    setNotice(`Profile "${profileName}" saved`);
-                  }}
-                >
-                  Save Profile
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  onClick={() => {
-                    const loaded = loadCommissioningProfile(profileName);
-                    if (loaded) {
-                      setConfig(loaded);
-                      setNotice(`Profile "${profileName}" loaded`);
-                    } else {
-                      setNotice(`Profile "${profileName}" not found`);
-                    }
-                  }}
-                >
-                  Load Profile
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  onClick={() => {
-                    const blob = new Blob(
-                      [
-                        JSON.stringify(
-                          {
-                            config,
-                            zones,
-                            warnings: commissioningWarnings(config),
-                          },
-                          null,
-                          2,
-                        ),
-                      ],
-                      { type: 'application/json;charset=utf-8' },
-                    );
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `${profileName.replace(/\s+/g, '_')}.json`;
-                    link.click();
-                    URL.revokeObjectURL(url);
-                    setNotice('JSON snapshot exported');
-                  }}
-                >
-                  Export JSON Snapshot
-                </button>
-              </div>
-            </div>
-          </FormGrid>
+          <CommissioningValidationPage
+            config={config}
+            setConfig={setConfig}
+            profileName={profileName}
+            setProfileName={setProfileName}
+            zones={zones}
+            enabledCounts={enabledCounts}
+            setNotice={setNotice}
+          />
         )}
 
         {page === 'engineer' && <EngineerActions boardIp={config.boardIp} />}
 
         {page === 'yaml' && (
-          <section className='panel'>
-            <div className='panel-header'>
-              <h2>YAML preview</h2>
-              <div className='panel-actions'>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  onClick={() =>
-                    navigator.clipboard.writeText(rootPackageManifest).catch(() => {})
-                  }
-                >
-                  Copy package manifest
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--primary'
-                  onClick={() => downloadBundle(siteBundle, config.siteName)}
-                >
-                  Download Bundle
-                </button>
-              </div>
-            </div>
-            <textarea
-              value={yamlPreview}
-              readOnly
-              className='yaml-box'
-              data-testid='yaml-preview'
-            />
-            <div className='info-box u-mt-sm'>
-              <div className='info-label'>Bundle contents</div>
-              <div className='info-small'>
-                Preview shows <strong>site.config.yaml</strong> (catalog, slots,
-                firmware flags). <strong>Copy package manifest</strong> copies the
-                root ESPHome <code className='inline-code'>packages:</code> file for
-                flash. Full bundle:{' '}
-                {siteBundle.map((file) => file.name).join(' · ')}
-              </div>
-            </div>
-          </section>
+          <YamlExportPage
+            yamlPreview={yamlPreview}
+            siteBundle={siteBundle}
+            rootPackageManifest={rootPackageManifest}
+            siteName={config.siteName}
+          />
         )}
         </main>
       </div>
     </div>
   );
-}
-
-const templateHelp: Record<DeviceType, string> = {
-  none: 'Unused slot',
-  em500: 'Validated EM500 / Rozwell meter template',
-  em500_v2: 'EM500-compatible meter with alternate mapping',
-  em500_generator: 'EM500 profile reused for generator metering',
-  wm15: 'Carlo Gavazzi WM15 — manual in docs/Energy Analyzer/',
-  kpm37: 'KPM37 rail meter — manual in docs/Energy Analyzer/',
-  iskra_mc3: 'Iskra MC3 series — manual in docs/Energy Analyzer/',
-  m4m: 'M4M Modbus map spreadsheet in docs/Energy Analyzer/',
-  gc_multiline: 'GC / DST4602 multiline family — manual in docs/Energy Analyzer/',
-  huawei: 'Huawei inverter template, read path only for now',
-  huawei_smartlogger: 'Huawei gateway or SmartLogger profile',
-  sma: 'SMA — Modbus/SunSpec docs in docs/Inverter/SMA/',
-  solaredge: 'SolarEdge — interface note in docs/Inverter/Solar edge/',
-  growatt: 'Growatt — protocol PDF in docs/Inverter/',
-  solax: 'Solax Hybrid G4 — Modbus doc in docs/Inverter/Solax/',
-  sungrow: 'Sungrow — protocol PDF in docs/Inverter/',
-  cps_chint: 'Chint / CPS SCH — Modbus map in docs/Inverter/Chint/',
-  knox_asw: 'Knox / ASW LT-G2 — MB001 doc in docs/Inverter/Knox/',
-  generic_modbus: 'Fallback profile for a new Modbus device',
-};
-
-function slotSummaryHelp(slot: SourceSlot) {
-  if (!slot.enabled) return 'Slot is disabled.';
-  if (slot.role === 'grid_meter') return 'Primary grid metering slot.';
-  if (slot.role === 'generator_meter') return 'Generator metering slot.';
-  if (slot.role === 'inverter') return 'Inverter role slot.';
-  return 'Commissioning slot with no assigned role.';
-}
-
-function MappingCard({
-  slot,
-  updateSlot,
-  deviceOptions,
-  compact = false,
-}: {
-  slot: SourceSlot;
-  updateSlot: (slotId: string, patch: Partial<SourceSlot>) => void;
-  deviceOptions: Array<[DeviceType, string]>;
-  compact?: boolean;
-}) {
-  return (
-    <div className='slot-card'>
-      <h2>{slot.label}</h2>
-      <p className='help-text'>{slotSummaryHelp(slot)}</p>
-      <div className='form-grid'>
-        <ToggleField
-          label='Enabled'
-          help='Include this entry in the commissioning model.'
-          checked={slot.enabled}
-          onChange={(v) => updateSlot(slot.id, { enabled: v })}
-        />
-        <SelectField
-          label='Device Type'
-          help={deviceHelp[slot.deviceType]}
-          value={slot.deviceType}
-          onChange={(v) => updateSlot(slot.id, { deviceType: v as DeviceType })}
-          options={deviceOptions}
-          dataTestId={`slot-${slot.id}-device-type`}
-        />
-        <SelectField
-          label='Role'
-          help={roleHelp[slot.role]}
-          value={slot.role}
-          onChange={(v) => {
-            const nextRole = v as SourceRole;
-            const nextOptions = deviceOptionsForRole(nextRole);
-            const currentValid = nextOptions.some(
-              ([deviceType]) => deviceType === slot.deviceType,
-            );
-            updateSlot(slot.id, {
-              role: nextRole,
-              deviceType: currentValid ? slot.deviceType : (nextOptions[0]?.[0] ?? 'none'),
-            });
-          }}
-          options={[
-            ['none', 'none'],
-            ['grid_meter', 'grid_meter'],
-            ['generator_meter', 'generator_meter'],
-            ['inverter', 'inverter'],
-          ]}
-        />
-        <SelectField
-          label='Transport'
-          help='Per-slot transport: RS485 Modbus RTU on the controller UART, or Modbus TCP to a device on the LAN. A single site can mix RTU and TCP slots; the exported site bundle lists each slot’s transport and TCP host/port for firmware YAML mapping (see Modular_Yaml/modbus_tcp_manager.yaml).'
-          value={slot.transport || 'rtu'}
-          onChange={(v) =>
-            updateSlot(slot.id, {
-              transport: v as 'rtu' | 'tcp',
-              tcpPort: v === 'tcp' ? slot.tcpPort ?? 502 : slot.tcpPort,
-            })
-          }
-          options={[
-            ['rtu', 'rtu (RS485)'],
-            ['tcp', 'tcp (Modbus TCP/IP)'],
-          ]}
-        />
-        <NumberField
-          label='Unit ID'
-          help='Modbus unit/slave ID (RTU slave ID or Modbus TCP unit identifier).'
-          value={slot.modbusId}
-          onChange={(v) => updateSlot(slot.id, { modbusId: v })}
-        />
-        {slot.transport === 'tcp' ? (
-          <>
-            <TextField
-              label='TCP Host'
-              help='IP or hostname of the Modbus TCP device (e.g., PC simulator or meter).'
-              value={slot.tcpHost || ''}
-              onChange={(v) => updateSlot(slot.id, { tcpHost: v })}
-            />
-            <NumberField
-              label='TCP Port'
-              help='Modbus TCP port (default 502).'
-              value={slot.tcpPort ?? 502}
-              onChange={(v) => updateSlot(slot.id, { tcpPort: v })}
-            />
-          </>
-        ) : null}
-        <NumberField
-          label='Capacity kW'
-          help='Nominal capacity used for documentation and sizing.'
-          value={slot.capacityKw}
-          onChange={(v) => updateSlot(slot.id, { capacityKw: v })}
-          step={0.1}
-        />
-        <TextField
-          label='Network ID'
-          help='Logical network assignment for combined or separate operation.'
-          value={slot.networkId || ''}
-          onChange={(v) => updateSlot(slot.id, { networkId: v })}
-        />
-        <SelectField
-          label='Bus Side'
-          help='Assign this source or inverter to bus A, bus B, or both.'
-          value={slot.busSide || 'A'}
-          onChange={(v) => updateSlot(slot.id, { busSide: v as 'A' | 'B' | 'both' })}
-          options={[
-            ['A', 'A'],
-            ['B', 'B'],
-            ['both', 'both'],
-          ]}
-        />
-        {slot.role === 'generator_meter' ? (
-          <SelectField
-            label='Generator Type'
-            help='Diesel and gas defaults drive minimum loading policy.'
-            value={slot.generatorType || 'diesel'}
-            onChange={(v) =>
-              updateSlot(slot.id, { generatorType: v as 'diesel' | 'gas' })
-            }
-            options={[
-              ['diesel', 'diesel'],
-              ['gas', 'gas'],
-            ]}
-          />
-        ) : null}
-        {!compact ? (
-          <>
-            <TextField
-              label='IP Hint / Notes'
-              help='Optional IP hint or field note for commissioning.'
-              value={slot.ipHint || ''}
-              onChange={(v) => updateSlot(slot.id, { ipHint: v })}
-            />
-            <TextField
-              label='Commissioning Notes'
-              help='Additional site-specific notes.'
-              value={slot.notes || ''}
-              onChange={(v) => updateSlot(slot.id, { notes: v })}
-            />
-            </>
-        ) : null}
-      </div>
-      {!compact ? (
-        <div className='slot-help'>Template hint: {templateHelp[slot.deviceType]}</div>
-      ) : null}
-    </div>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className='stat-card'>
-      <div className='stat-label'>{label}</div>
-      <div className='stat-value'>{value}</div>
-    </div>
-  );
-}
-
-
-function downloadBundle(
-  files: Array<{ name: string; content: string }>,
-  siteName: string,
-) {
-  const payload = files
-    .map(
-      (file) => `--- ${file.name} ---
-${file.content}`,
-    )
-    .join('\n');
-  const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_bundle.txt`;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 export default App;

@@ -364,3 +364,17 @@ export function generateSiteBundle(config: SiteConfig): SiteBundleFile[] {
     { name: 'commissioning.summary.yaml', content: commissioningYaml(config) },
   ];
 }
+
+/** Download merged site bundle as a single text file (browser only). */
+export function downloadSiteBundle(files: SiteBundleFile[], siteName: string) {
+  const payload = files
+    .map((file) => `--- ${file.name} ---\n${file.content}`)
+    .join('\n');
+  const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_bundle.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
