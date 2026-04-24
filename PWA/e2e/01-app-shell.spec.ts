@@ -18,4 +18,19 @@ test.describe('App shell & accessibility', () => {
     await page.getByRole('link', { name: 'Skip to main content' }).press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
   });
+
+  test('account menu exposes session actions', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'user');
+    await page.getByTestId('account-menu-trigger').click();
+    await expect(page.getByTestId('logout-button')).toBeVisible();
+  });
+
+  test('hardware summary expands metrics list', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'user');
+    await expect(page.getByTestId('hardware-summary-dl')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Hardware summary' }).click();
+    await expect(page.getByTestId('hardware-summary-dl')).toBeVisible();
+  });
 });

@@ -86,11 +86,14 @@ Used by the PWA to show progress and prompt the user to switch networks.
 
 ## 5) Commissioning model additions (PWA → exported config)
 
-### Controller mode (root requirement)
+### Controller runtime mode (PWA + export)
 
-`controllerMode` is explicit:
+The commissioning PWA and generated `site.config.yaml` use **`controller_runtime_mode`**:
+
 - `dzx_virtual_meter`: board serves inverter as a meter (virtual meter); inverter self-curtails
 - `sync_controller`: board writes power limit commands to inverter(s)
+
+(Separately, inverter emulation policy may still reference a `controllerMode` knob inside export payloads where applicable.)
 
 ### Per-slot transport (mixed RTU + TCP)
 
@@ -100,4 +103,12 @@ Each slot has:
 - if `tcp`: `tcpHost`, `tcpPort`
 
 The commissioning bundle must preserve these fields for audit/support, even if the current ESPHome YAML still needs explicit wiring per device.
+
+---
+
+## 6) Gateway fleet API (denormalized `controllerRuntimeMode`)
+
+`GET /api/sites` and `GET /api/sites/:siteId` responses include **`controllerRuntimeMode`** at the top level when it can be resolved from `pwaSiteConfig.controllerRuntimeMode` (or from a legacy top-level field in the site JSON file). Clients that only peek at list entries can read the mode without parsing the full `pwaSiteConfig` blob.
+
+`GET /api/sites/:siteId` may return commissioning data only under `pwaSiteConfig`; the PWA merge helper also accepts a top-level `controllerRuntimeMode` when `pwaSiteConfig` is absent so fleet metadata can still drive UI gating.
 

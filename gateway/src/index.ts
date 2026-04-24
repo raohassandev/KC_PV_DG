@@ -118,6 +118,19 @@ function canAccessSiteJson(
   return false;
 }
 
+function pickControllerRuntimeMode(
+  j: Record<string, unknown>,
+): 'sync_controller' | 'dzx_virtual_meter' | undefined {
+  const top = j.controllerRuntimeMode;
+  if (top === 'sync_controller' || top === 'dzx_virtual_meter') return top;
+  const pwa = j.pwaSiteConfig;
+  if (pwa && typeof pwa === 'object' && !Array.isArray(pwa)) {
+    const m = (pwa as Record<string, unknown>).controllerRuntimeMode;
+    if (m === 'sync_controller' || m === 'dzx_virtual_meter') return m;
+  }
+  return undefined;
+}
+
 function listSites(installerId: string | undefined, role: 'user' | 'installer' | 'manufacturer'): unknown[] {
   const out: unknown[] = [];
   if (role === 'user') return out;
@@ -137,7 +150,12 @@ function listSites(installerId: string | undefined, role: 'user' | 'installer' |
         const iid = j.installer_id ?? j.installerId;
         if (typeof iid !== 'string' || iid !== installerId) continue;
       }
-      out.push({ siteId: name.replace(/\.json$/i, ''), ...j });
+      const mode = pickControllerRuntimeMode(j);
+      out.push({
+        siteId: name.replace(/\.json$/i, ''),
+        ...j,
+        ...(mode ? { controllerRuntimeMode: mode } : {}),
+      });
     } catch {
       // skip corrupt
     }
@@ -478,7 +496,12 @@ app.get('/api/sites/:siteId', (req, res) => {
     res.status(403).json({ error: 'forbidden' });
     return;
   }
-  res.json({ siteId, ...j });
+  const mode = pickControllerRuntimeMode(j);
+  res.json({
+    siteId,
+    ...j,
+    ...(mode ? { controllerRuntimeMode: mode } : {}),
+  });
 });
 
 /**

@@ -15,6 +15,7 @@ import { ProductArea } from './features/dynamic-zero-export/ProductArea';
 import { roleLabels } from './features/dynamic-zero-export/roles';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
+  boardIpFromBaseUrl,
   discoveryCandidates,
   fetchProvisionStatus,
   probeBoard,
@@ -78,6 +79,7 @@ function App() {
   const [boardProbeError, setBoardProbeError] = useState<string | null>(null);
   const [boardProbeManual, setBoardProbeManual] = useState('');
   const [boardBaseUrl, setBoardBaseUrl] = useState<string>('');
+  const [lastGoodBoardIp, setLastGoodBoardIp] = useState('');
   const [provisionSsid, setProvisionSsid] = useState('');
   const [provisionPassword, setProvisionPassword] = useState('');
   const [provisionBusy, setProvisionBusy] = useState(false);
@@ -141,6 +143,34 @@ function App() {
       ),
     }));
   };
+
+  const persistLastGoodBoardIp = useCallback((ip: string) => {
+    const t = ip.trim();
+    if (!t) return;
+    try {
+      localStorage.setItem('pvdg.lastGoodBoardIp', t);
+      setLastGoodBoardIp(t);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const rememberReachableBaseUrl = useCallback(
+    (baseUrl: string) => {
+      const host = boardIpFromBaseUrl(baseUrl);
+      if (host) persistLastGoodBoardIp(host);
+    },
+    [persistLastGoodBoardIp],
+  );
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('pvdg.lastGoodBoardIp');
+      if (v) setLastGoodBoardIp(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -304,8 +334,11 @@ function App() {
                 </div>
               </div>
             </div>
-            <details className='app-header-account'>
-              <summary className='app-header-account-summary'>
+            <details className='app-header-account' aria-label='Account menu'>
+              <summary
+                className='app-header-account-summary'
+                data-testid='account-menu-trigger'
+              >
                 <span className='app-header-account-title'>Account</span>
                 <span className='app-header-account-meta'>
                   {roleLabels[role]}
@@ -383,6 +416,7 @@ function App() {
               id={hardwareSummaryId}
               className='app-header-metrics'
               aria-label='Enabled hardware summary'
+              data-testid='hardware-summary-dl'
             >
               <div className='app-header-metric'>
                 <dt>Sources enabled</dt>
@@ -636,7 +670,7 @@ function App() {
                 />
                 <TextField
                   label='Board IP'
-                  help='Local board IP used by the PWA to read and write values. Saved automatically.'
+                  help='LAN address the PWA uses for live reads. It is stored in your local commissioning profile. After a successful probe on AP or mDNS, use “Apply discovery → Board IP” so this field matches the URL that responded.'
                   value={config.boardIp}
                   onChange={(v) => updateSiteField('boardIp', v)}
                 />
@@ -665,8 +699,10 @@ function App() {
               <h2>Find Controller (no OLED)</h2>
               <p className='help-text'>
                 AP mode uses <code>192.168.4.1</code>. LAN mode uses <code>{config.boardName}.local</code>{' '}
-                (mDNS) or the configured board IP. This works with the future <code>/whoami</code>{' '}
-                contract and falls back to the ESPHome <code>/json</code> endpoint today.
+                (mDNS) or the configured board IP. Probes prefer the gateway <code>/api/board/probe</code>{' '}
+                proxy when available (avoids ESPHome keep-alive stalls in the browser). Successful
+                discovery updates the working base URL; use <strong>Apply discovery → Board IP</strong> to
+                persist the host into <strong>Board IP</strong> for the dashboard and exports.
               </p>
               <div className='form-grid'>
                 <TextField
@@ -697,6 +733,7 @@ function App() {
                         }
                         setBoardProbeResult(who);
                         setBoardBaseUrl(c.baseUrl);
+                        rememberReachableBaseUrl(c.baseUrl);
                         setNotice(`Found controller at ${c.baseUrl}`);
                       } finally {
                         setBoardProbeBusy(false);
@@ -725,6 +762,7 @@ function App() {
                       }
                       setBoardProbeResult(who);
                       setBoardBaseUrl(baseUrl);
+                      rememberReachableBaseUrl(baseUrl);
                       setNotice(`Found controller at ${baseUrl}`);
                     } finally {
                       setBoardProbeBusy(false);
@@ -762,10 +800,12 @@ function App() {
                       }
                       const foundIp = j.baseUrl.replace(/^http:\/\//, '').replace(/\/+$/, '');
                       updateSiteField('boardIp', foundIp);
+                      persistLastGoodBoardIp(foundIp);
                       const who = await probeBoard(j.baseUrl);
                       if (who) {
                         setBoardProbeResult(who);
                         setBoardBaseUrl(j.baseUrl);
+                        rememberReachableBaseUrl(j.baseUrl);
                       }
                       setNotice(`Found controller at ${j.baseUrl} (applied to Board IP)`);
                     } finally {
@@ -794,6 +834,7 @@ function App() {
                       }
                       setBoardProbeResult(who);
                       setBoardBaseUrl(baseUrl);
+                      rememberReachableBaseUrl(baseUrl);
                       setNotice(`Found controller at ${baseUrl}`);
                     } finally {
                       setBoardProbeBusy(false);
@@ -811,10 +852,42 @@ function App() {
                     const normalized = raw.replace(/\/+$/, '');
                     const ipOnly = normalized.replace(/^https?:\/\//, '');
                     updateSiteField('boardIp', ipOnly);
+                    persistLastGoodBoardIp(ipOnly);
                     setNotice(`Board IP saved as ${ipOnly}`);
                   }}
                 >
                   Apply manual URL → Board IP
+                </button>
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  disabled={boardProbeBusy || !boardBaseUrl.trim()}
+                  data-testid='apply-discovery-board-ip'
+                  onClick={() => {
+                    const host = boardIpFromBaseUrl(boardBaseUrl);
+                    if (!host) {
+                      setNotice('Could not derive a host from the discovery base URL');
+                      return;
+                    }
+                    updateSiteField('boardIp', host);
+                    persistLastGoodBoardIp(host);
+                    setNotice(`Board IP set to ${host} (from discovery)`);
+                  }}
+                >
+                  Apply discovery → Board IP
+                </button>
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  disabled={boardProbeBusy || !lastGoodBoardIp.trim()}
+                  data-testid='use-last-good-board-ip'
+                  onClick={() => {
+                    const ip = lastGoodBoardIp.trim();
+                    updateSiteField('boardIp', ip);
+                    setNotice(`Board IP restored to last known good (${ip})`);
+                  }}
+                >
+                  Use last known good IP
                 </button>
               </div>
 
@@ -836,11 +909,16 @@ function App() {
                       />
                       <TextField
                         label='Provision Wi-Fi Password'
-                        help='Sent to /provision_wifi. Store securely on-device (future firmware).'
+                        help='Sent with POST /provision_wifi (AP mode). Progress is read with GET /provision_status on the same base URL until connected or failed.'
                         value={provisionPassword}
                         onChange={setProvisionPassword}
                       />
                     </div>
+                    <p className='help-text u-mt-sm'>
+                      After you start provisioning, the board may reboot and leave the AP. Keep this page
+                      open: provisioning polls <code>/provision_status</code> for up to 45 seconds. If the
+                      board moves to site Wi-Fi, connect this computer to that LAN and probe the new address.
+                    </p>
                     <div className='panel-actions u-mt-md'>
                       <button
                         type='button'
@@ -869,7 +947,7 @@ function App() {
                             setNotice(`Provisioning started (${res.jobId})`);
                             const start = Date.now();
                             let last: ProvisionStatusResponse | null = null;
-                            while (Date.now() - start < 12000) {
+                            while (Date.now() - start < 45000) {
                               // eslint-disable-next-line no-await-in-loop
                               const s = await fetchProvisionStatus(boardBaseUrl);
                               if (s) {
@@ -878,10 +956,12 @@ function App() {
                                 if (s.state === 'connected' || s.state === 'failed') break;
                               }
                               // eslint-disable-next-line no-await-in-loop
-                              await new Promise((r) => setTimeout(r, 700));
+                              await new Promise((r) => setTimeout(r, 800));
                             }
                             if (!last) {
-                              setProvisionError('No provisioning status response. Use captive portal.');
+                              setProvisionError(
+                                'No provisioning status within 45s (board may have rebooted). Re-probe AP or use captive portal.',
+                              );
                             }
                           } finally {
                             setProvisionBusy(false);
@@ -1490,7 +1570,7 @@ function MappingCard({
         />
         <SelectField
           label='Transport'
-          help='How this slot is read on the LAN: RS485 Modbus RTU today, or Modbus TCP/IP when board/gateway supports it.'
+          help='Per-slot transport: RS485 Modbus RTU on the controller UART, or Modbus TCP to a device on the LAN. A single site can mix RTU and TCP slots; the exported site bundle lists each slot’s transport and TCP host/port for firmware YAML mapping (see Modular_Yaml/modbus_tcp_manager.yaml).'
           value={slot.transport || 'rtu'}
           onChange={(v) =>
             updateSlot(slot.id, {

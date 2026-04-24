@@ -5,6 +5,19 @@ export function mergePwaSiteConfigFromGatewayPayload(
   payload: Record<string, unknown>,
 ): SiteConfig | null {
   const pwa = payload.pwaSiteConfig;
-  if (!pwa || typeof pwa !== 'object' || Array.isArray(pwa)) return null;
-  return { ...defaultSite, ...(pwa as Partial<SiteConfig>) };
+  const hasPwa = pwa && typeof pwa === 'object' && !Array.isArray(pwa);
+  const modeTop =
+    payload.controllerRuntimeMode === 'sync_controller' ||
+    payload.controllerRuntimeMode === 'dzx_virtual_meter'
+      ? payload.controllerRuntimeMode
+      : undefined;
+
+  if (!hasPwa && !modeTop) return null;
+
+  const merged: SiteConfig = {
+    ...defaultSite,
+    ...(hasPwa ? (pwa as Partial<SiteConfig>) : {}),
+  };
+  if (modeTop) merged.controllerRuntimeMode = modeTop;
+  return merged;
 }

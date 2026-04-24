@@ -37,6 +37,22 @@ function safeUrl(baseUrl: string) {
   return baseUrl.replace(/\/+$/, '');
 }
 
+/** Extract host from a discovery/probe base URL (IPv4 / mDNS). */
+export function boardIpFromBaseUrl(baseUrl: string): string | null {
+  const raw = baseUrl.trim();
+  if (!raw) return null;
+  try {
+    const normalized = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+    const u = new URL(normalized);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    const host = u.hostname.trim();
+    if (!host || host.includes(':')) return null;
+    return host;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchJson<T>(url: string, timeoutMs = 4500): Promise<T | null> {
   // ESPHome web_server v3 can occasionally stall while reading the response body.
   // Browsers cannot set the `Connection: close` header, so we retry with a fresh request.
