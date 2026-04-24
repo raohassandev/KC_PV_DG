@@ -1,0 +1,48 @@
+import { expect, test } from '@playwright/test';
+import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
+
+test.describe('Site Setup — LAN discovery (mocked)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/board/probe**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          whoami: {
+            deviceName: 'e2e-mock-controller',
+            fwVersion: 'e2e-1',
+            mac: 'AA:BB:CC:DD:EE:FF',
+          },
+        }),
+      });
+    });
+    await page.route('**/api/board/scan**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          baseUrl: 'http://192.168.0.222',
+          tried: ['192.168.0.222'],
+        }),
+      });
+    });
+  });
+
+  test('Scan LAN applies discovered IP to Board IP', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'installer');
+    await gotoWorkspace(page, 'Commissioning');
+    await gotoTab(page, 'Site Setup');
+
+    const boardIpField = page.getByRole('textbox', { name: /Board IP LAN address/i });
+
+    await expect(boardIpField).toHaveValue('192.168.0.111');
+
+    await page.getByRole('button', { name: 'Scan LAN (quick)' }).click();
+
+    await expect(boardIpField).toHaveValue('192.168.0.222');
+    await expect(page.getByText('Device: e2e-mock-controller')).toBeVisible();
+  });
+});

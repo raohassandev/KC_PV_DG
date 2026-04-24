@@ -38,3 +38,5 @@ One-time browser install: `npx playwright install chromium` (or `PW_CHANNEL=chro
 - DZX feature area: `src/features/dynamic-zero-export/`
 
 Full history and status: **`../docs/AGENT_IMPLEMENTATION_PLAN.md`**.
+
+Why each commissioning area exists (including **Templates**): **`../docs/Commissioning_IA.md`**.

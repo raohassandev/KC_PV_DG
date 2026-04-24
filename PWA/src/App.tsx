@@ -1212,6 +1212,17 @@ function App() {
 
         {page === 'templates' && (
           <section className='section-grid'>
+            <div className='panel card-full'>
+              <h2>Templates &amp; catalogs</h2>
+              <p className='help-text'>
+                This page is <strong>reference and validation context</strong>, not day-to-day device
+                assignment. Use <strong>Source Slots</strong> to pick which meter or inverter profile each
+                bus uses; use this page to see which register bundles are production-ready, which are
+                pending bench validation, and how PV-DG control modes are supposed to behave in firmware.
+                That split keeps installers in guided forms while preserving manufacturer traceability
+                (PDFs, YAML paths, and synch-control rules) in one place.
+              </p>
+            </div>
             <div className='panel'>
               <h2>Rozwell / EM500 Template</h2>
               <p className='help-text'>
