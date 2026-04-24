@@ -11,7 +11,9 @@ import DashboardOverview from './components/DashboardOverview';
 import { NumberField, SelectField, TextField, ToggleField } from './components/commissioningFields';
 import EngineerActions from './components/EngineerActions';
 import { TopologyWizard } from './components/TopologyWizard';
+import { FormGrid } from './layout/FormGrid';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
+import { TemplatesDocumentation } from './pages/TemplatesDocumentation';
 import { roleLabels } from './features/dynamic-zero-export/roles';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
@@ -532,7 +534,7 @@ function App() {
         {page === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
         {page === 'site' && (
-          <section className='section-grid'>
+          <FormGrid>
             {siteGatewaySyncAvailable ? (
               <div className='panel'>
                 <h2>Gateway commissioning</h2>
@@ -1115,7 +1117,7 @@ function App() {
                 />
               </div>
             </div>
-          </section>
+          </FormGrid>
         )}
 
         {page === 'topology' && (
@@ -1123,7 +1125,7 @@ function App() {
         )}
 
         {page === 'slots' && (
-          <section className='section-grid'>
+          <FormGrid>
             <div className='panel'>
               <h2>Source Mapping</h2>
               <p className='help-text'>
@@ -1207,103 +1209,13 @@ function App() {
                 </div>
               )}
             </div>
-          </section>
+          </FormGrid>
         )}
 
-        {page === 'templates' && (
-          <article className='docs-reader' aria-label='Device catalogs and control documentation'>
-            <header className='docs-reader__header'>
-              <p className='docs-reader__kicker'>Documentation · read-only</p>
-              <h2 className='docs-reader__title'>Catalogs &amp; control reference</h2>
-              <p className='help-text docs-reader__lede'>
-                This tab is <strong>in-app documentation</strong>, not configuration. Bind devices in{' '}
-                <strong>Source Slots</strong>; use this single-column reader to see which meter and inverter
-                paths are validated vs pending, where PDFs and YAML live, and how synch-control is meant to
-                behave in firmware.
-              </p>
-            </header>
-            <div className='docs-reader__sections'>
-            <div className='panel docs-reader__section'>
-              <h3 className='docs-reader__section-title'>Rozwell / EM500 Template</h3>
-              <p className='help-text'>
-                Current validated meter path. Use this for grid meters and, if
-                needed, generator meters on the same RS485 bus.
-              </p>
-              <ul className='list-block'>
-                <li>Live voltage/current/power/frequency/power factor</li>
-                <li>Import energy uses confirmed corrected decode</li>
-                <li>Use for grid meters and generator meters</li>
-                <li>Role selected per slot</li>
-              </ul>
-            </div>
-
-            <div className='panel docs-reader__section'>
-              <h3 className='docs-reader__section-title'>Huawei Template</h3>
-              <p className='help-text'>
-                Keep this as pending until site inverter validation is done.
-              </p>
-              <ul className='list-block'>
-                <li>Pmax</li>
-                <li>Actual power</li>
-                <li>Command write path</li>
-                <li>Deeper live testing deferred until site visit</li>
-              </ul>
-            </div>
-
-            <div className='panel docs-reader__section'>
-              <h3 className='docs-reader__section-title'>Energy analyzers (catalog)</h3>
-              <p className='help-text'>
-                Additional grid / generator meters are selectable in Source
-                Slots. Each entry points at register manuals under{' '}
-                <code className='inline-code'>docs/Energy Analyzer/</code> until a
-                matching <code className='inline-code'>Modular_Yaml/meter_*.yaml</code>{' '}
-                exists.
-              </p>
-              <ul className='list-block'>
-                <li>WM15, KPM37, Iskra MC3, M4M map, GC/DST multiline family</li>
-                <li>Exported bundle lists <code className='inline-code'>doc_path</code> per device and flags slots without bundled YAML</li>
-                <li>Validation warns when a slot type has no firmware package yet</li>
-              </ul>
-            </div>
-
-            <div className='panel docs-reader__section'>
-              <h3 className='docs-reader__section-title'>Inverters (catalog)</h3>
-              <p className='help-text'>
-                SMA, SolarEdge, Growatt, Solax, Sungrow, Chint/CPS, Knox/ASW are
-                commissioning labels tied to PDFs under{' '}
-                <code className='inline-code'>docs/Inverter/</code>. Only Huawei
-                maps to bundled <code className='inline-code'>inverter_huawei.yaml</code>{' '}
-                today.
-              </p>
-              <ul className='list-block'>
-                <li>Use Source Slots → Inverter Mapping to assign vendor per bus</li>
-                <li>SmartLogger uses the same bundled Huawei include as a gateway placeholder</li>
-                <li>Site-specific register work stays in firmware + bench validation</li>
-              </ul>
-            </div>
-
-            <div className='panel docs-reader__section'>
-              <h3 className='docs-reader__section-title'>PV-DG Synch Control Logic</h3>
-              <p className='help-text'>
-                {controlFieldHelp.controlLoop}{' '}
-                The PWA must show the same knobs the firmware uses: controller
-                mode, PV rated kW, export/import limits, gain, deadband, ramp,
-                and the inverter enable/write gate.
-              </p>
-              <ul className='list-block'>
-                <li>Grid zero export: target 0 kW</li>
-                <li>Limited export: target negative export limit</li>
-                <li>Limited import: target positive import limit</li>
-                <li>Disabled: monitoring only</li>
-                <li>Inverter write gate stays pending until site validation</li>
-              </ul>
-            </div>
-            </div>
-          </article>
-        )}
+        {page === 'templates' && <TemplatesDocumentation />}
 
         {page === 'review' && (
-          <section className='section-grid'>
+          <FormGrid>
             <div className='panel card-full'>
               <h2>Validation Summary</h2>
               <p className='help-text'>
@@ -1446,7 +1358,7 @@ function App() {
                 </button>
               </div>
             </div>
-          </section>
+          </FormGrid>
         )}
 
         {page === 'engineer' && <EngineerActions boardIp={config.boardIp} />}

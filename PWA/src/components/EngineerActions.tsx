@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FormGrid } from '../layout/FormGrid';
 import {
   applyControllerSettings,
   setControlMode,
@@ -108,7 +109,7 @@ export default function EngineerActions({ boardIp }: Props) {
   };
 
   return (
-    <section className='section-grid'>
+    <FormGrid>
       <div className='panel'>
         <h2>Write Actions</h2>
         <p className='help-text'>
@@ -251,7 +252,7 @@ export default function EngineerActions({ boardIp }: Props) {
           <div className={cx('info-small', busy && 'text-warn')}>{status}</div>
         </div>
       </div>
-    </section>
+    </FormGrid>
   );
 }
 

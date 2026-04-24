@@ -43,7 +43,7 @@ This document explains the **purpose** of major PWA surfaces, how they stay **us
 - **Why it exists:** Answers “**what register / meter / inverter work is validated vs pending?**” and “**what control philosophy does the firmware implement?**” without bloating **Source Slots**.
 - **What it is not:** Not device binding — that stays in **Source Slots**. Not a second grid of forms — the UI uses a **narrow, single-column reader** so the mental model is “read,” not “tweak two panels side by side.”
 - **Who uses it:** Installers skim for context; manufacturers use it for traceability (`Modular_Yaml/*`, `docs/*`).
-- **Layout note:** Commissioning **forms** still use a two-column `section-grid` where side-by-side fields help (e.g. Site Identity). **Templates** deliberately opts out of that pattern.
+- **Layout note:** Commissioning **forms** use the React `FormGrid` layout (CSS module, responsive two-column → one). **Templates** use `DocReaderLayout` + `DocReaderSection` (single measure, documentation-first).
 
 ### Validation
 

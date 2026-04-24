@@ -35,6 +35,7 @@ One-time browser install: `npx playwright install chromium` (or `PW_CHANNEL=chro
 - Auth: `src/auth/AuthContext.tsx`, `LoginScreen.tsx`, `tabAccess.ts`
 - Fleet merge helper: `src/auth/gatewaySiteConfig.ts`
 - Main shell: `src/App.tsx`
+- Layout primitives: `src/layout/FormGrid.tsx`, `src/layout/DocReaderLayout.tsx` (CSS modules; commissioning grids are not global “section soup”)
 - DZX feature area: `src/features/dynamic-zero-export/`
 
 Full history and status: **`../docs/AGENT_IMPLEMENTATION_PLAN.md`**.
