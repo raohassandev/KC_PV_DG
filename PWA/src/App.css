@@ -1396,6 +1396,68 @@ button:focus:not(:focus-visible) {
   gap: clamp(10px, 1.6vw, 16px);
 }
 
+/* --- Documentation reader (Templates tab — not a settings grid) --- */
+.docs-reader {
+  max-width: min(40rem, 100%);
+  margin-inline: auto;
+  padding-bottom: clamp(8px, 2vw, 24px);
+}
+
+.docs-reader__header {
+  margin-bottom: clamp(14px, 2.2vw, 22px);
+}
+
+.docs-reader__kicker {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.docs-reader__title {
+  margin: 0 0 10px;
+  font-size: clamp(1.2rem, 3vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.docs-reader__lede {
+  margin: 0;
+  max-width: 38rem;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.docs-reader__sections {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vw, 18px);
+}
+
+.docs-reader__section.panel {
+  box-shadow: var(--shadow-sm);
+}
+
+.docs-reader__section-title {
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--text);
+}
+
+.docs-reader .list-block {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* --- Topology wizard (commissioning plan — Stage C) --- */
 .topology-page {
   display: flex;

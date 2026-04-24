@@ -1211,20 +1211,20 @@ function App() {
         )}
 
         {page === 'templates' && (
-          <section className='section-grid'>
-            <div className='panel card-full'>
-              <h2>Templates &amp; catalogs</h2>
-              <p className='help-text'>
-                This page is <strong>reference and validation context</strong>, not day-to-day device
-                assignment. Use <strong>Source Slots</strong> to pick which meter or inverter profile each
-                bus uses; use this page to see which register bundles are production-ready, which are
-                pending bench validation, and how PV-DG control modes are supposed to behave in firmware.
-                That split keeps installers in guided forms while preserving manufacturer traceability
-                (PDFs, YAML paths, and synch-control rules) in one place.
+          <article className='docs-reader' aria-label='Device catalogs and control documentation'>
+            <header className='docs-reader__header'>
+              <p className='docs-reader__kicker'>Documentation · read-only</p>
+              <h2 className='docs-reader__title'>Catalogs &amp; control reference</h2>
+              <p className='help-text docs-reader__lede'>
+                This tab is <strong>in-app documentation</strong>, not configuration. Bind devices in{' '}
+                <strong>Source Slots</strong>; use this single-column reader to see which meter and inverter
+                paths are validated vs pending, where PDFs and YAML live, and how synch-control is meant to
+                behave in firmware.
               </p>
-            </div>
-            <div className='panel'>
-              <h2>Rozwell / EM500 Template</h2>
+            </header>
+            <div className='docs-reader__sections'>
+            <div className='panel docs-reader__section'>
+              <h3 className='docs-reader__section-title'>Rozwell / EM500 Template</h3>
               <p className='help-text'>
                 Current validated meter path. Use this for grid meters and, if
                 needed, generator meters on the same RS485 bus.
@@ -1237,8 +1237,8 @@ function App() {
               </ul>
             </div>
 
-            <div className='panel'>
-              <h2>Huawei Template</h2>
+            <div className='panel docs-reader__section'>
+              <h3 className='docs-reader__section-title'>Huawei Template</h3>
               <p className='help-text'>
                 Keep this as pending until site inverter validation is done.
               </p>
@@ -1250,8 +1250,8 @@ function App() {
               </ul>
             </div>
 
-            <div className='panel'>
-              <h2>Energy analyzers (catalog)</h2>
+            <div className='panel docs-reader__section'>
+              <h3 className='docs-reader__section-title'>Energy analyzers (catalog)</h3>
               <p className='help-text'>
                 Additional grid / generator meters are selectable in Source
                 Slots. Each entry points at register manuals under{' '}
@@ -1266,8 +1266,8 @@ function App() {
               </ul>
             </div>
 
-            <div className='panel'>
-              <h2>Inverters (catalog)</h2>
+            <div className='panel docs-reader__section'>
+              <h3 className='docs-reader__section-title'>Inverters (catalog)</h3>
               <p className='help-text'>
                 SMA, SolarEdge, Growatt, Solax, Sungrow, Chint/CPS, Knox/ASW are
                 commissioning labels tied to PDFs under{' '}
@@ -1282,8 +1282,8 @@ function App() {
               </ul>
             </div>
 
-            <div className='panel card-full'>
-              <h2>PV-DG Synch Control Logic</h2>
+            <div className='panel docs-reader__section'>
+              <h3 className='docs-reader__section-title'>PV-DG Synch Control Logic</h3>
               <p className='help-text'>
                 {controlFieldHelp.controlLoop}{' '}
                 The PWA must show the same knobs the firmware uses: controller
@@ -1298,7 +1298,8 @@ function App() {
                 <li>Inverter write gate stays pending until site validation</li>
               </ul>
             </div>
-          </section>
+            </div>
+          </article>
         )}
 
         {page === 'review' && (

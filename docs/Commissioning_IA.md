@@ -5,7 +5,7 @@ This document explains the **purpose** of major PWA surfaces, how they stay **us
 ## Design principles
 
 1. **Operation vs Commissioning** — Operators see live status and safe controls; installers see topology, mapping, export, and fleet sync. Reduces accidental deep edits during routine monitoring.
-2. **Assignment vs documentation** — Anything that changes *what runs on site* lives in forms (Site Setup, Topology, Source Slots). Read-only or narrative context lives on **Templates** and inline help.
+2. **Assignment vs documentation** — Anything that changes *what runs on site* lives in forms (Site Setup, Topology, Source Slots). Read-only narrative lives in **Templates**, presented as **in-app documentation** (single-column reader), not as another multi-column “settings” dashboard.
 3. **Progressive disclosure** — Advanced slot catalog, hardware summary in the header, and YAML export are available but not on the default path.
 
 ---
@@ -37,12 +37,13 @@ This document explains the **purpose** of major PWA surfaces, how they stay **us
 - **Why:** This is the **authoritative assignment** of device types, Modbus transport (RTU vs TCP), unit IDs, and capacities per slot — what the exported `site.config` and operator views rely on.
 - **Configure:** Yes — primary installer workflow.
 
-### Templates *(purpose in depth)*
+### Templates *(documentation tab)*
 
-- **Why this page exists:** It answers “**what register / meter / inverter work is validated vs pending?**” and “**what control philosophy does the firmware implement?**” without mixing that narrative into every mapping card.
-- **What it is not:** It is **not** where you bind a physical bus to a device — that is **Source Slots**. Keeping catalogs separate avoids cluttering mapping UI with long bullet lists and PDF paths.
-- **Who uses it:** Installers skim it for context; manufacturers use it for traceability (which `Modular_Yaml/*` and `docs/*` paths apply).
-- **User-friendly?** Partially — it is informational. If something here is unclear, prefer tightening **help text on Source Slots** or **Validation** summaries over duplicating catalogs inside forms.
+- **What it is:** **Embedded documentation** in the commissioning shell — same role as a chapter in an install manual, not a standalone “app feature.”
+- **Why it exists:** Answers “**what register / meter / inverter work is validated vs pending?**” and “**what control philosophy does the firmware implement?**” without bloating **Source Slots**.
+- **What it is not:** Not device binding — that stays in **Source Slots**. Not a second grid of forms — the UI uses a **narrow, single-column reader** so the mental model is “read,” not “tweak two panels side by side.”
+- **Who uses it:** Installers skim for context; manufacturers use it for traceability (`Modular_Yaml/*`, `docs/*`).
+- **Layout note:** Commissioning **forms** still use a two-column `section-grid` where side-by-side fields help (e.g. Site Identity). **Templates** deliberately opts out of that pattern.
 
 ### Validation
 
