@@ -1,18 +1,26 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
 import { LocalDevPasswordHintDialog } from './auth/LocalDevPasswordHintDialog';
 import { isGatewayAuthEnabled } from './auth/gatewayEnv';
 import { LoginScreen } from './auth/LoginScreen';
-import { isTabAllowed, tabsForRole, type AppShellTab } from './auth/tabAccess';
 import { useAuth } from './auth/AuthContext';
 import { mergePwaSiteConfigFromGatewayPayload } from './auth/gatewaySiteConfig';
 import DashboardOverview from './components/DashboardOverview';
-import { HelpHint } from './components/HelpHint';
+import { NumberField, SelectField, TextField, ToggleField } from './components/commissioningFields';
 import EngineerActions from './components/EngineerActions';
+import { TopologyWizard } from './components/TopologyWizard';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
 import { generateSiteBundle } from './siteBundleGenerator';
+import {
+  discoveryCandidates,
+  fetchProvisionStatus,
+  probeBoard,
+  provisionWifi,
+  type BoardWhoami,
+  type ProvisionStatusResponse,
+} from './boardDiscovery';
 import {
   deriveZones as deriveCommissioningZones,
   loadProfile as loadCommissioningProfile,
@@ -25,40 +33,24 @@ import {
   type SourceSlot,
   type SiteConfig,
   controllerModeHelp,
+  controllerRuntimeModeHelp,
   controlFieldHelp,
   deviceOptionsForRole,
   deviceHelp,
   roleHelp,
   defaultSite,
 } from './siteTemplates';
+import {
+  pageById,
+  visiblePagesFor,
+  workspacesForRole,
+  type AppPageId,
+  type WorkspaceId,
+} from './navModel';
 
 function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
-
-type AppTab = AppShellTab;
-
-const TAB_ITEMS: Array<{
-  id: AppTab;
-  label: string;
-  /** Visual / semantic break before this item (desktop). */
-  groupStart?: boolean;
-  groupLabel?: string;
-}> = [
-  { id: 'product', label: 'Dynamic Zero Export' },
-  { id: 'dashboard', label: 'Dashboard', groupStart: true, groupLabel: 'Commissioning' },
-  { id: 'site', label: 'Site Setup' },
-  { id: 'topology', label: 'Topology' },
-  { id: 'slots', label: 'Source Slots' },
-  { id: 'templates', label: 'Templates' },
-  { id: 'review', label: 'Validation' },
-  { id: 'engineer', label: 'Engineer Actions', groupStart: true, groupLabel: 'Field ops' },
-  { id: 'yaml', label: 'YAML Preview' },
-];
-
-const TAB_LABEL: Record<AppTab, string> = Object.fromEntries(
-  TAB_ITEMS.map((t) => [t.id, t.label]),
-) as Record<AppTab, string>;
 
 function App() {
   const {
@@ -71,12 +63,23 @@ function App() {
   } = useAuth();
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [adminResetOpen, setAdminResetOpen] = useState(false);
-  const [tab, setTab] = useState<AppTab>('product');
+  const [workspace, setWorkspace] = useState<WorkspaceId>('operation');
+  const [page, setPage] = useState<AppPageId>('dashboard');
   const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [notice, setNotice] = useState<string | null>('Profile loaded');
+  const [boardProbeBusy, setBoardProbeBusy] = useState(false);
+  const [boardProbeResult, setBoardProbeResult] = useState<BoardWhoami | null>(null);
+  const [boardProbeError, setBoardProbeError] = useState<string | null>(null);
+  const [boardProbeManual, setBoardProbeManual] = useState('');
+  const [boardBaseUrl, setBoardBaseUrl] = useState<string>('');
+  const [provisionSsid, setProvisionSsid] = useState('');
+  const [provisionPassword, setProvisionPassword] = useState('');
+  const [provisionBusy, setProvisionBusy] = useState(false);
+  const [provisionResult, setProvisionResult] = useState<ProvisionStatusResponse | null>(null);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
   const [gatewaySiteList, setGatewaySiteList] = useState<Array<{ siteId: string }>>([]);
   const [gatewaySyncSiteId, setGatewaySyncSiteId] = useState(session.siteId);
   const [gatewaySyncBusy, setGatewaySyncBusy] = useState(false);
@@ -90,6 +93,13 @@ function App() {
       inverters: enabled.filter((s) => s.role === 'inverter').length,
     };
   }, [config.slots]);
+
+  const availableWorkspaces = useMemo(() => workspacesForRole(session.role), [session.role]);
+  const visiblePages = useMemo(
+    () => visiblePagesFor(session.role, workspace, config),
+    [session.role, workspace, config],
+  );
+  const activePage = useMemo(() => pageById(page), [page]);
 
   const siteBundle = useMemo(() => generateSiteBundle(config), [config]);
   const rootPackageManifest = siteBundle[0]?.content ?? '';
@@ -171,7 +181,7 @@ function App() {
   }, [siteGatewaySyncAvailable, fetchGateway]);
 
   useEffect(() => {
-    if (tab !== 'site' || !siteGatewaySyncAvailable) return;
+    if (page !== 'site' || !siteGatewaySyncAvailable) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -186,7 +196,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [tab, siteGatewaySyncAvailable, fetchGateway]);
+  }, [page, siteGatewaySyncAvailable, fetchGateway]);
 
   useEffect(() => {
     if (!notice) return;
@@ -195,25 +205,27 @@ function App() {
   }, [notice]);
 
   useEffect(() => {
-    document.title = `PV-DG · ${TAB_LABEL[tab]}`;
-  }, [tab]);
+    document.title = `PV-DG · ${activePage?.label ?? 'PV-DG'}`;
+  }, [activePage]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     mainRef.current?.focus({ preventScroll: true });
-  }, [tab]);
-
-  const visibleTabs = useMemo(
-    () => TAB_ITEMS.filter((item) => isTabAllowed(role, item.id)),
-    [role],
-  );
+  }, [workspace, page]);
 
   useEffect(() => {
     if (!authenticated) return;
-    if (!isTabAllowed(role, tab)) {
-      setTab(tabsForRole(role)[0] ?? 'product');
+    // Ensure workspace is allowed by role.
+    if (!availableWorkspaces.includes(workspace)) {
+      setWorkspace(availableWorkspaces[0] ?? 'operation');
+      return;
     }
-  }, [authenticated, role, tab]);
+    // Ensure selected page is still visible in this workspace.
+    const allowed = visiblePagesFor(session.role, workspace, config);
+    if (!allowed.some((p) => p.id === page)) {
+      setPage(allowed[0]?.id ?? 'dashboard');
+    }
+  }, [authenticated, availableWorkspaces, workspace, session.role, config, page]);
 
   if (!authenticated) {
     return <LoginScreen />;
@@ -232,9 +244,9 @@ function App() {
         >
           <defs>
             <linearGradient id='pvdg-solar-fade' x1='0%' y1='0%' x2='100%' y2='0%'>
-              <stop offset='0%' stopColor='#fbbf24' stopOpacity='0' />
-              <stop offset='35%' stopColor='#f59e0b' stopOpacity='0.55' />
-              <stop offset='70%' stopColor='#34d399' stopOpacity='0.35' />
+              <stop offset='0%' stopColor='#5eead4' stopOpacity='0' />
+              <stop offset='32%' stopColor='#0d9488' stopOpacity='0.38' />
+              <stop offset='68%' stopColor='#22d3ee' stopOpacity='0.28' />
               <stop offset='100%' stopColor='#38bdf8' stopOpacity='0' />
             </linearGradient>
           </defs>
@@ -263,23 +275,33 @@ function App() {
           Skip to main content
         </a>
         <header className='app-header'>
-          <div className='app-header-top'>
-            <div>
-              <div className='app-kicker'>PV-DG Smart Controller</div>
-              <h1 className='app-title'>{config.siteName}</h1>
-              <div className='app-subtitle'>
-                Board: {config.boardName} · IP: {config.boardIp} · Wi-Fi:{' '}
-                {config.wifiSsid || 'NA'}
-              </div>
-              <div className='app-context' aria-live='polite'>
-                <span className='app-context-label'>Workspace</span>
-                <span className='app-context-value' data-testid='workspace-active'>
-                  {TAB_LABEL[tab]}
-                </span>
+          <div className='app-header-row'>
+            <div className='app-header-leading'>
+              <span className='app-header-mark' aria-hidden='true' />
+              <div className='app-header-leading-text'>
+                <div className='app-header-product-row'>
+                  <span className='app-header-badge'>PV-DG</span>
+                  <span className='app-header-product-tagline'>Smart Controller</span>
+                </div>
+                <h1 className='app-title'>{config.siteName}</h1>
+                <div className='app-header-subrow'>
+                  <p className='app-header-connection'>
+                    <span className='app-header-connection-label'>Target</span>
+                    <span className='app-header-connection-value'>
+                      {config.boardName} · {config.boardIp} · Wi-Fi {config.wifiSsid || 'NA'}
+                    </span>
+                  </p>
+                  <div className='app-header-workspace' aria-live='polite'>
+                    <span className='app-header-workspace-label'>Workspace</span>
+                    <span className='app-header-workspace-value' data-testid='workspace-active'>
+                      {(workspace === 'operation' ? 'Operation' : 'Commissioning') +
+                        (activePage?.label ? ` · ${activePage.label}` : '')}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className='header-stats'>
+            <nav className='app-header-actions' aria-label='Account'>
               {gatewayAuth || import.meta.env.DEV ? (
                 <button
                   type='button'
@@ -308,41 +330,75 @@ function App() {
               >
                 Sign out
               </button>
-              <StatCard
-                label='Enabled Sources'
-                value={String(enabledCounts.total)}
-              />
-              <StatCard
-                label='Grid Meters'
-                value={String(enabledCounts.grids)}
-              />
-              <StatCard label='Generators' value={String(enabledCounts.gens)} />
-              <StatCard
-                label='Inverters'
-                value={String(enabledCounts.inverters)}
-              />
-            </div>
+            </nav>
           </div>
+          <dl className='app-header-metrics' aria-label='Enabled hardware summary'>
+            <div className='app-header-metric'>
+              <dt>Sources enabled</dt>
+              <dd>{enabledCounts.total}</dd>
+            </div>
+            <div className='app-header-metric'>
+              <dt>Grid meters</dt>
+              <dd>{enabledCounts.grids}</dd>
+            </div>
+            <div className='app-header-metric'>
+              <dt>Generators</dt>
+              <dd>{enabledCounts.gens}</dd>
+            </div>
+            <div className='app-header-metric'>
+              <dt>Inverters</dt>
+              <dd>{enabledCounts.inverters}</dd>
+            </div>
+          </dl>
         </header>
 
-        <nav className='tab-bar' aria-label='Application sections' data-testid='app-nav'>
-          {visibleTabs.map((item) => (
-            <div key={item.id} className='tab-bar-item'>
-              {item.groupStart ? (
-                <span className='tab-bar-sep' aria-hidden='true' />
-              ) : null}
-              <button
-                type='button'
-                onClick={() => setTab(item.id)}
-                className={cx('tab-button', tab === item.id && 'active')}
-                aria-current={tab === item.id ? 'page' : undefined}
-                title={item.groupLabel ? `${item.groupLabel}: ${item.label}` : item.label}
-              >
-                {item.label}
-              </button>
-            </div>
+        <nav className='workspace-nav' aria-label='Primary workspace' data-testid='workspace-nav'>
+          {availableWorkspaces.map((w) => (
+            <button
+              key={w}
+              type='button'
+              className={cx('workspace-button', workspace === w && 'active')}
+              aria-current={workspace === w ? 'page' : undefined}
+              onClick={() => {
+                setWorkspace(w);
+                const first = visiblePagesFor(session.role, w, config)[0]?.id;
+                if (first) setPage(first);
+              }}
+            >
+              {w === 'operation' ? 'Operation' : 'Commissioning'}
+            </button>
           ))}
         </nav>
+
+        <div className='subnav' aria-label='Workspace pages'>
+          <label className='subnav-select'>
+            <span className='sr-only'>Select page</span>
+            <select
+              value={page}
+              onChange={(e) => setPage(e.target.value as AppPageId)}
+              data-testid='subnav-select'
+            >
+              {visiblePages.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <nav className='subnav-pills' aria-label='Pages' data-testid='subnav-pills'>
+            {visiblePages.map((p) => (
+              <button
+                key={p.id}
+                type='button'
+                className={cx('subnav-pill', page === p.id && 'active')}
+                aria-current={page === p.id ? 'page' : undefined}
+                onClick={() => setPage(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
         {notice ? (
           <div className='notice-bar' role='status' aria-live='polite'>
@@ -386,10 +442,10 @@ function App() {
           className='app-main'
           tabIndex={-1}
         >
-        {tab === 'product' && <ProductArea />}
-        {tab === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
+        {page === 'dzx' && <ProductArea />}
+        {page === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
-        {tab === 'site' && (
+        {page === 'site' && (
           <section className='section-grid'>
             {siteGatewaySyncAvailable ? (
               <div className='panel'>
@@ -528,7 +584,7 @@ function App() {
                 />
                 <TextField
                   label='Board IP'
-                  help='Local board IP used by the PWA to read and write values.'
+                  help='Local board IP used by the PWA to read and write values. Saved automatically.'
                   value={config.boardIp}
                   onChange={(v) => updateSiteField('boardIp', v)}
                 />
@@ -554,13 +610,309 @@ function App() {
             </div>
 
             <div className='panel'>
+              <h2>Find Controller (no OLED)</h2>
+              <p className='help-text'>
+                AP mode uses <code>192.168.4.1</code>. LAN mode uses <code>{config.boardName}.local</code>{' '}
+                (mDNS) or the configured board IP. This works with the future <code>/whoami</code>{' '}
+                contract and falls back to the ESPHome <code>/json</code> endpoint today.
+              </p>
+              <div className='form-grid'>
+                <TextField
+                  label='Manual Base URL (Advanced)'
+                  help='Example: http://192.168.0.100 or http://pv-dg-controller.local. Use “Apply to Board IP” to save it.'
+                  value={boardProbeManual}
+                  onChange={setBoardProbeManual}
+                />
+              </div>
+              <div className='panel-actions u-mt-md'>
+                {discoveryCandidates(config.boardName).map((c) => (
+                  <button
+                    key={c.label}
+                    type='button'
+                    className='btn btn--secondary'
+                    disabled={boardProbeBusy}
+                    onClick={async () => {
+                      setBoardProbeBusy(true);
+                      setBoardProbeError(null);
+                      setBoardProbeResult(null);
+                      setProvisionError(null);
+                      setProvisionResult(null);
+                      try {
+                        const who = await probeBoard(c.baseUrl);
+                        if (!who) {
+                          setBoardProbeError('No response. Confirm AP/LAN connectivity.');
+                          return;
+                        }
+                        setBoardProbeResult(who);
+                        setBoardBaseUrl(c.baseUrl);
+                        setNotice(`Found controller at ${c.baseUrl}`);
+                      } finally {
+                        setBoardProbeBusy(false);
+                      }
+                    }}
+                  >
+                    Probe {c.label}
+                  </button>
+                ))}
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  disabled={boardProbeBusy || !config.boardIp.trim()}
+                  onClick={async () => {
+                    const baseUrl = `http://${config.boardIp.trim()}`;
+                    setBoardProbeBusy(true);
+                    setBoardProbeError(null);
+                    setBoardProbeResult(null);
+                    setProvisionError(null);
+                    setProvisionResult(null);
+                    try {
+                      const who = await probeBoard(baseUrl);
+                      if (!who) {
+                        setBoardProbeError('No response at board IP.');
+                        return;
+                      }
+                      setBoardProbeResult(who);
+                      setBoardBaseUrl(baseUrl);
+                      setNotice(`Found controller at ${baseUrl}`);
+                    } finally {
+                      setBoardProbeBusy(false);
+                    }
+                  }}
+                >
+                  Probe board IP
+                </button>
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  disabled={boardProbeBusy}
+                  onClick={async () => {
+                    const current = config.boardIp.trim();
+                    const subnetMatch = current.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/);
+                    const subnet = subnetMatch?.[1] ?? '192.168.0';
+                    setBoardProbeBusy(true);
+                    setBoardProbeError(null);
+                    setBoardProbeResult(null);
+                    setProvisionError(null);
+                    setProvisionResult(null);
+                    try {
+                      const res = await fetch(
+                        `/api/board/scan?subnet=${encodeURIComponent(subnet)}&hosts=${encodeURIComponent(
+                          '100,111,101,102,103,1,10,50,200',
+                        )}`,
+                        { cache: 'no-store', headers: { accept: 'application/json' } },
+                      );
+                      const j = (await res.json().catch(() => null)) as
+                        | { ok?: boolean; baseUrl?: string | null }
+                        | null;
+                      if (!res.ok || !j?.ok || !j.baseUrl) {
+                        setBoardProbeError(`No controller found on ${subnet}.x (quick scan).`);
+                        return;
+                      }
+                      const foundIp = j.baseUrl.replace(/^http:\/\//, '').replace(/\/+$/, '');
+                      updateSiteField('boardIp', foundIp);
+                      const who = await probeBoard(j.baseUrl);
+                      if (who) {
+                        setBoardProbeResult(who);
+                        setBoardBaseUrl(j.baseUrl);
+                      }
+                      setNotice(`Found controller at ${j.baseUrl} (applied to Board IP)`);
+                    } finally {
+                      setBoardProbeBusy(false);
+                    }
+                  }}
+                >
+                  Scan LAN (quick)
+                </button>
+                <button
+                  type='button'
+                  className='btn btn--primary'
+                  disabled={boardProbeBusy || !boardProbeManual.trim()}
+                  onClick={async () => {
+                    const baseUrl = boardProbeManual.trim();
+                    setBoardProbeBusy(true);
+                    setBoardProbeError(null);
+                    setBoardProbeResult(null);
+                    setProvisionError(null);
+                    setProvisionResult(null);
+                    try {
+                      const who = await probeBoard(baseUrl);
+                      if (!who) {
+                        setBoardProbeError('No response at manual URL.');
+                        return;
+                      }
+                      setBoardProbeResult(who);
+                      setBoardBaseUrl(baseUrl);
+                      setNotice(`Found controller at ${baseUrl}`);
+                    } finally {
+                      setBoardProbeBusy(false);
+                    }
+                  }}
+                >
+                  Probe manual URL
+                </button>
+                <button
+                  type='button'
+                  className='btn btn--secondary'
+                  disabled={boardProbeBusy || !boardProbeManual.trim()}
+                  onClick={() => {
+                    const raw = boardProbeManual.trim();
+                    const normalized = raw.replace(/\/+$/, '');
+                    const ipOnly = normalized.replace(/^https?:\/\//, '');
+                    updateSiteField('boardIp', ipOnly);
+                    setNotice(`Board IP saved as ${ipOnly}`);
+                  }}
+                >
+                  Apply manual URL → Board IP
+                </button>
+              </div>
+
+              {boardProbeError ? <p className='help-text u-mt-sm'>{boardProbeError}</p> : null}
+              {boardProbeResult ? (
+                <div className='u-mt-sm'>
+                  <div className='feature-shell-summary'>
+                    <span>Device: {boardProbeResult.deviceName}</span>
+                    {boardProbeResult.fwVersion ? <span>FW: {boardProbeResult.fwVersion}</span> : null}
+                    {boardProbeResult.mac ? <span>MAC: {boardProbeResult.mac}</span> : null}
+                  </div>
+                  <div className='u-mt-sm'>
+                    <div className='form-grid'>
+                      <TextField
+                        label='Provision Wi-Fi SSID (AP mode)'
+                        help='When the board is in AP mode, send SSID/password to join the site LAN. If unsupported, use the ESPHome captive portal link below.'
+                        value={provisionSsid}
+                        onChange={setProvisionSsid}
+                      />
+                      <TextField
+                        label='Provision Wi-Fi Password'
+                        help='Sent to /provision_wifi. Store securely on-device (future firmware).'
+                        value={provisionPassword}
+                        onChange={setProvisionPassword}
+                      />
+                    </div>
+                    <div className='panel-actions u-mt-md'>
+                      <button
+                        type='button'
+                        className='btn btn--primary'
+                        disabled={
+                          provisionBusy ||
+                          !boardBaseUrl.trim() ||
+                          !provisionSsid.trim() ||
+                          !provisionPassword
+                        }
+                        onClick={async () => {
+                          setProvisionBusy(true);
+                          setProvisionError(null);
+                          setProvisionResult(null);
+                          try {
+                            const res = await provisionWifi(boardBaseUrl, {
+                              ssid: provisionSsid.trim(),
+                              password: provisionPassword,
+                            });
+                            if (!res?.accepted) {
+                              setProvisionError(
+                                'Provisioning not supported on this firmware (or rejected). Use captive portal.',
+                              );
+                              return;
+                            }
+                            setNotice(`Provisioning started (${res.jobId})`);
+                            const start = Date.now();
+                            let last: ProvisionStatusResponse | null = null;
+                            while (Date.now() - start < 12000) {
+                              // eslint-disable-next-line no-await-in-loop
+                              const s = await fetchProvisionStatus(boardBaseUrl);
+                              if (s) {
+                                last = s;
+                                setProvisionResult(s);
+                                if (s.state === 'connected' || s.state === 'failed') break;
+                              }
+                              // eslint-disable-next-line no-await-in-loop
+                              await new Promise((r) => setTimeout(r, 700));
+                            }
+                            if (!last) {
+                              setProvisionError('No provisioning status response. Use captive portal.');
+                            }
+                          } finally {
+                            setProvisionBusy(false);
+                          }
+                        }}
+                      >
+                        Provision Wi-Fi
+                      </button>
+                      <button
+                        type='button'
+                        className='btn btn--secondary'
+                        disabled={provisionBusy || !boardBaseUrl.trim()}
+                        onClick={async () => {
+                          setProvisionBusy(true);
+                          setProvisionError(null);
+                          try {
+                            const s = await fetchProvisionStatus(boardBaseUrl);
+                            if (!s) {
+                              setProvisionError('No provisioning status response.');
+                              return;
+                            }
+                            setProvisionResult(s);
+                          } finally {
+                            setProvisionBusy(false);
+                          }
+                        }}
+                      >
+                        Refresh status
+                      </button>
+                    </div>
+                    {provisionError ? <p className='help-text u-mt-sm'>{provisionError}</p> : null}
+                    {provisionResult ? (
+                      <p className='help-text u-mt-sm'>
+                        Provision status: <strong>{provisionResult.state}</strong>
+                        {provisionResult.message ? ` — ${provisionResult.message}` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className='help-text'>
+                    AP captive portal:{' '}
+                    <a href='http://192.168.4.1' target='_blank' rel='noreferrer'>
+                      http://192.168.4.1
+                    </a>
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className='panel'>
               <h2>Control Defaults</h2>
               <p className='help-text'>
                 These settings define the PV-DG synch-control behavior.
               </p>
               <div className='form-grid'>
                 <SelectField
-                  label='Controller Mode'
+                  label='Operating Mode'
+                  help={controllerRuntimeModeHelp[config.controllerRuntimeMode]}
+                  value={config.controllerRuntimeMode}
+                  onChange={(v) =>
+                    updateSiteField(
+                      'controllerRuntimeMode',
+                      v as SiteConfig['controllerRuntimeMode'],
+                    )
+                  }
+                  options={[
+                    ['sync_controller', 'sync_controller'],
+                    ['dzx_virtual_meter', 'dzx_virtual_meter'],
+                  ]}
+                />
+                <TextField
+                  label='Sync Profile ID'
+                  help='Profile ID for inverter write control (Sync mode).'
+                  value={config.syncProfileId}
+                  onChange={(v) => updateSiteField('syncProfileId', v)}
+                />
+                <TextField
+                  label='DZX Profile ID'
+                  help='Profile ID for virtual meter emulation (DZX mode).'
+                  value={config.dzxProfileId}
+                  onChange={(v) => updateSiteField('dzxProfileId', v)}
+                />
+                <SelectField
+                  label='Sync Policy Mode'
                   help={controllerModeHelp[config.controllerMode]}
                   value={config.controllerMode}
                   onChange={(v) =>
@@ -634,145 +986,11 @@ function App() {
           </section>
         )}
 
-        {tab === 'topology' && (
-          <section className='section-grid'>
-            <div className='panel'>
-              <h2>Topology Wizard</h2>
-              <p className='help-text'>
-                Choose the electrical shape first. The rest of the policy is
-                derived from this structure.
-              </p>
-              <div className='form-grid'>
-                <SelectField
-                  label='Topology Type'
-                  help='Select the bus and source architecture used by the site.'
-                  value={config.topologyType}
-                  onChange={(v) =>
-                    updateSiteField(
-                      'topologyType',
-                      v as SiteConfig['topologyType'],
-                    )
-                  }
-                  options={[
-                    ['SINGLE_BUS', 'SINGLE_BUS'],
-                    ['SINGLE_BUS_MULTI_GEN', 'SINGLE_BUS_MULTI_GEN'],
-                    ['DUAL_BUS', 'DUAL_BUS'],
-                    ['DUAL_BUS_SEPARATE', 'DUAL_BUS_SEPARATE'],
-                    ['DUAL_BUS_COMBINED', 'DUAL_BUS_COMBINED'],
-                  ]}
-                />
-                <ToggleField
-                  label='Net Metering Enabled'
-                  help='Allow grid-connected full production or export-setpoint operation.'
-                  checked={config.netMeteringEnabled}
-                  onChange={(v) => updateSiteField('netMeteringEnabled', v)}
-                />
-                <SelectField
-                  label='Grid Operating Mode'
-                  help='Defines how the controller behaves when the grid is active.'
-                  value={config.gridOperatingMode}
-                  onChange={(v) =>
-                    updateSiteField(
-                      'gridOperatingMode',
-                      v as SiteConfig['gridOperatingMode'],
-                    )
-                  }
-                  options={[
-                    ['full_production', 'full_production'],
-                    ['export_setpoint', 'export_setpoint'],
-                    ['zero_export', 'zero_export'],
-                  ]}
-                />
-                <NumberField
-                  label='Export Setpoint kW'
-                  help={controlFieldHelp.exportSetpointKw}
-                  value={config.exportSetpointKw}
-                  onChange={(v) => updateSiteField('exportSetpointKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Zero Export Deadband kW'
-                  help={controlFieldHelp.zeroExportDeadbandKw}
-                  value={config.zeroExportDeadbandKw}
-                  onChange={(v) => updateSiteField('zeroExportDeadbandKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Reverse Margin kW'
-                  help={controlFieldHelp.reverseMarginKw}
-                  value={config.reverseMarginKw}
-                  onChange={(v) => updateSiteField('reverseMarginKw', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Ramp Up %'
-                  help={controlFieldHelp.rampUpPct}
-                  value={config.rampUpPct}
-                  onChange={(v) => updateSiteField('rampUpPct', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Ramp Down %'
-                  help={controlFieldHelp.rampDownPct}
-                  value={config.rampDownPct}
-                  onChange={(v) => updateSiteField('rampDownPct', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Fast Drop %'
-                  help={controlFieldHelp.fastDropPct}
-                  value={config.fastDropPct}
-                  onChange={(v) => updateSiteField('fastDropPct', v)}
-                  step={0.1}
-                />
-                <NumberField
-                  label='Meter Timeout s'
-                  help={controlFieldHelp.meterTimeoutSec}
-                  value={config.meterTimeoutSec}
-                  onChange={(v) => updateSiteField('meterTimeoutSec', v)}
-                />
-                <NumberField
-                  label='Control Interval s'
-                  help={controlFieldHelp.controlIntervalSec}
-                  value={config.controlIntervalSec}
-                  onChange={(v) => updateSiteField('controlIntervalSec', v)}
-                />
-                <ToggleField
-                  label='Generator Override'
-                  help='Allow commissioning to override the default generator minimum-load values.'
-                  checked={config.generatorMinimumOverrideEnabled}
-                  onChange={(v) =>
-                    updateSiteField('generatorMinimumOverrideEnabled', v)
-                  }
-                />
-                <ToggleField
-                  label='Tie Signal Present'
-                  help='Needed for dual-bus sites that can be combined or separated.'
-                  checked={config.tieSignalPresent}
-                  onChange={(v) => updateSiteField('tieSignalPresent', v)}
-                />
-                <SelectField
-                  label='Fail-safe Mode'
-                  help='Choose the safe fallback when data or topology is invalid.'
-                  value={config.fallbackMode}
-                  onChange={(v) =>
-                    updateSiteField(
-                      'fallbackMode',
-                      v as SiteConfig['fallbackMode'],
-                    )
-                  }
-                  options={[
-                    ['hold_last_safe', 'hold_last_safe'],
-                    ['reduce_to_safe_min', 'reduce_to_safe_min'],
-                    ['manual_bypass', 'manual_bypass'],
-                  ]}
-                />
-              </div>
-            </div>
-          </section>
+        {page === 'topology' && (
+          <TopologyWizard config={config} updateSiteField={updateSiteField} />
         )}
 
-        {tab === 'slots' && (
+        {page === 'slots' && (
           <section className='section-grid'>
             <div className='panel'>
               <h2>Source Mapping</h2>
@@ -860,7 +1078,7 @@ function App() {
           </section>
         )}
 
-        {tab === 'templates' && (
+        {page === 'templates' && (
           <section className='section-grid'>
             <div className='panel'>
               <h2>Rozwell / EM500 Template</h2>
@@ -940,7 +1158,7 @@ function App() {
           </section>
         )}
 
-        {tab === 'review' && (
+        {page === 'review' && (
           <section className='section-grid'>
             <div className='panel card-full'>
               <h2>Validation Summary</h2>
@@ -1087,9 +1305,9 @@ function App() {
           </section>
         )}
 
-        {tab === 'engineer' && <EngineerActions boardIp={config.boardIp} />}
+        {page === 'engineer' && <EngineerActions boardIp={config.boardIp} />}
 
-        {tab === 'yaml' && (
+        {page === 'yaml' && (
           <section className='panel'>
             <div className='panel-header'>
               <h2>YAML preview</h2>
@@ -1166,15 +1384,6 @@ function slotSummaryHelp(slot: SourceSlot) {
   return 'Commissioning slot with no assigned role.';
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className='stat-card'>
-      <div className='stat-label'>{label}</div>
-      <div className='stat-value'>{value}</div>
-    </div>
-  );
-}
-
 function MappingCard({
   slot,
   updateSlot,
@@ -1227,12 +1436,43 @@ function MappingCard({
             ['inverter', 'inverter'],
           ]}
         />
+        <SelectField
+          label='Transport'
+          help='How this slot is read on the LAN: RS485 Modbus RTU today, or Modbus TCP/IP when board/gateway supports it.'
+          value={slot.transport || 'rtu'}
+          onChange={(v) =>
+            updateSlot(slot.id, {
+              transport: v as 'rtu' | 'tcp',
+              tcpPort: v === 'tcp' ? slot.tcpPort ?? 502 : slot.tcpPort,
+            })
+          }
+          options={[
+            ['rtu', 'rtu (RS485)'],
+            ['tcp', 'tcp (Modbus TCP/IP)'],
+          ]}
+        />
         <NumberField
-          label='Modbus ID'
-          help='Slave ID used on the RS485 bus.'
+          label='Unit ID'
+          help='Modbus unit/slave ID (RTU slave ID or Modbus TCP unit identifier).'
           value={slot.modbusId}
           onChange={(v) => updateSlot(slot.id, { modbusId: v })}
         />
+        {slot.transport === 'tcp' ? (
+          <>
+            <TextField
+              label='TCP Host'
+              help='IP or hostname of the Modbus TCP device (e.g., PC simulator or meter).'
+              value={slot.tcpHost || ''}
+              onChange={(v) => updateSlot(slot.id, { tcpHost: v })}
+            />
+            <NumberField
+              label='TCP Port'
+              help='Modbus TCP port (default 502).'
+              value={slot.tcpPort ?? 502}
+              onChange={(v) => updateSlot(slot.id, { tcpPort: v })}
+            />
+          </>
+        ) : null}
         <NumberField
           label='Capacity kW'
           help='Nominal capacity used for documentation and sizing.'
@@ -1322,136 +1562,6 @@ ${file.content}`,
   link.download = `${siteName.replace(/\s+/g, '_').toLowerCase()}_site_bundle.txt`;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-function TextField({
-  label,
-  help,
-  value,
-  onChange,
-}: {
-  label: string;
-  help?: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const hintId = useId();
-  return (
-    <label className='field'>
-      <span className='field-label field-label--with-hint'>
-        <span className='field-label-text'>{label}</span>
-        {help ? <HelpHint id={hintId} text={help} /> : null}
-      </span>
-      <input
-        className='field-input'
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-describedby={help ? hintId : undefined}
-      />
-    </label>
-  );
-}
-
-function NumberField({
-  label,
-  help,
-  value,
-  onChange,
-  step = 1,
-}: {
-  label: string;
-  help?: string;
-  value: number;
-  onChange: (v: number) => void;
-  step?: number;
-}) {
-  const hintId = useId();
-  return (
-    <label className='field'>
-      <span className='field-label field-label--with-hint'>
-        <span className='field-label-text'>{label}</span>
-        {help ? <HelpHint id={hintId} text={help} /> : null}
-      </span>
-      <input
-        className='field-input'
-        type='number'
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-describedby={help ? hintId : undefined}
-      />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  help,
-  value,
-  onChange,
-  options,
-  dataTestId,
-}: {
-  label: string;
-  help?: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<[string, string]>;
-  dataTestId?: string;
-}) {
-  const hintId = useId();
-  return (
-    <label className='field'>
-      <span className='field-label field-label--with-hint'>
-        <span className='field-label-text'>{label}</span>
-        {help ? <HelpHint id={hintId} text={help} /> : null}
-      </span>
-      <select
-        className='field-select'
-        value={value}
-        data-testid={dataTestId}
-        onChange={(e) => onChange(e.target.value)}
-        aria-describedby={help ? hintId : undefined}
-      >
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function ToggleField({
-  label,
-  help,
-  checked,
-  onChange,
-}: {
-  label: string;
-  help?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  const hintId = useId();
-  return (
-    <label className='field'>
-      <span className='field-label field-label--with-hint'>
-        <span className='field-label-text'>{label}</span>
-        {help ? <HelpHint id={hintId} text={help} /> : null}
-      </span>
-      <button
-        type='button'
-        onClick={() => onChange(!checked)}
-        className={cx('toggle-button', checked ? 'enabled' : 'disabled')}
-        aria-pressed={checked}
-        aria-describedby={help ? hintId : undefined}
-      >
-        {checked ? 'Enabled' : 'Disabled'}
-      </button>
-    </label>
-  );
 }
 
 export default App;

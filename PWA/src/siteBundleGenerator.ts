@@ -18,9 +18,14 @@ function enabledPackages(config: SiteConfig) {
       .filter((slot) => slot.enabled && slot.deviceType !== 'none')
       .map((slot) => slot.deviceType),
   );
+  const needsTcp = config.slots.some((slot) => slot.enabled && slot.transport === 'tcp');
 
   return [
+    // Keep RTU (RS485) base as default. TCP is added as an optional package so RTU+TCP can coexist.
     'base_board: !include ../Modular_Yaml/base_board.yaml',
+    ...(needsTcp
+      ? ['modbus_tcp: !include ../Modular_Yaml/modbus_tcp_manager.yaml']
+      : []),
     'io_board: !include ../Modular_Yaml/io_board.yaml',
     'service_ui: !include ../Modular_Yaml/service_ui.yaml',
     'meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml',
@@ -40,7 +45,10 @@ function slotSummary(config: SiteConfig) {
     enabled: ${slot.enabled}
     device_type: ${quote(slot.deviceType)}
     role: ${quote(slot.role)}
+    transport: ${quote(slot.transport || 'rtu')}
     modbus_id: ${slot.modbusId}
+    tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+    tcp_port: ${slot.tcpPort ?? 502}
     capacity_kw: ${slot.capacityKw}
     network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
     bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
@@ -63,7 +71,10 @@ ${gridSlots
   .map(
     (slot) => `    - id: ${quote(slot.id)}
       label: ${quote(slot.label)}
+      transport: ${quote(slot.transport || 'rtu')}
       modbus_id: ${slot.modbusId}
+      tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+      tcp_port: ${slot.tcpPort ?? 502}
       device_type: ${quote(slot.deviceType)}
       capacity_kw: ${slot.capacityKw}
       network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
@@ -75,7 +86,10 @@ ${generatorSlots
   .map(
     (slot) => `    - id: ${quote(slot.id)}
       label: ${quote(slot.label)}
+      transport: ${quote(slot.transport || 'rtu')}
       modbus_id: ${slot.modbusId}
+      tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+      tcp_port: ${slot.tcpPort ?? 502}
       device_type: ${quote(slot.deviceType)}
       capacity_kw: ${slot.capacityKw}
       network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
@@ -89,7 +103,10 @@ ${inverterSlots
   .map(
     (slot) => `  - id: ${quote(slot.id)}
     label: ${quote(slot.label)}
+    transport: ${quote(slot.transport || 'rtu')}
     modbus_id: ${slot.modbusId}
+    tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+    tcp_port: ${slot.tcpPort ?? 502}
     device_type: ${quote(slot.deviceType)}
     rated_kw: ${slot.capacityKw}
     network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
@@ -159,10 +176,14 @@ ${policyWarnings(config)
 
 function manifestYaml(config: SiteConfig): string {
   const packages = enabledPackages(config);
+  const needsTcp = config.slots.some((slot) => slot.enabled && slot.transport === 'tcp');
+  const firstTcp = config.slots.find((slot) => slot.enabled && slot.transport === 'tcp');
 
   return `substitutions:
   devicename: ${quote(config.boardName)}
   friendly_name: ${quote(config.siteName)}
+${needsTcp ? `  modbus_tcp_host: ${quote(firstTcp?.tcpHost?.trim() || '192.168.0.10')}
+  modbus_tcp_port: ${String(firstTcp?.tcpPort ?? 502)}` : ''}
 
 packages:
 ${packages.map((line) => `  ${line}`).join('\n')}
@@ -177,6 +198,9 @@ function configYaml(config: SiteConfig): string {
   wifi_ssid: ${quote(config.wifiSsid)}
   customer_name: ${quote(config.customerName)}
   timezone: ${quote(config.timezone)}
+  controller_runtime_mode: ${quote(config.controllerRuntimeMode)}
+  sync_profile_id: ${quote(config.syncProfileId)}
+  dzx_profile_id: ${quote(config.dzxProfileId)}
 
 topology:
   type: ${config.topologyType}

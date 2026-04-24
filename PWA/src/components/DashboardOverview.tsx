@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchBoardSnapshot } from '../boardApi';
-import { mockBoardData } from '../mockBoardData';
 
 type MetricStatus = 'ok' | 'warn' | 'offline' | 'idle';
 
@@ -50,17 +49,36 @@ function inverterLaneIdleFromStatus(status: string): boolean {
 
 function buildInitialData(): LiveUiData {
   return {
-    boardName: mockBoardData.boardName,
-    boardIp: '192.168.0.111',
-    wifiSsid: mockBoardData.wifiSsid,
-    controllerState: mockBoardData.controllerState,
+    boardName: 'pv-dg-controller',
+    boardIp: '0.0.0.0',
+    wifiSsid: 'NA',
+    controllerState: 'NA',
     updatedAt: new Date().toLocaleTimeString(),
     inverterLaneIdle: true,
-    summary: { ...mockBoardData.summary },
-    sources: mockBoardData.sources.map((s) => ({
-      ...s,
-      metrics: s.metrics.map((m) => ({ ...m })),
-    })),
+    summary: {
+      gridKw: 0,
+      pvKw: 0,
+      commandKw: 0,
+      frequencyHz: 0,
+      pf: 0,
+      importKwh: 0,
+    },
+    sources: [
+      {
+        id: 'grid_1',
+        name: 'Grid Meter 1',
+        enabled: true,
+        online: false,
+        metrics: [],
+      },
+      {
+        id: 'inv_1',
+        name: 'Inverter 1',
+        enabled: true,
+        online: false,
+        metrics: [],
+      },
+    ],
   };
 }
 
@@ -132,14 +150,12 @@ export default function DashboardOverview({ boardIp }: Props) {
     ...buildInitialData(),
     boardIp,
   }));
-  const [connectionMode, setConnectionMode] = useState<'live' | 'mock'>('mock');
   const [fetchBusy, setFetchBusy] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const firstBoardFetch = useRef(true);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, boardIp }));
-    setConnectionMode('mock');
     setFetchError(null);
     firstBoardFetch.current = true;
   }, [boardIp]);
@@ -320,14 +336,16 @@ export default function DashboardOverview({ boardIp }: Props) {
             }),
           };
         });
-
-        setConnectionMode('live');
       } catch {
         if (!mounted) return;
-        setConnectionMode('mock');
-        setFetchError(
-          'Board HTTP request failed — showing demo values. Confirm IP, Wi-Fi, and that the device API is reachable.',
-        );
+        setFetchError('Board HTTP request failed. Confirm Board IP and LAN connectivity.');
+        setData((prev) => ({
+          ...prev,
+          updatedAt: new Date().toLocaleTimeString(),
+          sources: prev.sources.map((s) =>
+            s.enabled ? { ...s, online: false, metrics: s.metrics.map((m) => ({ ...m, status: 'offline' })) } : s,
+          ),
+        }));
       } finally {
         if (mounted) {
           setFetchBusy(false);
@@ -351,25 +369,58 @@ export default function DashboardOverview({ boardIp }: Props) {
         <div className='card-header'>
           <div>
             <h2>Live Overview</h2>
-            <p>
-              Board: {data.boardName} · IP: {data.boardIp} · Wi-Fi:{' '}
-              {data.wifiSsid}
-            </p>
+            <div className='dashboard-chips' aria-label='Live target summary'>
+              <span className='dashboard-chip'>Board {data.boardName}</span>
+              <span className='dashboard-chip'>IP {data.boardIp}</span>
+              {data.wifiSsid && data.wifiSsid !== 'NA' ? (
+                <span className='dashboard-chip'>Wi‑Fi {data.wifiSsid}</span>
+              ) : null}
+            </div>
           </div>
           <div className='card-header-meta'>
             <span
               className={cx(
                 'live-pill',
-                connectionMode === 'live' ? 'live-pill--live' : 'live-pill--demo',
+                fetchError ? 'live-pill--demo' : 'live-pill--live',
               )}
               data-testid='dashboard-connection-pill'
             >
-              {connectionMode === 'live' ? 'Live data' : 'Demo data'}
+              {fetchError ? 'Offline' : 'Live data'}
             </span>
             <span className={cx('updated-pill', fetchBusy && 'updated-pill--busy')}>
               {fetchBusy ? 'Refreshing…' : `Updated: ${data.updatedAt}`}
             </span>
           </div>
+        </div>
+
+        <div className='dashboard-status-strip' aria-label='Controller status'>
+          <span className='dashboard-strip-item mono'>{data.controllerState}</span>
+          <span
+            className={cx(
+              'dashboard-strip-item',
+              'dashboard-strip-pill',
+              fetchError ? 'strip-offline' : 'strip-online',
+            )}
+          >
+            Board {fetchError ? 'Offline' : 'Online'}
+          </span>
+          <span
+            className={cx(
+              'dashboard-strip-item',
+              'dashboard-strip-pill',
+              data.sources.find((s) => s.id === 'grid_1')?.online ? 'strip-online' : 'strip-offline',
+            )}
+          >
+            Grid {data.sources.find((s) => s.id === 'grid_1')?.online ? 'Online' : 'Offline'}
+          </span>
+          <span className={cx('dashboard-strip-item', 'dashboard-strip-pill', 'strip-neutral')}>
+            Inverter{' '}
+            {data.sources.find((s) => s.id === 'inv_1')?.online
+              ? 'Online'
+              : data.inverterLaneIdle
+                ? 'Not connected'
+                : 'Offline'}
+          </span>
         </div>
 
         {fetchError ? (
@@ -393,7 +444,7 @@ export default function DashboardOverview({ boardIp }: Props) {
         <div
           className={cx(
             'metric-grid',
-            connectionMode === 'live' && 'metric-grid--live',
+            !fetchError && 'metric-grid--live',
           )}
         >
           <MetricCard
@@ -436,43 +487,6 @@ export default function DashboardOverview({ boardIp }: Props) {
             unit='kWh'
             tone='energy'
           />
-        </div>
-      </div>
-
-      <div className='card'>
-        <div className='card-header'>
-          <div>
-            <h2>Controller Status</h2>
-          </div>
-        </div>
-
-        <div className='status-stack'>
-          <div className='info-box'>
-            <div className='info-label'>State</div>
-            <div className='info-value'>{data.controllerState}</div>
-          </div>
-
-          <div className='info-box'>
-            <div className='info-label'>Board Reachability</div>
-            <div
-              className={cx(
-                'info-value',
-                connectionMode === 'live' ? 'text-good' : 'text-warn',
-              )}
-            >
-              {connectionMode === 'live' ? 'Live Connected' : 'Mock Mode'}
-            </div>
-            <div className='info-small'>Target IP: {boardIp}</div>
-          </div>
-
-          <div className='info-box'>
-            <div className='info-label'>Product direction</div>
-            <div className='info-small'>
-              Commissioning app: site layout, device templates, Modbus IDs, then
-              generated YAML instead of hand-editing every site for each
-              install.
-            </div>
-          </div>
         </div>
       </div>
 

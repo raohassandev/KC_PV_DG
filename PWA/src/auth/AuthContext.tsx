@@ -81,8 +81,31 @@ function syncDzxSession(session: SessionState) {
   }
 }
 
-const gatewayRaw = viteEnv('VITE_GATEWAY_URL');
-const gatewayUrl = gatewayRaw ? gatewayRaw.replace(/\/$/, '') : '';
+function normalizeGatewayUrl(raw: string): string {
+  return raw.replace(/\/$/, '');
+}
+
+async function detectSameOriginGateway(timeoutMs = 700): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const ctrl = new AbortController();
+  const t = window.setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch('/api/health', {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const j = (await res.json().catch(() => null)) as { ok?: boolean; service?: string } | null;
+    if (!j?.ok) return null;
+    if (j.service && j.service !== 'kc-pvdg-gateway') return null;
+    return window.location.origin;
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(t);
+  }
+}
 
 const devPasswords: Record<LoginChannel, string> = {
   user: viteEnv('VITE_DEV_AUTH_USER') ?? 'DevUser!1',
@@ -95,6 +118,10 @@ const devSupportOverride = viteEnv('VITE_DEV_AUTH_SUPPORT') ?? 'DevSupport!1';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionState>(() => readStored()?.session ?? defaultSessionState);
   const [error, setError] = useState<string | null>(null);
+  const [gatewayUrl, setGatewayUrl] = useState<string>(() => {
+    const raw = viteEnv('VITE_GATEWAY_URL');
+    return raw ? normalizeGatewayUrl(raw) : '';
+  });
 
   const authenticated = session.authenticated === true;
 
@@ -189,8 +216,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (channel: LoginChannel, password: string, opts?: { installerId?: string; siteId?: string }) => {
       setError(null);
-      if (gatewayUrl) {
-        const res = await fetch(`${gatewayUrl}/api/auth/login`, {
+      let url = gatewayUrl;
+      if (!url) {
+        const detected = await detectSameOriginGateway();
+        if (detected) {
+          url = detected;
+          setGatewayUrl(detected);
+        }
+      }
+
+      if (url) {
+        const res = await fetch(`${url}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -265,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.info('[auth] dev login used support override', channel);
       }
     },
-    [],
+    [gatewayUrl],
   );
 
   useEffect(() => {
@@ -286,7 +322,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(next);
       syncDzxSession(next);
     })();
-  }, [logout]);
+  }, [gatewayUrl, logout]);
+
+  useEffect(() => {
+    if (gatewayUrl) return;
+    void detectSameOriginGateway().then((detected) => {
+      if (detected) setGatewayUrl(detected);
+    });
+  }, [gatewayUrl]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

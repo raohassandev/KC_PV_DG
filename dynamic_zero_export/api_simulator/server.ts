@@ -33,6 +33,9 @@ export function createApiServer(port = 8787, storageRoot?: string) {
       return;
     }
     const snapshot = runtime.load();
+    if (req.method === 'GET' && url.pathname === '/whoami') return json(res, 200, runtime.handlers.getWhoami());
+    if (req.method === 'POST' && url.pathname === '/provision_wifi') return readBody(req).then((body) => json(res, 200, runtime.handlers.postProvisionWifi(body)));
+    if (req.method === 'GET' && url.pathname === '/provision_status') return json(res, 200, runtime.handlers.getProvisionStatus());
     if (req.method === 'GET' && (url.pathname === '/api/device/info' || url.pathname === '/api/device')) return json(res, 200, runtime.handlers.getDevice());
     if (req.method === 'GET' && url.pathname === '/api/live-status') return json(res, 200, runtime.handlers.getLiveStatus());
     if (req.method === 'GET' && url.pathname === '/api/topology') return json(res, 200, runtime.handlers.getTopology());

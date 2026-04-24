@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab, loginAs } from './helpers';
+import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
 
 const savedTitle = 'Gateway E2E Site Title';
 const fleetSiteId = 'e2e_gateway_sync_site';
@@ -8,6 +8,7 @@ test.describe('Gateway commissioning sync', () => {
   test('saves and reloads SiteConfig via VPS gateway', async ({ page }) => {
     await freshApp(page);
     await loginAs(page, 'manufacturer', { siteId: fleetSiteId });
+    await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Site Setup');
 
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
@@ -36,6 +37,7 @@ test.describe('Gateway commissioning sync', () => {
 
     await freshApp(page);
     await loginAs(page, 'installer', { installerId: fleetId, siteId: siteFileId });
+    await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Site Setup');
 
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
@@ -61,6 +63,7 @@ test.describe('Gateway commissioning sync', () => {
 
     await freshApp(page);
     await loginAs(page, 'manufacturer', { siteId });
+    await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Site Setup');
     await expect(page.getByTestId('gateway-site-id')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('gateway-site-id')).toHaveValue(siteId);
@@ -70,6 +73,8 @@ test.describe('Gateway commissioning sync', () => {
       timeout: 30_000,
     });
 
+    await page.getByLabel('Operating Mode').selectOption('dzx_virtual_meter');
+    await gotoWorkspace(page, 'Operation');
     await gotoTab(page, 'Dynamic Zero Export');
     await page.locator('.feature-shell-nav').getByRole('button', { name: 'Commissioning' }).click();
     await expect(

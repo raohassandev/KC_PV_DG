@@ -148,6 +148,14 @@ export function policyWarnings(config: SiteConfig) {
 
   for (const slot of config.slots) {
     if (!slot.enabled || slot.deviceType === 'none') continue;
+    if (slot.transport === 'tcp') {
+      if (!slot.tcpHost?.trim()) {
+        warnings.push(`Slot ${slot.id}: Modbus TCP transport selected but tcpHost is missing`);
+      }
+      if (slot.tcpPort !== undefined && slot.tcpPort <= 0) {
+        warnings.push(`Slot ${slot.id}: Modbus TCP port must be greater than 0`);
+      }
+    }
     if (
       (slot.role === 'grid_meter' || slot.role === 'generator_meter') &&
       !meterDeviceHasBundledYaml(slot.deviceType)

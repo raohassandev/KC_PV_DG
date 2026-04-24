@@ -38,7 +38,15 @@ export type SourceSlot = {
   enabled: boolean;
   deviceType: DeviceType;
   role: SourceRole;
+  /**
+   * Field transport expectation for this slot.
+   * - rtu: RS485/serial Modbus RTU (current production path)
+   * - tcp: Modbus TCP/IP (board/gateway LAN client; browser does not speak raw TCP)
+   */
+  transport?: 'rtu' | 'tcp';
   modbusId: number;
+  tcpHost?: string;
+  tcpPort?: number;
   capacityKw: number;
   networkId?: string;
   busSide?: 'A' | 'B' | 'both';
@@ -54,6 +62,12 @@ export type SiteConfig = {
   wifiSsid: string;
   customerName: string;
   timezone: string;
+  /** High-level operating mode (root requirement). */
+  controllerRuntimeMode: 'sync_controller' | 'dzx_virtual_meter';
+  /** Selected profile for inverter command writes when in sync_controller mode. */
+  syncProfileId: string;
+  /** Selected profile for virtual-meter emulation when in dzx_virtual_meter mode. */
+  dzxProfileId: string;
   topologyType: TopologyType;
   netMeteringEnabled: boolean;
   gridOperatingMode: GridOperatingMode;
@@ -89,6 +103,9 @@ export const defaultSite: SiteConfig = {
   wifiSsid: 'Rao',
   customerName: '',
   timezone: 'Asia/Karachi',
+  controllerRuntimeMode: 'sync_controller',
+  syncProfileId: 'huawei-default',
+  dzxProfileId: 'huawei-meter-v1',
   topologyType: 'SINGLE_BUS',
   netMeteringEnabled: true,
   gridOperatingMode: 'zero_export',
@@ -121,7 +138,9 @@ export const defaultSite: SiteConfig = {
       enabled: true,
       deviceType: 'em500',
       role: 'grid_meter',
+      transport: 'rtu',
       modbusId: 1,
+      tcpPort: 502,
       capacityKw: 0,
       networkId: 'main',
       busSide: 'A',
@@ -132,7 +151,9 @@ export const defaultSite: SiteConfig = {
       enabled: false,
       deviceType: 'none',
       role: 'generator_meter',
+      transport: 'rtu',
       modbusId: 3,
+      tcpPort: 502,
       capacityKw: 500,
       networkId: 'main',
       busSide: 'A',
@@ -144,7 +165,9 @@ export const defaultSite: SiteConfig = {
       enabled: false,
       deviceType: 'none',
       role: 'generator_meter',
+      transport: 'rtu',
       modbusId: 4,
+      tcpPort: 502,
       capacityKw: 500,
       networkId: 'main',
       busSide: 'A',
@@ -156,7 +179,9 @@ export const defaultSite: SiteConfig = {
       enabled: false,
       deviceType: 'none',
       role: 'generator_meter',
+      transport: 'rtu',
       modbusId: 5,
+      tcpPort: 502,
       capacityKw: 500,
       networkId: 'main',
       busSide: 'A',
@@ -168,7 +193,9 @@ export const defaultSite: SiteConfig = {
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
+      transport: 'rtu',
       modbusId: 10,
+      tcpPort: 502,
       capacityKw: 100,
       networkId: 'main',
       busSide: 'A',

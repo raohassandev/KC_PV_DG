@@ -1,0 +1,38 @@
+## Modbus TCP/IP addon (keeps base_board.yaml RTU intact)
+##
+## Purpose:
+## - Allow the installer to mix RTU (RS485) and TCP/IP devices in one firmware build.
+## - RTU devices keep using ESPHome `modbus:` + `modbus_controller:` on `uart_id: rs485` (base_board.yaml).
+## - TCP devices are polled using an external ESP-IDF compatible Modbus TCP manager.
+##
+## Notes:
+## - This file provides a single TCP client instance. If you have multiple TCP devices,
+##   create additional `modbus_tcp_manager:` blocks (e.g. `tcp_meter_1`, `tcp_inv_1`) and
+##   wire the corresponding sensors.
+## - The commissioning PWA exports per-slot `transport/tcp_host/tcp_port/unit_id` in site.config.yaml,
+##   but ESPHome YAML still needs explicit mapping from those slots to concrete sensors.
+
+external_components:
+  - source: github://Gucioo/esphome_modbus_tcp_master
+    components: [modbus_tcp_manager]
+    refresh: 0s
+
+substitutions:
+  # Filled by PWA bundle when any slot uses transport=tcp (first TCP slot).
+  modbus_tcp_host: "192.168.0.10"
+  modbus_tcp_port: "502"
+  modbus_tcp_unit_id: "1"
+
+modbus_tcp_manager:
+  id: tcp_device_1
+  host: ${modbus_tcp_host}
+  port: ${modbus_tcp_port}
+  unit_id: ${modbus_tcp_unit_id}
+
+binary_sensor:
+  - platform: modbus_tcp_manager
+    modbus_tcp_id: tcp_device_1
+    name: "TCP device 1 connectivity"
+    device_class: connectivity
+    entity_category: diagnostic
+

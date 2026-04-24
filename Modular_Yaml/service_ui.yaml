@@ -179,6 +179,36 @@ number:
 
 text_sensor:
   - platform: template
+    id: pvdg_controller_id
+    name: "Controller ID"
+    lambda: |-
+      return {App.get_name()};
+    update_interval: 60s
+    web_server:
+      sorting_group_id: grp_overview
+      sorting_weight: 1
+
+  - platform: template
+    id: pvdg_fw_version
+    name: "Firmware Version"
+    lambda: |-
+      return {ESPHOME_VERSION};
+    update_interval: 60s
+    web_server:
+      sorting_group_id: grp_overview
+      sorting_weight: 2
+
+  - platform: template
+    id: pvdg_mac
+    name: "MAC Address"
+    lambda: |-
+      return { id(wifi_mac_sensor).has_state() ? id(wifi_mac_sensor).state.c_str() : "NA" };
+    update_interval: 60s
+    web_server:
+      sorting_group_id: grp_overview
+      sorting_weight: 3
+
+  - platform: template
     id: controller_state
     name: "Controller State"
     lambda: |-

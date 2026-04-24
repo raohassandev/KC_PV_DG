@@ -3,6 +3,8 @@ substitutions:
   friendly_name: "PV DG Controller"
 
 packages:
+  # Default commissioning build uses RTU (RS485).
+  # For mixed RTU + TCP/IP builds, the PWA bundle will include `modbus_tcp_manager.yaml` as an addon.
   base_board: !include base_board.yaml
   io_board: !include io_board.yaml
   service_ui: !include service_ui.yaml

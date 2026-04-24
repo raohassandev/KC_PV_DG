@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab, loginAs } from './helpers';
+import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
 
 test.describe('Device catalog & validation logic', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,6 +8,7 @@ test.describe('Device catalog & validation logic', () => {
   });
 
   test('Source Slots exposes WM15 and bundle warns until firmware exists', async ({ page }) => {
+    await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Source Slots');
     const deviceSelect = page.getByTestId('slot-grid_1-device-type');
     await expect(deviceSelect).toBeVisible();
@@ -21,7 +22,7 @@ test.describe('Device catalog & validation logic', () => {
         .getByText(/Carlo Gavazzi WM15/i),
     ).toBeVisible();
 
-    await gotoTab(page, 'YAML Preview');
+    await gotoTab(page, 'YAML Export');
     const yaml = page.getByTestId('yaml-preview');
     await expect(yaml).toContainText('doc_path:');
     await expect(yaml).toContainText('Carlo Gavazzi WM15');
@@ -33,6 +34,7 @@ test.describe('Device catalog & validation logic', () => {
   });
 
   test('inverter catalog SMA appears in slot mapping', async ({ page }) => {
+    await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Source Slots');
     await page.getByTestId('slot-inv_1-device-type').selectOption('sma');
     await gotoTab(page, 'Validation');

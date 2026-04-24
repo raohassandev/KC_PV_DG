@@ -66,7 +66,6 @@ export function AlertsPage({ role }: { role: PwaRole }) {
           >
             <option value='auto'>Auto</option>
             <option value='api'>API</option>
-            <option value='mock'>Mock</option>
           </select>
         </label>
       </FeatureCard>

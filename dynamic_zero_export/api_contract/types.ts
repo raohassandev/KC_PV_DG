@@ -151,3 +151,38 @@ export type ApiSnapshotResponse = {
   session: SessionResponse;
 };
 
+// --- Onboarding / identity (MVP) ---
+
+export type WhoamiResponse = {
+  deviceName: string;
+  controllerId: string;
+  mac?: string;
+  ip?: string;
+  fwVersion: string;
+  capabilities: {
+    discovery: boolean;
+    apProvisioning: boolean;
+    syncMode: boolean;
+    dzxMode: boolean;
+    modbusRtu: boolean;
+    modbusTcp: boolean;
+  };
+  webUiUrl?: string;
+};
+
+export type ProvisionWifiRequest = {
+  ssid: string;
+  password: string;
+};
+
+export type ProvisionWifiResponse = {
+  accepted: boolean;
+  jobId: string;
+};
+
+export type ProvisionStatusResponse = {
+  jobId: string;
+  state: 'idle' | 'connecting' | 'connected' | 'failed';
+  message?: string;
+};
+

@@ -1,7 +1,11 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function gotoTab(page: Page, label: string) {
-  await page.getByTestId('app-nav').getByRole('button', { name: label }).click();
+  await page.getByTestId('subnav-pills').getByRole('button', { name: label }).click();
+}
+
+export async function gotoWorkspace(page: Page, label: 'Operation' | 'Commissioning') {
+  await page.getByTestId('workspace-nav').getByRole('button', { name: label }).click();
 }
 
 export async function dismissNoticeIfPresent(page: Page) {
@@ -47,5 +51,5 @@ export async function loginAs(
   }
   await page.getByTestId('login-password').fill(E2E_LOGIN[role]);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByTestId('app-nav')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('workspace-nav')).toBeVisible({ timeout: 30_000 });
 }

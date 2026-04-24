@@ -203,6 +203,13 @@ export const controllerModeHelp: Record<SiteConfig['controllerMode'], string> = 
   grid_limited_import: 'Limit import to the configured positive threshold.',
 };
 
+export const controllerRuntimeModeHelp: Record<SiteConfig['controllerRuntimeMode'], string> = {
+  sync_controller:
+    'PV-DG Sync Controller: board reads meters (RTU/TCP) and writes power limits to inverter(s).',
+  dzx_virtual_meter:
+    'Dynamic Zero Export (DZX): board serves inverter as a meter (virtual meter). Inverter self-curtails using its own zero-export logic.',
+};
+
 export const roleHelp: Record<SourceRole, string> = {
   none: 'Slot is not active yet.',
   grid_meter: 'Use for the main plant grid meter.',

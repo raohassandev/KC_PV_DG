@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test --import tsx tests/*.spec.ts api_simulator/tests/*.spec.ts",
     "check": "tsc -p tsconfig.json --noEmit",
-    "sim": "node --import tsx api_simulator/dev.ts"
+    "sim": "node --import tsx api_simulator/dev.ts",
+    "sim:modbus-tcp": "node --import tsx tools/modbus_tcp_sim.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

@@ -1,8 +1,8 @@
 import type { PwaRole } from '../../../dynamic_zero_export/pwa';
 
 export type AppShellTab =
-  | 'product'
   | 'dashboard'
+  | 'dzx'
   | 'site'
   | 'topology'
   | 'slots'
@@ -11,11 +11,11 @@ export type AppShellTab =
   | 'engineer'
   | 'yaml';
 
-const USER_TABS: AppShellTab[] = ['product', 'dashboard'];
+const USER_TABS: AppShellTab[] = ['dashboard', 'dzx'];
 
 const INSTALLER_TABS: AppShellTab[] = [
-  'product',
   'dashboard',
+  'dzx',
   'site',
   'topology',
   'slots',
@@ -25,8 +25,8 @@ const INSTALLER_TABS: AppShellTab[] = [
 ];
 
 const MANUFACTURER_TABS: AppShellTab[] = [
-  'product',
   'dashboard',
+  'dzx',
   'site',
   'topology',
   'slots',

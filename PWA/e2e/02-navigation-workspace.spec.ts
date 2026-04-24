@@ -1,16 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab, loginAs } from './helpers';
+import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
 
-const tabs = [
-  'Dynamic Zero Export',
-  'Dashboard',
+const operationTabs = ['Dashboard'] as const;
+const commissioningTabs = [
   'Site Setup',
   'Topology',
   'Source Slots',
   'Templates',
   'Validation',
+  'YAML Export',
   'Engineer Actions',
-  'YAML Preview',
 ] as const;
 
 test.describe('Primary navigation', () => {
@@ -19,10 +18,20 @@ test.describe('Primary navigation', () => {
     await loginAs(page, 'manufacturer');
   });
 
-  for (const label of tabs) {
-    test(`tab "${label}" activates workspace label`, async ({ page }) => {
+  for (const label of operationTabs) {
+    test(`operation "${label}" activates workspace label`, async ({ page }) => {
+      await gotoWorkspace(page, 'Operation');
       await gotoTab(page, label);
-      await expect(page.getByTestId('workspace-active')).toHaveText(label);
+      await expect(page.getByTestId('workspace-active')).toContainText(`Operation · ${label}`);
+      await expect(page.locator('#main-content')).toBeVisible();
+    });
+  }
+
+  for (const label of commissioningTabs) {
+    test(`commissioning "${label}" activates workspace label`, async ({ page }) => {
+      await gotoWorkspace(page, 'Commissioning');
+      await gotoTab(page, label);
+      await expect(page.getByTestId('workspace-active')).toContainText(`Commissioning · ${label}`);
       await expect(page.locator('#main-content')).toBeVisible();
     });
   }

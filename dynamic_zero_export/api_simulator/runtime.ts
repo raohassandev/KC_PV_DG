@@ -1,4 +1,5 @@
 import type { ApiSnapshotResponse } from '../api_contract';
+import type { ProvisionStatusResponse, ProvisionWifiRequest, ProvisionWifiResponse, WhoamiResponse } from '../api_contract';
 import {
   acknowledgeAlerts,
   appendHistory,
@@ -45,11 +46,15 @@ export type DeviceServiceRuntime = {
     postSimConnectivity(body: unknown): ApiSnapshotResponse['connectivity'];
     postSimAlerts(body: unknown): ApiSnapshotResponse['alerts'];
     postSimHistoryAppend(body: unknown): ApiSnapshotResponse['history'];
+    getWhoami(): WhoamiResponse;
+    postProvisionWifi(body: unknown): ProvisionWifiResponse;
+    getProvisionStatus(): ProvisionStatusResponse;
   };
 };
 
 export function createDeviceServiceRuntime(storage: DeviceServiceStorage): DeviceServiceRuntime {
   let state = storage.load();
+  let provision: ProvisionStatusResponse = { jobId: 'prov-0', state: 'idle' };
   const persist = () => {
     state = storage.save(state);
     return state;
@@ -130,6 +135,40 @@ export function createDeviceServiceRuntime(storage: DeviceServiceStorage): Devic
         persist();
         return state.history;
       },
+      getWhoami: () => {
+        return {
+          deviceName: state.connectivity.deviceName || state.device.deviceName,
+          controllerId: state.connectivity.controllerId || state.device.controllerId,
+          fwVersion: state.connectivity.firmwareVersion || state.device.firmwareVersion,
+          mac: 'AA:BB:CC:DD:EE:FF',
+          ip: state.connectivity.wifi.ipAddress || state.connectivity.lan.ipAddress,
+          capabilities: {
+            discovery: true,
+            apProvisioning: true,
+            syncMode: true,
+            dzxMode: true,
+            modbusRtu: true,
+            modbusTcp: true,
+          },
+          webUiUrl: 'http://192.168.4.1/',
+        };
+      },
+      postProvisionWifi: (body) => {
+        const patch = asObject(body) as Partial<ProvisionWifiRequest>;
+        const ssid = String(patch.ssid ?? '').trim();
+        const password = String(patch.password ?? '');
+        if (!ssid || password.length < 1) {
+          provision = { jobId: provision.jobId, state: 'failed', message: 'ssid/password required' };
+          return { accepted: false, jobId: provision.jobId };
+        }
+        provision = { jobId: `prov-${Date.now()}`, state: 'connecting', message: `Connecting to ${ssid}` };
+        // simulator: mark connected quickly
+        setTimeout(() => {
+          provision = { ...provision, state: 'connected', message: 'Connected. Switch to LAN Wi-Fi.' };
+        }, 800);
+        return { accepted: true, jobId: provision.jobId };
+      },
+      getProvisionStatus: () => provision,
     },
   };
 }
