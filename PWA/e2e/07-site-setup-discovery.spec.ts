@@ -52,8 +52,12 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Site Setup');
 
+    await expect(
+      page.getByTestId('site-template-select').locator('option', { hasText: 'LAN: TCP grid meter' }),
+    ).toHaveCount(1);
+
     page.once('dialog', (d) => d.accept());
-    await page.getByTestId('site-template-select').selectOption('topology_dual_bus_combined');
+    await page.getByTestId('site-template-select').selectOption('builtin:topology_dual_bus_combined');
     await page.getByTestId('site-template-apply').click();
     await expect(page.getByTestId('site-template-last-applied')).toContainText('Dual bus — combined');
 
@@ -68,5 +72,25 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await gotoTab(page, 'YAML Export');
     await expect(page.getByTestId('yaml-preview')).toContainText('commissioning_scenario_template_id');
     await expect(page.getByTestId('yaml-preview')).toContainText('topology_dual_bus_combined');
+  });
+
+  test('JSON site preset loads from public manifest', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'installer');
+    await gotoWorkspace(page, 'Commissioning');
+    await gotoTab(page, 'Site Setup');
+
+    page.once('dialog', (d) => d.accept());
+    await page.getByTestId('site-template-select').selectOption('external:preset_tcp_grid_rtu_pv');
+    await page.getByTestId('site-template-apply').click();
+
+    await gotoTab(page, 'Validation');
+    await expect(
+      page.locator('.stat-card').filter({ hasText: 'Scenario template' }),
+    ).toContainText('LAN: TCP grid meter + RTU PV');
+
+    await gotoTab(page, 'YAML Export');
+    await expect(page.getByTestId('yaml-preview')).toContainText('preset_tcp_grid_rtu_pv');
+    await expect(page.getByTestId('yaml-preview')).toContainText('192.168.1.50');
   });
 });

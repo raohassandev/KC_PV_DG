@@ -32,6 +32,7 @@ import {
   type AppPageId,
   type WorkspaceId,
 } from './navModel';
+import { SiteTemplateManifestProvider } from './context/SiteTemplateManifestContext';
 import { useTheme } from './theme/useTheme';
 
 function cx(...xs: Array<string | false | undefined>) {
@@ -253,6 +254,7 @@ function App() {
   const gatewayAuth = isGatewayAuthEnabled();
 
   return (
+    <SiteTemplateManifestProvider>
     <div className='app-shell'>
       <div className='app-energy-ambient' aria-hidden='true'>
         <svg
@@ -609,6 +611,7 @@ function App() {
         </main>
       </div>
     </div>
+    </SiteTemplateManifestProvider>
   );
 }
 

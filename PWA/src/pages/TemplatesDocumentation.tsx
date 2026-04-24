@@ -24,7 +24,10 @@ export function TemplatesDocumentation() {
           Load one in Site Setup, then refine Board IP, Modbus IDs, and slot devices for the as-built
           plant. When a template is loaded, the site keeps a{' '}
           <code className='inline-code'>commissioning_scenario_template_id</code> field for traceability
-          in YAML export until you clear it in Site Setup.
+          in YAML export until you clear it in Site Setup. Extra customer scenes can be added as JSON
+          under <code className='inline-code'>public/site-templates/</code> with entries in{' '}
+          <code className='inline-code'>manifest.json</code>; the PWA loads that manifest at runtime
+          (no app rebuild for new files in a deployed static folder).
         </p>
         <ul className='list-block'>
           {SITE_SCENARIO_TEMPLATES.map((t) => (

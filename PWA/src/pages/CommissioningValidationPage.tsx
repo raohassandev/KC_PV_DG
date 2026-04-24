@@ -6,10 +6,8 @@ import {
   policyWarnings as commissioningWarnings,
   saveProfile as saveCommissioningProfile,
 } from '../policySchema';
-import {
-  getSiteScenarioTemplate,
-  type SiteScenarioTemplateId,
-} from '../siteScenarioTemplates';
+import { useSiteTemplateManifest } from '../context/SiteTemplateManifestContext';
+import { resolveScenarioTemplateTitle } from '../externalSiteTemplates';
 import type { SiteConfig } from '../siteTemplates';
 
 type ZoneRow = { id: string; summary: string };
@@ -47,10 +45,11 @@ export function CommissioningValidationPage({
   enabledCounts,
   setNotice,
 }: CommissioningValidationPageProps) {
-  const scenarioSummary =
-    config.commissioningScenarioTemplateId &&
-    (getSiteScenarioTemplate(config.commissioningScenarioTemplateId as SiteScenarioTemplateId)
-      ?.title ?? config.commissioningScenarioTemplateId);
+  const { externals } = useSiteTemplateManifest();
+  const scenarioSummary = resolveScenarioTemplateTitle(
+    config.commissioningScenarioTemplateId,
+    externals,
+  );
 
   return (
     <FormGrid>
