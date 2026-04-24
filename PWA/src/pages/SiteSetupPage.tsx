@@ -11,6 +11,7 @@ import {
   type BoardWhoami,
   type ProvisionStatusResponse,
 } from '../boardDiscovery';
+import { SiteScenarioTemplatePanel } from '../components/SiteScenarioTemplatePanel';
 import type { SiteConfig } from '../siteTemplates';
 import {
   controllerModeHelp,
@@ -96,6 +97,8 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
   } = p;
   return (
     <FormGrid>
+            <SiteScenarioTemplatePanel setConfig={setConfig} setNotice={setNotice} />
+
             {siteGatewaySyncAvailable ? (
               <div className='panel'>
                 <h2>Gateway commissioning</h2>

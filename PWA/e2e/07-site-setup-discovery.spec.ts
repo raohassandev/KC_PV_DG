@@ -45,4 +45,21 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await expect(boardIpField).toHaveValue('192.168.0.222');
     await expect(page.getByText('Device: e2e-mock-controller')).toBeVisible();
   });
+
+  test('Site topology template replaces config after confirm', async ({ page }) => {
+    await freshApp(page);
+    await loginAs(page, 'installer');
+    await gotoWorkspace(page, 'Commissioning');
+    await gotoTab(page, 'Site Setup');
+
+    page.once('dialog', (d) => d.accept());
+    await page.getByTestId('site-template-select').selectOption('topology_dual_bus_combined');
+    await page.getByTestId('site-template-apply').click();
+    await expect(page.getByTestId('site-template-last-applied')).toContainText('Dual bus — combined');
+
+    await gotoTab(page, 'Validation');
+    await expect(
+      page.locator('.stat-card').filter({ hasText: 'Topology' }).getByText('DUAL_BUS_COMBINED'),
+    ).toBeVisible();
+  });
 });

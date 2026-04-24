@@ -1,4 +1,5 @@
 import { DocReaderLayout, DocReaderSection } from '../layout/DocReaderLayout';
+import { SITE_SCENARIO_TEMPLATES } from '../siteScenarioTemplates';
 import { controlFieldHelp } from '../siteTemplates';
 
 export function TemplatesDocumentation() {
@@ -12,10 +13,27 @@ export function TemplatesDocumentation() {
           This tab is <strong>in-app documentation</strong>, not configuration. Bind devices in{' '}
           <strong>Source Slots</strong>; use this reader to see which meter and inverter paths are
           validated vs pending, where PDFs and YAML live, and how synch-control is meant to behave in
-          firmware.
+          firmware. Full-site presets (topology + slot map) are loaded from{' '}
+          <strong>Site Setup → Site commissioning template</strong>.
         </p>
       }
     >
+      <DocReaderSection title='Site commissioning templates (topologies)'>
+        <p className='help-text'>
+          These match every <code className='inline-code'>topologyType</code> in the commissioning model.
+          Load one in Site Setup, then refine Board IP, Modbus IDs, and slot devices for the as-built
+          plant.
+        </p>
+        <ul className='list-block'>
+          {SITE_SCENARIO_TEMPLATES.map((t) => (
+            <li key={t.id}>
+              <strong>{t.title}</strong> — <code className='inline-code'>{t.topologyType}</code>.{' '}
+              {t.description}
+            </li>
+          ))}
+        </ul>
+      </DocReaderSection>
+
       <DocReaderSection title='Rozwell / EM500 Template'>
         <p className='help-text'>
           Current validated meter path. Use this for grid meters and, if needed, generator meters on

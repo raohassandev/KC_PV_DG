@@ -520,6 +520,63 @@ html[data-theme='dark'] .app-energy-orbit {
   line-height: 1.35;
 }
 
+.site-template-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin-top: 10px;
+}
+
+.site-template-panel__field {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.site-template-panel__apply {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+.site-template-panel__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.site-template-panel__meta dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.site-template-panel__meta dd {
+  margin: 2px 0 0;
+}
+
+.site-template-panel__doc summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.site-template-panel__doc-pre {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
 .app-header-quick-metrics {
   display: inline-flex;
   flex-wrap: wrap;

@@ -10,6 +10,10 @@ test.describe('Templates, engineer, YAML export', () => {
   test('templates tab documents analyzers and inverters', async ({ page }) => {
     await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Templates');
+    await expect(
+      page.getByRole('heading', { name: 'Site commissioning templates (topologies)' }),
+    ).toBeVisible();
+    await expect(page.getByText('Single bus — PCC')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Energy analyzers (catalog)' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Inverters (catalog)' })).toBeVisible();
     await expect(page.getByText(/docs\/Energy Analyzer/i)).toBeVisible();

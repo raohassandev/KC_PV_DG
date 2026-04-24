@@ -94,7 +94,9 @@ export function TopologyWizard({ config, updateSiteField }: Props) {
         <p className='help-text'>
           Set the <strong>electrical shape</strong> first, then grid and export behavior, then timing
           and safety. Policy and YAML use this ordering. Fields stay visible for field engineers (see
-          implementation checklist — Stage&nbsp;C).
+          implementation checklist — Stage&nbsp;C). For a matching slot map and defaults, start from{' '}
+          <strong>Site Setup → Site commissioning template</strong>, then return here to tune policy
+          fields.
         </p>
         <div className='topology-page-intro-grid'>
           <div className='topology-summary-card'>
