@@ -22,7 +22,9 @@ export function TemplatesDocumentation() {
         <p className='help-text'>
           These match every <code className='inline-code'>topologyType</code> in the commissioning model.
           Load one in Site Setup, then refine Board IP, Modbus IDs, and slot devices for the as-built
-          plant.
+          plant. When a template is loaded, the site keeps a{' '}
+          <code className='inline-code'>commissioning_scenario_template_id</code> field for traceability
+          in YAML export until you clear it in Site Setup.
         </p>
         <ul className='list-block'>
           {SITE_SCENARIO_TEMPLATES.map((t) => (

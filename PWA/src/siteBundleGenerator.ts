@@ -201,7 +201,7 @@ function configYaml(config: SiteConfig): string {
   controller_runtime_mode: ${quote(config.controllerRuntimeMode)}
   sync_profile_id: ${quote(config.syncProfileId)}
   dzx_profile_id: ${quote(config.dzxProfileId)}
-
+${config.commissioningScenarioTemplateId ? `  commissioning_scenario_template_id: ${quote(config.commissioningScenarioTemplateId)}\n` : ''}
 topology:
   type: ${config.topologyType}
   tie_signal_present: ${config.tieSignalPresent}

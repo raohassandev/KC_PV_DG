@@ -93,6 +93,11 @@ export type SiteConfig = {
   rampPctStep: number;
   minPvPercent: number;
   maxPvPercent: number;
+  /**
+   * PWA traceability: built-in scenario template last applied from Site Setup.
+   * Cleared when the engineer removes the label after heavy customization.
+   */
+  commissioningScenarioTemplateId?: string | null;
   slots: SourceSlot[];
 };
 

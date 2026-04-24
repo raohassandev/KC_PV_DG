@@ -520,6 +520,18 @@ html[data-theme='dark'] .app-energy-orbit {
   line-height: 1.35;
 }
 
+.site-template-panel__scenario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.site-template-panel__scenario .help-text {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+
 .site-template-panel__row {
   display: flex;
   flex-wrap: wrap;

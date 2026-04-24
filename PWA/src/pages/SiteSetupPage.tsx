@@ -97,7 +97,7 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
   } = p;
   return (
     <FormGrid>
-            <SiteScenarioTemplatePanel setConfig={setConfig} setNotice={setNotice} />
+            <SiteScenarioTemplatePanel config={config} setConfig={setConfig} setNotice={setNotice} />
 
             {siteGatewaySyncAvailable ? (
               <div className='panel'>

@@ -61,5 +61,12 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await expect(
       page.locator('.stat-card').filter({ hasText: 'Topology' }).getByText('DUAL_BUS_COMBINED'),
     ).toBeVisible();
+    await expect(
+      page.locator('.stat-card').filter({ hasText: 'Scenario template' }),
+    ).toContainText('Dual bus — combined');
+
+    await gotoTab(page, 'YAML Export');
+    await expect(page.getByTestId('yaml-preview')).toContainText('commissioning_scenario_template_id');
+    await expect(page.getByTestId('yaml-preview')).toContainText('topology_dual_bus_combined');
   });
 });

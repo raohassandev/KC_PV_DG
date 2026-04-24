@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   SITE_SCENARIO_TEMPLATES,
+  getSiteScenarioTemplate,
   type SiteScenarioTemplateId,
 } from '../siteScenarioTemplates';
 import type { SiteConfig } from '../siteTemplates';
 
 const LS_PICKER = 'pvdg.siteTemplatePickerId';
-const LS_APPLIED_ID = 'pvdg.lastAppliedSiteTemplateId';
-const LS_APPLIED_TITLE = 'pvdg.lastAppliedSiteTemplateTitle';
 
 function readPickerSelection(): SiteScenarioTemplateId {
   try {
@@ -23,19 +22,19 @@ function readPickerSelection(): SiteScenarioTemplateId {
 }
 
 type Props = {
+  config: SiteConfig;
   setConfig: Dispatch<SetStateAction<SiteConfig>>;
   setNotice: (msg: string | null) => void;
 };
 
-export function SiteScenarioTemplatePanel({ setConfig, setNotice }: Props) {
+export function SiteScenarioTemplatePanel({ config, setConfig, setNotice }: Props) {
   const [selected, setSelected] = useState<SiteScenarioTemplateId>(readPickerSelection);
-  const [lastAppliedTitle, setLastAppliedTitle] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(LS_APPLIED_TITLE);
-    } catch {
-      return null;
-    }
-  });
+
+  const scenarioTitle = useMemo(() => {
+    const id = config.commissioningScenarioTemplateId;
+    if (!id) return null;
+    return getSiteScenarioTemplate(id as SiteScenarioTemplateId)?.title ?? id;
+  }, [config.commissioningScenarioTemplateId]);
 
   const active = useMemo(
     () => SITE_SCENARIO_TEMPLATES.find((t) => t.id === selected),
@@ -58,14 +57,12 @@ export function SiteScenarioTemplatePanel({ setConfig, setNotice }: Props) {
     );
     if (!ok) return;
     setConfig(t.build());
-    try {
-      localStorage.setItem(LS_APPLIED_ID, t.id);
-      localStorage.setItem(LS_APPLIED_TITLE, t.title);
-    } catch {
-      /* ignore */
-    }
-    setLastAppliedTitle(t.title);
     setNotice(`Loaded site template: ${t.title}`);
+  };
+
+  const onClearLabel = () => {
+    setConfig((prev) => ({ ...prev, commissioningScenarioTemplateId: null }));
+    setNotice('Removed scenario template label from site (YAML export will omit it).');
   };
 
   return (
@@ -76,10 +73,20 @@ export function SiteScenarioTemplatePanel({ setConfig, setNotice }: Props) {
         real plant layout, load the preset, then adjust Site Setup, Topology, and Source Slots for your
         site. The same list is summarized under <strong>Templates</strong> → Site commissioning templates.
       </p>
-      {lastAppliedTitle ? (
-        <p className='help-text site-template-panel__last u-mt-sm' data-testid='site-template-last-applied'>
-          Last loaded template: <strong>{lastAppliedTitle}</strong>
-        </p>
+      {scenarioTitle ? (
+        <div className='site-template-panel__scenario u-mt-sm'>
+          <p className='help-text' data-testid='site-template-last-applied'>
+            Scenario label stored in site (exported in YAML): <strong>{scenarioTitle}</strong>
+          </p>
+          <button
+            type='button'
+            className='btn btn--secondary'
+            onClick={onClearLabel}
+            data-testid='site-template-clear-label'
+          >
+            Clear scenario label
+          </button>
+        </div>
       ) : null}
       <div className='site-template-panel__row'>
         <label className='field site-template-panel__field'>

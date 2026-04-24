@@ -6,6 +6,10 @@ import {
   policyWarnings as commissioningWarnings,
   saveProfile as saveCommissioningProfile,
 } from '../policySchema';
+import {
+  getSiteScenarioTemplate,
+  type SiteScenarioTemplateId,
+} from '../siteScenarioTemplates';
 import type { SiteConfig } from '../siteTemplates';
 
 type ZoneRow = { id: string; summary: string };
@@ -43,6 +47,11 @@ export function CommissioningValidationPage({
   enabledCounts,
   setNotice,
 }: CommissioningValidationPageProps) {
+  const scenarioSummary =
+    config.commissioningScenarioTemplateId &&
+    (getSiteScenarioTemplate(config.commissioningScenarioTemplateId as SiteScenarioTemplateId)
+      ?.title ?? config.commissioningScenarioTemplateId);
+
   return (
     <FormGrid>
       <div className='panel card-full'>
@@ -53,6 +62,9 @@ export function CommissioningValidationPage({
         </p>
         <div className='summary-grid'>
           <SummaryItem label='Topology' value={config.topologyType} />
+          {scenarioSummary ? (
+            <SummaryItem label='Scenario template' value={scenarioSummary} />
+          ) : null}
           <SummaryItem label='Grid Policy' value={config.gridOperatingMode} />
           <SummaryItem label='Net Metering' value={config.netMeteringEnabled ? 'ON' : 'OFF'} />
           <SummaryItem label='Sources enabled' value={String(enabledCounts.total)} />

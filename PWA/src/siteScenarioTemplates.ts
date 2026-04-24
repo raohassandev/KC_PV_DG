@@ -82,12 +82,14 @@ function buildSingleBus(): SiteConfig {
     inv_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 11, busSide: 'A' }),
     inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 12, busSide: 'A' }),
   });
+  c.commissioningScenarioTemplateId = 'topology_single_bus';
   return c;
 }
 
 /** Single bus with several generators on the same electrical grouping. */
 function buildSingleBusMultiGen(): SiteConfig {
   const c = buildSingleBus();
+  c.commissioningScenarioTemplateId = 'topology_single_bus_multi_gen';
   c.siteName = 'Site — Single bus, multiple generators';
   c.topologyType = 'SINGLE_BUS_MULTI_GEN';
   c.generatorMinimumOverrideEnabled = true;
@@ -184,12 +186,14 @@ function buildDualBus(): SiteConfig {
     }),
     inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 12, busSide: 'B' }),
   });
+  c.commissioningScenarioTemplateId = 'topology_dual_bus';
   return c;
 }
 
 /** Dual bus — buses run as isolated electrical zones (policy: separate). */
 function buildDualBusSeparate(): SiteConfig {
   const c = buildDualBus();
+  c.commissioningScenarioTemplateId = 'topology_dual_bus_separate';
   c.siteName = 'Site — Dual bus, separate operation';
   c.topologyType = 'DUAL_BUS_SEPARATE';
   c.tieSignalPresent = true;
@@ -224,6 +228,7 @@ function buildDualBusCombined(): SiteConfig {
       networkId: 'main',
     }),
   });
+  c.commissioningScenarioTemplateId = 'topology_dual_bus_combined';
   return c;
 }
 
