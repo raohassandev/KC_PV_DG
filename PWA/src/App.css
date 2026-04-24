@@ -223,7 +223,7 @@ button:focus:not(:focus-visible) {
   padding-bottom: max(var(--page-pad), env(safe-area-inset-bottom, 0px));
 }
 
-/* --- App header (shell) — two rows: identity + actions, then metrics --- */
+/* --- App header (shell) — identity row, compact toolbar, optional metrics --- */
 .app-header {
   margin-bottom: clamp(8px, 1.2vw, 12px);
   border-radius: var(--radius-lg);
@@ -236,7 +236,7 @@ button:focus:not(:focus-visible) {
   );
   box-shadow: var(--shadow-sm);
   padding: clamp(12px, 2vw, 16px) clamp(14px, 2.4vw, 20px);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-header-row {
@@ -372,16 +372,156 @@ button:focus:not(:focus-visible) {
   color: var(--accent-deep);
 }
 
-.app-header-actions {
+.app-header-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
   align-items: center;
-  flex: 0 1 auto;
+  justify-content: space-between;
+  gap: 8px 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
 }
 
-.app-header-actions .btn {
+.app-header-toolbar-spacer {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.app-header-quick-metrics {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.app-header-quick-metrics__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.app-header-quick-metrics__value {
+  color: var(--text);
+}
+
+.app-header-quick-metrics__bit {
+  color: var(--text-secondary);
+}
+
+.app-header-quick-metrics__sep {
+  color: var(--text-hint);
+  font-weight: 700;
+}
+
+.app-header-summary-toggle {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.app-header-account {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.app-header-account-summary {
+  list-style: none;
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  min-height: 38px;
+  padding: 7px 26px 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  text-align: right;
+  max-width: min(220px, 72vw);
+}
+
+.app-header-account-summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-header-account-summary::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid color-mix(in srgb, var(--text-muted) 70%, var(--border));
+  transform: translateY(-40%);
+  pointer-events: none;
+}
+
+.app-header-account[open] > .app-header-account-summary::after {
+  transform: translateY(-10%) rotate(180deg);
+}
+
+.app-header-account-summary:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.app-header-account-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+
+.app-header-account-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.app-header-account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(240px, 86vw);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.app-header-account-action {
+  width: 100%;
+  justify-content: center;
   min-height: 38px;
   padding: 7px 12px;
   font-size: 12px;
@@ -391,7 +531,7 @@ button:focus:not(:focus-visible) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   padding: 0;
   border: 0;
 }
@@ -1253,7 +1393,7 @@ button:focus:not(:focus-visible) {
 .section-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(14px, 2vw, 22px);
+  gap: clamp(10px, 1.6vw, 16px);
 }
 
 /* --- Topology wizard (commissioning plan — Stage C) --- */
@@ -1514,19 +1654,24 @@ button:focus:not(:focus-visible) {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: clamp(16px, 2.2vw, 22px);
+  padding: clamp(12px, 1.8vw, 18px);
   box-shadow: var(--shadow-md);
 }
 
 .panel h2 {
-  margin: 0 0 14px;
-  padding-bottom: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: var(--label-track);
   text-transform: uppercase;
   color: var(--text-secondary);
+}
+
+.panel > p.help-text:first-of-type {
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 
 .form-grid {
@@ -1646,8 +1791,8 @@ button:focus:not(:focus-visible) {
 .help-text {
   display: block;
   margin-bottom: 6px;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.42;
   color: var(--text-muted);
 }
 

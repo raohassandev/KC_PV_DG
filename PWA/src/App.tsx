@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { AdminResetPasswordDialog } from './auth/AdminResetPasswordDialog';
 import { ChangePasswordDialog } from './auth/ChangePasswordDialog';
@@ -12,6 +12,7 @@ import { NumberField, SelectField, TextField, ToggleField } from './components/c
 import EngineerActions from './components/EngineerActions';
 import { TopologyWizard } from './components/TopologyWizard';
 import { ProductArea } from './features/dynamic-zero-export/ProductArea';
+import { roleLabels } from './features/dynamic-zero-export/roles';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
   discoveryCandidates,
@@ -69,6 +70,8 @@ function App() {
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [hardwareSummaryOpen, setHardwareSummaryOpen] = useState(false);
+  const hardwareSummaryId = useId();
   const [notice, setNotice] = useState<string | null>('Profile loaded');
   const [boardProbeBusy, setBoardProbeBusy] = useState(false);
   const [boardProbeResult, setBoardProbeResult] = useState<BoardWhoami | null>(null);
@@ -301,55 +304,104 @@ function App() {
                 </div>
               </div>
             </div>
-            <nav className='app-header-actions' aria-label='Account'>
-              {gatewayAuth || import.meta.env.DEV ? (
+            <details className='app-header-account'>
+              <summary className='app-header-account-summary'>
+                <span className='app-header-account-title'>Account</span>
+                <span className='app-header-account-meta'>
+                  {roleLabels[role]}
+                  {session.siteId ? ` · ${session.siteId}` : ''}
+                </span>
+              </summary>
+              <div className='app-header-account-panel'>
+                {gatewayAuth || import.meta.env.DEV ? (
+                  <button
+                    type='button'
+                    className='btn btn--secondary app-header-account-action'
+                    onClick={() => setChangePwOpen(true)}
+                    data-testid='change-password-open'
+                  >
+                    Change password
+                  </button>
+                ) : null}
+                {gatewayAuth && role === 'manufacturer' ? (
+                  <button
+                    type='button'
+                    className='btn btn--secondary app-header-account-action'
+                    onClick={() => setAdminResetOpen(true)}
+                    data-testid='admin-reset-open'
+                  >
+                    Reset accounts
+                  </button>
+                ) : null}
                 <button
                   type='button'
-                  className='btn btn--secondary'
-                  onClick={() => setChangePwOpen(true)}
-                  data-testid='change-password-open'
+                  className='btn btn--secondary app-header-account-action'
+                  onClick={() => logout()}
+                  data-testid='logout-button'
                 >
-                  Change password
+                  Sign out
                 </button>
-              ) : null}
-              {gatewayAuth && role === 'manufacturer' ? (
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  onClick={() => setAdminResetOpen(true)}
-                  data-testid='admin-reset-open'
-                >
-                  Reset accounts
-                </button>
-              ) : null}
-              <button
-                type='button'
-                className='btn btn--secondary'
-                onClick={() => logout()}
-                data-testid='logout-button'
-              >
-                Sign out
-              </button>
-            </nav>
+              </div>
+            </details>
           </div>
-          <dl className='app-header-metrics' aria-label='Enabled hardware summary'>
-            <div className='app-header-metric'>
-              <dt>Sources enabled</dt>
-              <dd>{enabledCounts.total}</dd>
-            </div>
-            <div className='app-header-metric'>
-              <dt>Grid meters</dt>
-              <dd>{enabledCounts.grids}</dd>
-            </div>
-            <div className='app-header-metric'>
-              <dt>Generators</dt>
-              <dd>{enabledCounts.gens}</dd>
-            </div>
-            <div className='app-header-metric'>
-              <dt>Inverters</dt>
-              <dd>{enabledCounts.inverters}</dd>
-            </div>
-          </dl>
+          <div className='app-header-toolbar'>
+            {!hardwareSummaryOpen ? (
+              <div
+                className='app-header-quick-metrics'
+                aria-label='Enabled hardware summary (compact)'
+              >
+                <span className='app-header-quick-metrics__label'>Sources</span>
+                <span className='app-header-quick-metrics__value'>{enabledCounts.total}</span>
+                <span className='app-header-quick-metrics__sep' aria-hidden='true'>
+                  ·
+                </span>
+                <span className='app-header-quick-metrics__bit'>G {enabledCounts.grids}</span>
+                <span className='app-header-quick-metrics__sep' aria-hidden='true'>
+                  ·
+                </span>
+                <span className='app-header-quick-metrics__bit'>Gen {enabledCounts.gens}</span>
+                <span className='app-header-quick-metrics__sep' aria-hidden='true'>
+                  ·
+                </span>
+                <span className='app-header-quick-metrics__bit'>Inv {enabledCounts.inverters}</span>
+              </div>
+            ) : (
+              <span className='app-header-toolbar-spacer' />
+            )}
+            <button
+              type='button'
+              className='btn btn--secondary app-header-summary-toggle'
+              aria-expanded={hardwareSummaryOpen}
+              aria-controls={hardwareSummaryId}
+              onClick={() => setHardwareSummaryOpen((v) => !v)}
+            >
+              {hardwareSummaryOpen ? 'Hide hardware summary' : 'Hardware summary'}
+            </button>
+          </div>
+          {hardwareSummaryOpen ? (
+            <dl
+              id={hardwareSummaryId}
+              className='app-header-metrics'
+              aria-label='Enabled hardware summary'
+            >
+              <div className='app-header-metric'>
+                <dt>Sources enabled</dt>
+                <dd>{enabledCounts.total}</dd>
+              </div>
+              <div className='app-header-metric'>
+                <dt>Grid meters</dt>
+                <dd>{enabledCounts.grids}</dd>
+              </div>
+              <div className='app-header-metric'>
+                <dt>Generators</dt>
+                <dd>{enabledCounts.gens}</dd>
+              </div>
+              <div className='app-header-metric'>
+                <dt>Inverters</dt>
+                <dd>{enabledCounts.inverters}</dd>
+              </div>
+            </dl>
+          ) : null}
         </header>
 
         <nav className='workspace-nav' aria-label='Primary workspace' data-testid='workspace-nav'>
