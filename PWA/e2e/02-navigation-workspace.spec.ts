@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
 
-const operationTabs = ['Dashboard'] as const;
+const operationTabs = ['Dashboard', 'Monitoring'] as const;
 const commissioningTabs = [
   'Site Setup',
   'Topology',

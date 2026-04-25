@@ -75,7 +75,7 @@ test.describe('Gateway commissioning sync', () => {
 
     await page.getByLabel('Operating Mode').selectOption('dzx_virtual_meter');
     await gotoWorkspace(page, 'Operation');
-    await gotoTab(page, 'Dynamic Zero Export');
+    await gotoTab(page, 'Monitoring');
     await page.locator('.feature-shell-nav').getByRole('button', { name: 'Commissioning' }).click();
     await expect(
       page.getByText(new RegExp(`gateway pwaSiteConfig:\\s*${siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)),

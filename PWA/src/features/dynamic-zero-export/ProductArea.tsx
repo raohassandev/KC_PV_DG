@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type PwaRole } from './roles';
-import { featureNavigationByRole, type FeaturePageId } from './navigation';
+import {
+  monitoringNavItemsFor,
+  type FeaturePageId,
+} from './navigation';
 import { buildFeatureRoutes } from './routes';
+import type { SiteConfig } from '../../siteProfileSchema';
 import { OverviewPage } from './pages/OverviewPage';
 import { EnergyHistoryPage } from './pages/EnergyHistoryPage';
 import { ConnectivityPage } from './pages/ConnectivityPage';
@@ -30,20 +34,39 @@ function renderPage(page: FeaturePageId, role: PwaRole) {
   }
 }
 
-export function ProductArea() {
+export type ProductAreaProps = {
+  controllerRuntimeMode: SiteConfig['controllerRuntimeMode'];
+};
+
+export function ProductArea({ controllerRuntimeMode }: ProductAreaProps) {
   const { session, role } = useAuth();
   const [page, setPage] = useState<FeaturePageId>('overview');
-  const navItems = useMemo(() => featureNavigationByRole[role], [role]);
+  const navItems = useMemo(
+    () => monitoringNavItemsFor(role, controllerRuntimeMode),
+    [role, controllerRuntimeMode],
+  );
   const routes = useMemo(() => buildFeatureRoutes(role), [role]);
+
+  useEffect(() => {
+    if (!navItems.some((i) => i.id === page)) {
+      setPage('overview');
+    }
+  }, [navItems, page]);
+
+  const modeLine =
+    controllerRuntimeMode === 'dzx_virtual_meter'
+      ? 'Operating mode: virtual meter (Dynamic Zero Export).'
+      : 'Operating mode: sync controller — full commissioning is under the Commissioning workspace.';
 
   return (
     <section className='feature-shell'>
       <div className='feature-shell-header'>
         <div>
-          <div className='app-kicker'>Dynamic Zero Export</div>
-          <h2 className='feature-title'>Role-based local PWA</h2>
+          <div className='app-kicker'>Plant monitoring</div>
+          <h2 className='feature-title'>Live operations & alerts</h2>
           <p className='help-text'>
-            Manufacturer, installer, and owner views share the same local LAN/Wi-Fi experience.
+            {modeLine} Tabs follow your sign-in role; the DZX commissioning summary tab appears only
+            in virtual-meter mode.
           </p>
         </div>
         <div className='feature-role-switcher' aria-label='Signed-in role'>
@@ -53,7 +76,7 @@ export function ProductArea() {
         </div>
       </div>
 
-      <div className='feature-shell-nav'>
+      <div className='feature-shell-nav' data-testid='monitoring-subnav'>
         {navItems.map((item) => (
           <button
             key={item.id}

@@ -27,12 +27,12 @@ export type NavPage = {
 export const NAV_PAGES: NavPage[] = [
   // Operation
   { id: 'dashboard', label: 'Dashboard', workspace: 'operation', roles: ['user', 'installer', 'manufacturer'] },
+  // Live ops shell: overview, history, connectivity, alerts (+ role/mode-gated subtabs inside ProductArea).
   {
     id: 'dzx',
-    label: 'Dynamic Zero Export',
+    label: 'Monitoring',
     workspace: 'operation',
     roles: ['user', 'installer', 'manufacturer'],
-    visible: (config) => config.controllerRuntimeMode === 'dzx_virtual_meter',
   },
 
   // Commissioning

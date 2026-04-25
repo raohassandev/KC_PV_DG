@@ -525,7 +525,7 @@ function App() {
           className='app-main'
           tabIndex={-1}
         >
-        {page === 'dzx' && <ProductArea />}
+        {page === 'dzx' && <ProductArea controllerRuntimeMode={config.controllerRuntimeMode} />}
         {page === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
 
         {page === 'site' && (

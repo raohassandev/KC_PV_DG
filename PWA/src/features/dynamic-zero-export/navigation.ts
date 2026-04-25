@@ -1,3 +1,4 @@
+import type { SiteConfig } from '../../siteProfileSchema';
 import { type PwaRole, visibleNavigation } from '../../../../dynamic_zero_export/pwa';
 
 export type FeaturePageId =
@@ -34,3 +35,19 @@ export const featurePageOrder: FeaturePageId[] = [
   'commissioning',
   'diagnostics',
 ];
+
+/**
+ * Monitoring shell tabs: owner-style tabs are identical in both controller modes.
+ * Installer/manufacturer get the DZX API "Commissioning" summary only in `dzx_virtual_meter`
+ * (full commissioning stays in the main app Commissioning workspace).
+ */
+export function monitoringNavItemsFor(
+  role: PwaRole,
+  controllerRuntimeMode: SiteConfig['controllerRuntimeMode'],
+): FeatureNavigationItem[] {
+  const all = featureNavigationByRole[role];
+  if (controllerRuntimeMode === 'sync_controller') {
+    return all.filter((item) => item.id !== 'commissioning');
+  }
+  return all;
+}
