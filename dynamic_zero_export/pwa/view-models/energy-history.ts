@@ -3,16 +3,19 @@ import type { EnergyHistorySeries, EnergyHistoryViewModel } from '../contracts/h
 export function buildEnergyHistoryViewModel(
   today: EnergyHistorySeries,
   month: EnergyHistorySeries,
-  lifetime: EnergyHistorySeries,
+  year: EnergyHistorySeries,
+  decade: EnergyHistorySeries,
 ): EnergyHistoryViewModel {
   return {
     today,
     month,
-    lifetime,
+    year,
+    decade,
     highlights: [
-      `Today points: ${today.points.length}`,
-      `Month points: ${month.points.length}`,
-      `Lifetime points: ${lifetime.points.length}`,
+      `Day (hourly) points: ${today.points.length}`,
+      `Month (daily) points: ${month.points.length}`,
+      `Year (monthly) points: ${year.points.length}`,
+      `Decade (yearly) points: ${decade.points.length}`,
     ],
   };
 }

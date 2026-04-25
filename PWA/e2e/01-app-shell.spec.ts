@@ -8,7 +8,8 @@ test.describe('App shell & accessibility', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText('PV-DG', { exact: true })).toBeVisible();
     await expect(page.getByText('Smart Controller')).toBeVisible();
-    await expect(page.getByTestId('workspace-active')).toContainText('Operation · Dashboard');
+    await expect(page.getByTestId('workspace-active')).toContainText('Home · Energy & monitoring');
+    await expect(page.getByTestId('workspace-nav')).toHaveCount(0);
   });
 
   test('skip link targets main landmark', async ({ page }) => {

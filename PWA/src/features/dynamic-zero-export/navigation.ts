@@ -2,10 +2,8 @@ import type { SiteConfig } from '../../siteProfileSchema';
 import { type PwaRole, visibleNavigation } from '../../../../dynamic_zero_export/pwa';
 
 export type FeaturePageId =
-  | 'overview'
   | 'energy-history'
-  | 'connectivity'
-  | 'alerts'
+  | 'reliability'
   | 'commissioning'
   | 'diagnostics';
 
@@ -17,29 +15,26 @@ export type FeatureNavigationItem = {
 
 export const featureNavigationByRole: Record<PwaRole, FeatureNavigationItem[]> = {
   user: visibleNavigation('user').filter((item) =>
-    ['overview', 'energy-history', 'connectivity', 'alerts'].includes(item.id),
+    ['energy-history', 'reliability'].includes(item.id),
   ) as FeatureNavigationItem[],
   installer: visibleNavigation('installer').filter((item) =>
-    ['overview', 'energy-history', 'connectivity', 'alerts', 'commissioning', 'diagnostics'].includes(item.id),
+    ['energy-history', 'reliability', 'commissioning', 'diagnostics'].includes(item.id),
   ) as FeatureNavigationItem[],
   manufacturer: visibleNavigation('manufacturer').filter((item) =>
-    ['overview', 'energy-history', 'connectivity', 'alerts', 'commissioning', 'diagnostics'].includes(item.id),
+    ['energy-history', 'reliability', 'commissioning', 'diagnostics'].includes(item.id),
   ) as FeatureNavigationItem[],
 };
 
 export const featurePageOrder: FeaturePageId[] = [
-  'overview',
   'energy-history',
-  'connectivity',
-  'alerts',
+  'reliability',
   'commissioning',
   'diagnostics',
 ];
 
 /**
- * Monitoring shell tabs: owner-style tabs are identical in both controller modes.
- * Installer/manufacturer get the DZX API "Commissioning" summary only in `dzx_virtual_meter`
- * (full commissioning stays in the main app Commissioning workspace).
+ * Monitoring shell tabs: live plant snapshot lives on the main **Dashboard**; this shell is
+ * energy analytics, reliability (connectivity + alerts), plus commissioning/diagnostics for privileged roles.
  */
 export function monitoringNavItemsFor(
   role: PwaRole,

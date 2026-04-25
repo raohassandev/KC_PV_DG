@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { type PwaRole } from './roles';
 import {
   monitoringNavItemsFor,
@@ -6,10 +6,10 @@ import {
 } from './navigation';
 import { buildFeatureRoutes } from './routes';
 import type { SiteConfig } from '../../siteProfileSchema';
-import { OverviewPage } from './pages/OverviewPage';
-import { EnergyHistoryPage } from './pages/EnergyHistoryPage';
-import { ConnectivityPage } from './pages/ConnectivityPage';
-import { AlertsPage } from './pages/AlertsPage';
+const EnergyHistoryPage = lazy(() =>
+  import('./pages/EnergyHistoryPage').then((m) => ({ default: m.EnergyHistoryPage })),
+);
+import { ReliabilityPage } from './pages/ReliabilityPage';
 import { CommissioningPage } from './pages/CommissioningPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { RolePill } from './components/RolePill';
@@ -17,30 +17,39 @@ import { useAuth } from '../../auth/AuthContext';
 
 function renderPage(page: FeaturePageId, role: PwaRole) {
   switch (page) {
-    case 'overview':
-      return <OverviewPage role={role} />;
     case 'energy-history':
-      return <EnergyHistoryPage role={role} />;
-    case 'connectivity':
-      return <ConnectivityPage role={role} />;
-    case 'alerts':
-      return <AlertsPage role={role} />;
+      return (
+        <Suspense
+          fallback={
+            <div className='energy-analytics-skeleton' role='status'>
+              Loading energy analytics…
+            </div>
+          }
+        >
+          <EnergyHistoryPage role={role} />
+        </Suspense>
+      );
+    case 'reliability':
+      return <ReliabilityPage role={role} />;
     case 'commissioning':
       return <CommissioningPage role={role} />;
     case 'diagnostics':
       return <DiagnosticsPage role={role} />;
-    default:
-      return <OverviewPage role={role} />;
   }
 }
 
 export type ProductAreaProps = {
   controllerRuntimeMode: SiteConfig['controllerRuntimeMode'];
+  /** First Monitoring sub-tab when this shell mounts. */
+  initialMonitoringTab?: FeaturePageId;
 };
 
-export function ProductArea({ controllerRuntimeMode }: ProductAreaProps) {
+export function ProductArea({
+  controllerRuntimeMode,
+  initialMonitoringTab = 'energy-history',
+}: ProductAreaProps) {
   const { session, role } = useAuth();
-  const [page, setPage] = useState<FeaturePageId>('overview');
+  const [page, setPage] = useState<FeaturePageId>(initialMonitoringTab);
   const navItems = useMemo(
     () => monitoringNavItemsFor(role, controllerRuntimeMode),
     [role, controllerRuntimeMode],
@@ -49,7 +58,7 @@ export function ProductArea({ controllerRuntimeMode }: ProductAreaProps) {
 
   useEffect(() => {
     if (!navItems.some((i) => i.id === page)) {
-      setPage('overview');
+      setPage(navItems[0]?.id ?? 'energy-history');
     }
   }, [navItems, page]);
 
@@ -58,15 +67,33 @@ export function ProductArea({ controllerRuntimeMode }: ProductAreaProps) {
       ? 'Operating mode: virtual meter (Dynamic Zero Export).'
       : 'Operating mode: sync controller — full commissioning is under the Commissioning workspace.';
 
+  const ownerModeLine =
+    controllerRuntimeMode === 'dzx_virtual_meter'
+      ? 'The site is running in zero-export (virtual meter) mode.'
+      : 'The site is running with the sync controller.';
+
   return (
     <section className='feature-shell'>
       <div className='feature-shell-header'>
         <div>
-          <div className='app-kicker'>Plant monitoring</div>
-          <h2 className='feature-title'>Live operations & alerts</h2>
+          <div className='app-kicker'>
+            {role === 'user' ? 'Your plant' : 'Plant monitoring'}
+          </div>
+          <h2 className='feature-title'>
+            {role === 'user' ? 'Energy & plant reliability' : 'Live operations & reliability'}
+          </h2>
           <p className='help-text'>
-            {modeLine} Tabs follow your sign-in role; the DZX commissioning summary tab appears only
-            in virtual-meter mode.
+            {role === 'user' ? (
+              <>
+                {ownerModeLine} Live board status is on the <strong>Live status</strong> page; use the
+                tabs here for energy analytics and reliability (connectivity plus alerts).
+              </>
+            ) : (
+              <>
+                {modeLine} Tabs follow your sign-in role; the DZX commissioning summary tab appears only
+                in virtual-meter mode.
+              </>
+            )}
           </p>
         </div>
         <div className='feature-role-switcher' aria-label='Signed-in role'>
@@ -91,10 +118,12 @@ export function ProductArea({ controllerRuntimeMode }: ProductAreaProps) {
         ))}
       </div>
 
-      <div className='feature-shell-summary'>
-        <span>Session: {session.accessMode}</span>
-        <span>Routes: {routes.length}</span>
-      </div>
+      {role === 'user' ? null : (
+        <div className='feature-shell-summary'>
+          <span>Session: {session.accessMode}</span>
+          <span>Routes: {routes.length}</span>
+        </div>
+      )}
 
       <div id='dzx-workspace' className='feature-shell-body'>
         {renderPage(page, role)}

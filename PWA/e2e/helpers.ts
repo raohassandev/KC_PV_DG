@@ -51,5 +51,6 @@ export async function loginAs(
   }
   await page.getByTestId('login-password').fill(E2E_LOGIN[role]);
   await page.getByTestId('login-submit').click();
-  await expect(page.getByTestId('workspace-nav')).toBeVisible({ timeout: 30_000 });
+  // User role hides the workspace strip when only Operation is available; shell always has page subnav.
+  await expect(page.getByTestId('subnav-pills')).toBeVisible({ timeout: 30_000 });
 }

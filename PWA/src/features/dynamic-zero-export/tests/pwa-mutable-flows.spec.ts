@@ -38,7 +38,7 @@ test('alert acknowledgement and history append are accepted', async () => {
     assert.equal(alerts.active[0].acknowledged, true);
     await service.appendHistory({
       range: 'today',
-      resolution: '5m',
+      resolution: 'hour',
       today: [{ timestamp: '2026-04-16T01:00:00Z', solarKwh: 0.5, gridImportKwh: 0, gridExportKwh: 0.2, generatorKwh: 0, curtailedKwh: 0 }],
     });
     const history = await service.loadHistory('user');

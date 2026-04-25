@@ -129,8 +129,16 @@ export function createDeviceServiceRuntime(storage: DeviceServiceStorage): Devic
       },
       postSimHistoryAppend: (body) => {
         const patch = asObject(body);
-        const range = patch.range === 'month' || patch.range === 'lifetime' ? patch.range : 'today';
-        const resolution = patch.resolution === 'hour' || patch.resolution === 'day' || patch.resolution === 'month' ? patch.resolution : '5m';
+        const rangeRaw = patch.range;
+        const range =
+          rangeRaw === 'month' || rangeRaw === 'year' || rangeRaw === 'decade' ? rangeRaw : 'today';
+        const resolution =
+          patch.resolution === 'hour' ||
+          patch.resolution === 'day' ||
+          patch.resolution === 'month' ||
+          patch.resolution === 'year'
+            ? patch.resolution
+            : '5m';
         state = appendHistory(state, { ...patch, range, resolution } as never);
         persist();
         return state.history;

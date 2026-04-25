@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { fetchBoardSnapshot } from '../boardApi';
+import type { PwaRole } from '../features/dynamic-zero-export/roles';
+import type { FeaturePageId } from '../features/dynamic-zero-export/navigation';
+import {
+  buildRoleAwareLiveStatusFromProvider,
+  loadProviderMode,
+} from '../features/dynamic-zero-export/services/liveStatusService';
+
+const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
 type MetricStatus = 'ok' | 'warn' | 'offline' | 'idle';
 
@@ -143,9 +151,15 @@ function SourceBadge({
 
 type Props = {
   boardIp: string;
+  role: PwaRole;
+  onNavigateToMonitoring?: (sub?: FeaturePageId) => void;
 };
 
-export default function DashboardOverview({ boardIp }: Props) {
+export default function DashboardOverview({
+  boardIp,
+  role,
+  onNavigateToMonitoring,
+}: Props) {
   const [data, setData] = useState<LiveUiData>(() => ({
     ...buildInitialData(),
     boardIp,
@@ -153,6 +167,24 @@ export default function DashboardOverview({ boardIp }: Props) {
   const [fetchBusy, setFetchBusy] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const firstBoardFetch = useRef(true);
+  const [execModel, setExecModel] = useState<Awaited<
+    ReturnType<typeof buildRoleAwareLiveStatusFromProvider>
+  > | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const pull = () => {
+      void buildRoleAwareLiveStatusFromProvider(role, loadProviderMode()).then((m) => {
+        if (active) setExecModel(m);
+      });
+    };
+    pull();
+    const interval = window.setInterval(pull, 12_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [role]);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, boardIp }));
@@ -368,7 +400,24 @@ export default function DashboardOverview({ boardIp }: Props) {
       <div className='card card-wide'>
         <div className='card-header'>
           <div>
-            <h2>Live Overview</h2>
+            <h2 className='dashboard-page-title'>Dashboard</h2>
+            <p className='dashboard-page-lede'>
+              {execModel ? (
+                <>
+                  <strong>{execModel.snapshot.siteName}</strong>
+                  <span className='dashboard-lede-sep' aria-hidden='true'>
+                    ·
+                  </span>
+                  {execModel.snapshot.systemState}
+                  <span className='dashboard-lede-sep' aria-hidden='true'>
+                    ·
+                  </span>
+                  {execModel.snapshot.connectivityLabel}
+                </>
+              ) : (
+                'Loading plant snapshot…'
+              )}
+            </p>
             <div className='dashboard-chips' aria-label='Live target summary'>
               <span className='dashboard-chip'>Board {data.boardName}</span>
               <span className='dashboard-chip'>IP {data.boardIp}</span>
@@ -392,6 +441,84 @@ export default function DashboardOverview({ boardIp }: Props) {
             </span>
           </div>
         </div>
+
+        {execModel ? (
+          <>
+            <div className='dashboard-exec-kpis' aria-label='Plant snapshot KPIs' data-testid='dashboard-exec-kpis'>
+              {execModel.model.cards.map((card) => (
+                <article key={card.id} className='feature-stat-card dashboard-exec-kpi'>
+                  <div className='feature-stat-label'>{card.title}</div>
+                  <div className='feature-stat-value'>{card.value}</div>
+                  {card.subtitle ? <div className='feature-stat-subtitle'>{card.subtitle}</div> : null}
+                </article>
+              ))}
+              <article className='feature-stat-card dashboard-exec-kpi'>
+                <div className='feature-stat-label'>Alerts</div>
+                <div className='feature-stat-value'>{String(execModel.activeAlertCount)}</div>
+                <div className='feature-stat-subtitle'>Controller feed</div>
+              </article>
+            </div>
+            <div className='dashboard-exec-summary'>
+              <div className='dashboard-exec-summary-title'>Operations summary</div>
+              <ul className='list-block dashboard-exec-summary-list'>
+                {execModel.summary.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <Suspense
+              fallback={
+                <div className='dashboard-charts-skeleton' role='status'>
+                  Loading charts…
+                </div>
+              }
+            >
+              <DashboardCharts
+                gridKw={data.summary.gridKw}
+                pvKw={data.summary.pvKw}
+                commandKw={data.summary.commandKw}
+                inverterIdle={data.inverterLaneIdle}
+                gridOnline={!!data.sources.find((s) => s.id === 'grid_1')?.online}
+                inverterOnline={
+                  !!data.sources.find((s) => s.id === 'inv_1')?.online && !data.inverterLaneIdle
+                }
+              />
+            </Suspense>
+            <hr className='dashboard-section-rule' />
+            <div className='dashboard-section-label'>Board telemetry</div>
+          </>
+        ) : (
+          <div className='dashboard-exec-loading' role='status'>
+            Loading plant snapshot…
+          </div>
+        )}
+
+        {role === 'user' && onNavigateToMonitoring ? (
+          <div className='owner-dashboard-ctas' data-testid='owner-dashboard-ctas'>
+            <p className='help-text'>
+              View detailed energy history or open the combined reliability view — or use{' '}
+              <strong>Energy & monitoring</strong> in the bar above.
+            </p>
+            <div className='owner-dashboard-cta-row'>
+              <button
+                type='button'
+                className='btn btn--primary'
+                data-testid='owner-cta-energy-history'
+                onClick={() => onNavigateToMonitoring('energy-history')}
+              >
+                View energy history
+              </button>
+              <button
+                type='button'
+                className='btn btn--secondary'
+                data-testid='owner-cta-reliability'
+                onClick={() => onNavigateToMonitoring('reliability')}
+              >
+                Reliability
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className='dashboard-status-strip' aria-label='Controller status'>
           <span className='dashboard-strip-item mono'>{data.controllerState}</span>

@@ -1050,6 +1050,113 @@ html[data-theme='dark'] .app-energy-orbit {
   margin-top: 24px;
 }
 
+.dashboard-page-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.dashboard-page-lede {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.dashboard-lede-sep {
+  margin: 0 0.35em;
+  color: var(--text-muted);
+}
+
+.dashboard-exec-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dashboard-exec-kpi {
+  margin: 0;
+}
+
+.dashboard-exec-summary {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-muted);
+}
+
+.dashboard-exec-summary-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.dashboard-exec-summary-list {
+  margin: 0;
+}
+
+.dashboard-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dashboard-chart-panel {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.dashboard-chart-panel-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.dashboard-chart-panel-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.dashboard-chart-inner {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 200px;
+}
+
+.dashboard-section-rule {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 20px 0 12px;
+}
+
+.dashboard-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.dashboard-exec-loading,
+.dashboard-charts-skeleton {
+  padding: 14px 4px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1256,6 +1363,22 @@ html[data-theme='dark'] .app-energy-orbit {
 
 .mono {
   font-family: var(--font-mono);
+}
+
+.owner-dashboard-ctas {
+  padding: 0 4px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.owner-dashboard-ctas .help-text {
+  margin: 0 0 8px;
+}
+
+.owner-dashboard-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dashboard-status-strip {
@@ -2237,6 +2360,19 @@ html[data-theme='dark'] .app-energy-orbit {
   gap: 14px;
 }
 
+.reliability-page .reliability-kpi-strip {
+  grid-column: 1 / -1;
+}
+
+.diagnostics-page .diagnostics-page-lede {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
 .feature-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -2412,6 +2548,110 @@ html[data-theme='dark'] .app-energy-orbit {
 .feature-form button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* --- Energy analytics (executive history) --- */
+.energy-analytics-skeleton {
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.energy-analytics-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.energy-analytics-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.energy-analytics-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.energy-analytics-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.energy-analytics-sep {
+  margin: 0 0.35em;
+  color: var(--text-muted);
+}
+
+.energy-analytics-interval {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(360px, 100%);
+}
+
+.energy-analytics-interval-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.energy-analytics-select {
+  min-height: var(--touch-min);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.energy-analytics-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 12px;
+}
+
+.energy-analytics-kpi {
+  margin: 0;
+}
+
+.energy-analytics-kpi--warn {
+  color: var(--warning);
+}
+
+.feature-card .energy-analytics-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+
+.energy-analytics-chart-card .feature-card-subtitle {
+  margin-bottom: 0;
+}
+
+.energy-analytics-chart-wrap {
+  margin-top: 12px;
+  width: 100%;
+  min-height: 360px;
+}
+
+.energy-analytics-chart-wrap--short {
+  min-height: 220px;
 }
 
 .history-table {

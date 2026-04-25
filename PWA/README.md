@@ -32,7 +32,7 @@ One-time browser install: `npx playwright install chromium` (or `PW_CHANNEL=chro
 
 ## Architecture notes
 
-- Auth: `src/auth/AuthContext.tsx`, `LoginScreen.tsx`, `tabAccess.ts`
+- Auth: `src/auth/AuthContext.tsx`, `LoginScreen.tsx`, `tabAccess.ts` — **User** sign-in is the owner path (**energy & monitoring**, **live status**); default and gateway passwords are documented in **`../CREDENTIALS.local.example`**.
 - Fleet merge helper: `src/auth/gatewaySiteConfig.ts`
 - Main shell: `src/App.tsx`
 - Layout primitives: `src/layout/FormGrid.tsx`, `src/layout/DocReaderLayout.tsx` (CSS modules; commissioning grids are not global “section soup”)

@@ -80,14 +80,15 @@ export async function loadLiveStatusFromProvider(role: PwaRole, mode: ProviderMo
   return saveLiveStatus(snapshot);
 }
 
-export function buildOverviewModel(role: PwaRole, snapshot = loadLiveStatus()): DashboardModel {
+/** Role-aware dashboard card model from a live snapshot (used by Dashboard / live status). */
+export function buildDashboardModelForRole(role: PwaRole, snapshot = loadLiveStatus()): DashboardModel {
   if (role === 'installer') return buildInstallerDashboard(snapshot);
   if (role === 'manufacturer') return buildManufacturerDashboard(snapshot);
   return buildUserDashboard(snapshot);
 }
 
 export function buildRoleAwareLiveStatus(role: PwaRole, snapshot = loadLiveStatus()) {
-  const model = buildOverviewModel(role, snapshot);
+  const model = buildDashboardModelForRole(role, snapshot);
   return {
     role,
     snapshot,

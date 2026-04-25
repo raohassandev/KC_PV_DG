@@ -134,6 +134,8 @@ If board logging/UI is touched again:
 
 ## 5) PWA status
 
+Up-to-date **operation workspace** behavior (Monitoring tabs: energy history, reliability, diagnostics; board vs DZX API; gateway probe) is summarized in **`docs/PWA_MONITORING_AND_GATEWAY.md`**.
+
 ### Confirmed
 The PWA exists and runs.
 It currently has:

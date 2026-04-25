@@ -1,6 +1,6 @@
 import { alertsFixture } from '../mock/alerts';
 import { connectivityFixture } from '../mock/connectivity';
-import { lifetimeHistoryFixture, monthHistoryFixture, todayHistoryFixture } from '../mock/history';
+import { decadeHistoryFixture, monthHistoryFixture, todayHistoryFixture, yearHistoryFixture } from '../mock/history';
 import { liveStatusFixture } from '../mock/liveStatus';
 import { type AlertFeed } from '../../../../../dynamic_zero_export/pwa/contracts/alerts';
 import { type ConnectivitySnapshot } from '../../../../../dynamic_zero_export/pwa/contracts/connectivity';
@@ -16,7 +16,9 @@ export type DzxProvider = {
   mode: ProviderMode;
   baseUrl?: string;
   loadLiveStatus(_role: PwaRole): Promise<LiveStatusSnapshot>;
-  loadHistory(_role: PwaRole): Promise<{ today: EnergyHistorySeries; month: EnergyHistorySeries; lifetime: EnergyHistorySeries }>;
+  loadHistory(
+    _role: PwaRole,
+  ): Promise<{ today: EnergyHistorySeries; month: EnergyHistorySeries; year: EnergyHistorySeries; decade: EnergyHistorySeries }>;
   loadConnectivity(_role: PwaRole): Promise<ConnectivitySnapshot>;
   loadAlerts(_role: PwaRole): Promise<AlertFeed>;
 };
@@ -51,7 +53,8 @@ export function createDzxProvider(mode: ProviderMode = 'auto', baseUrl = resolve
         return {
           today: todayHistoryFixture,
           month: monthHistoryFixture,
-          lifetime: lifetimeHistoryFixture,
+          year: yearHistoryFixture,
+          decade: decadeHistoryFixture,
         };
       }
       return toHistoryBundle(await client.getHistory());

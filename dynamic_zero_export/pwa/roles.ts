@@ -13,11 +13,8 @@ export type RolePermissions = {
 export const rolePermissions: Record<PwaRole, RolePermissions> = {
   user: {
     visiblePages: [
-      'overview',
       'energy-history',
-      'power-flow',
-      'connectivity',
-      'alerts',
+      'reliability',
       'basic-settings',
     ],
     editableFields: ['site.name', 'site.systemName', 'profile.locale'],
@@ -25,15 +22,12 @@ export const rolePermissions: Record<PwaRole, RolePermissions> = {
     diagnosticsAccess: 'limited',
     commissioningAccess: 'none',
     serviceAccess: 'none',
-    ownerViews: ['overview', 'energy-history', 'connectivity', 'alerts'],
+    ownerViews: ['energy-history', 'reliability'],
   },
   installer: {
     visiblePages: [
-      'overview',
       'energy-history',
-      'power-flow',
-      'connectivity',
-      'alerts',
+      'reliability',
       'basic-settings',
       'commissioning',
       'topology',
@@ -57,15 +51,12 @@ export const rolePermissions: Record<PwaRole, RolePermissions> = {
     diagnosticsAccess: 'full',
     commissioningAccess: 'full',
     serviceAccess: 'read',
-    ownerViews: ['overview', 'energy-history', 'connectivity', 'alerts'],
+    ownerViews: ['energy-history', 'reliability'],
   },
   manufacturer: {
     visiblePages: [
-      'overview',
       'energy-history',
-      'power-flow',
-      'connectivity',
-      'alerts',
+      'reliability',
       'basic-settings',
       'commissioning',
       'topology',
@@ -86,7 +77,7 @@ export const rolePermissions: Record<PwaRole, RolePermissions> = {
     diagnosticsAccess: 'full',
     commissioningAccess: 'full',
     serviceAccess: 'full',
-    ownerViews: ['overview', 'energy-history', 'connectivity', 'alerts'],
+    ownerViews: ['energy-history', 'reliability'],
   },
 };
 

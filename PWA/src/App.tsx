@@ -25,8 +25,9 @@ import {
 } from './boardDiscovery';
 import { deriveZones as deriveCommissioningZones } from './policySchema';
 import { type SourceSlot, type SiteConfig, defaultSite } from './siteTemplates';
+import type { FeaturePageId } from './features/dynamic-zero-export/navigation';
 import {
-  pageById,
+  operationPageLabel,
   visiblePagesFor,
   workspacesForRole,
   type AppPageId,
@@ -52,6 +53,12 @@ function App() {
   const [adminResetOpen, setAdminResetOpen] = useState(false);
   const [workspace, setWorkspace] = useState<WorkspaceId>('operation');
   const [page, setPage] = useState<AppPageId>('dashboard');
+  /**
+   * Inner Monitoring tab when the DZX shell mounts. **Energy History** is the default (live plant
+   * snapshot merged into the main Dashboard).
+   */
+  const [dzxEnterTab, setDzxEnterTab] = useState<FeaturePageId>('energy-history');
+  const ownerLandingDoneRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
   const [config, setConfig] = useState<SiteConfig>(defaultSite);
   const [profileName, setProfileName] = useState('default');
@@ -87,11 +94,16 @@ function App() {
   }, [config.slots]);
 
   const availableWorkspaces = useMemo(() => workspacesForRole(session.role), [session.role]);
+  const showWorkspaceNav = availableWorkspaces.length > 1;
+  const defaultMonitoringTab = useMemo<FeaturePageId>(() => 'energy-history', []);
   const visiblePages = useMemo(
     () => visiblePagesFor(session.role, workspace, config),
     [session.role, workspace, config],
   );
-  const activePage = useMemo(() => pageById(page), [page]);
+  const activePageLabel = useMemo(
+    () => operationPageLabel(page, session.role),
+    [page, session.role],
+  );
 
   const siteBundle = useMemo(() => generateSiteBundle(config), [config]);
   const rootPackageManifest = siteBundle[0]?.content ?? '';
@@ -225,8 +237,19 @@ function App() {
   }, [notice]);
 
   useEffect(() => {
-    document.title = `PV-DG · ${activePage?.label ?? 'PV-DG'}`;
-  }, [activePage]);
+    document.title = `PV-DG · ${activePageLabel}`;
+  }, [activePageLabel]);
+
+  useEffect(() => {
+    if (!authenticated) {
+      ownerLandingDoneRef.current = false;
+      return;
+    }
+    if (session.role !== 'user' || ownerLandingDoneRef.current) return;
+    ownerLandingDoneRef.current = true;
+    setDzxEnterTab('energy-history');
+    setPage('dzx');
+  }, [authenticated, session.role]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -313,10 +336,15 @@ function App() {
                     </span>
                   </p>
                   <div className='app-header-workspace' aria-live='polite'>
-                    <span className='app-header-workspace-label'>Workspace</span>
+                    <span className='app-header-workspace-label'>
+                      {session.role === 'user' && !showWorkspaceNav ? 'View' : 'Workspace'}
+                    </span>
                     <span className='app-header-workspace-value' data-testid='workspace-active'>
-                      {(workspace === 'operation' ? 'Operation' : 'Commissioning') +
-                        (activePage?.label ? ` · ${activePage.label}` : '')}
+                      {(session.role === 'user' && !showWorkspaceNav
+                        ? 'Home'
+                        : workspace === 'operation'
+                          ? 'Operation'
+                          : 'Commissioning') + (activePageLabel ? ` · ${activePageLabel}` : '')}
                     </span>
                   </div>
                 </div>
@@ -435,35 +463,41 @@ function App() {
           ) : null}
         </header>
 
-        <nav className='workspace-nav' aria-label='Primary workspace' data-testid='workspace-nav'>
-          {availableWorkspaces.map((w) => (
-            <button
-              key={w}
-              type='button'
-              className={cx('workspace-button', workspace === w && 'active')}
-              aria-current={workspace === w ? 'page' : undefined}
-              onClick={() => {
-                setWorkspace(w);
-                const first = visiblePagesFor(session.role, w, config)[0]?.id;
-                if (first) setPage(first);
-              }}
-            >
-              {w === 'operation' ? 'Operation' : 'Commissioning'}
-            </button>
-          ))}
-        </nav>
+        {showWorkspaceNav ? (
+          <nav className='workspace-nav' aria-label='Primary workspace' data-testid='workspace-nav'>
+            {availableWorkspaces.map((w) => (
+              <button
+                key={w}
+                type='button'
+                className={cx('workspace-button', workspace === w && 'active')}
+                aria-current={workspace === w ? 'page' : undefined}
+                onClick={() => {
+                  setWorkspace(w);
+                  const first = visiblePagesFor(session.role, w, config)[0]?.id;
+                  if (first) setPage(first);
+                }}
+              >
+                {w === 'operation' ? 'Operation' : 'Commissioning'}
+              </button>
+            ))}
+          </nav>
+        ) : null}
 
         <div className='subnav' aria-label='Workspace pages'>
           <label className='subnav-select'>
             <span className='sr-only'>Select page</span>
             <select
               value={page}
-              onChange={(e) => setPage(e.target.value as AppPageId)}
+              onChange={(e) => {
+                const next = e.target.value as AppPageId;
+                if (next === 'dzx') setDzxEnterTab(defaultMonitoringTab);
+                setPage(next);
+              }}
               data-testid='subnav-select'
             >
               {visiblePages.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label}
+                  {operationPageLabel(p.id, session.role)}
                 </option>
               ))}
             </select>
@@ -475,9 +509,12 @@ function App() {
                 type='button'
                 className={cx('subnav-pill', page === p.id && 'active')}
                 aria-current={page === p.id ? 'page' : undefined}
-                onClick={() => setPage(p.id)}
+                onClick={() => {
+                  if (p.id === 'dzx') setDzxEnterTab(defaultMonitoringTab);
+                  setPage(p.id);
+                }}
               >
-                {p.label}
+                {operationPageLabel(p.id, session.role)}
               </button>
             ))}
           </nav>
@@ -525,8 +562,22 @@ function App() {
           className='app-main'
           tabIndex={-1}
         >
-        {page === 'dzx' && <ProductArea controllerRuntimeMode={config.controllerRuntimeMode} />}
-        {page === 'dashboard' && <DashboardOverview boardIp={config.boardIp} />}
+        {page === 'dzx' && (
+          <ProductArea
+            controllerRuntimeMode={config.controllerRuntimeMode}
+            initialMonitoringTab={dzxEnterTab}
+          />
+        )}
+        {page === 'dashboard' && (
+          <DashboardOverview
+            boardIp={config.boardIp}
+            role={session.role}
+            onNavigateToMonitoring={(sub) => {
+              setDzxEnterTab(sub ?? defaultMonitoringTab);
+              setPage('dzx');
+            }}
+          />
+        )}
 
         {page === 'site' && (
           <SiteSetupPage

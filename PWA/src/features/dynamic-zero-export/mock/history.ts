@@ -1,8 +1,8 @@
 import {
-  lifetimeHistoryFixture,
+  decadeHistoryFixture,
   monthHistoryFixture,
   todayHistoryFixture,
+  yearHistoryFixture,
 } from '../../../../../dynamic_zero_export/pwa';
 
-export { lifetimeHistoryFixture, monthHistoryFixture, todayHistoryFixture };
-
+export { decadeHistoryFixture, monthHistoryFixture, todayHistoryFixture, yearHistoryFixture };

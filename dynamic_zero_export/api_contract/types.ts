@@ -86,8 +86,8 @@ export type AlertResponse = {
   };
 };
 
-export type HistoryRange = 'today' | 'month' | 'lifetime';
-export type HistoryResolution = '5m' | 'hour' | 'day' | 'month';
+export type HistoryRange = 'today' | 'month' | 'year' | 'decade';
+export type HistoryResolution = '5m' | 'hour' | 'day' | 'month' | 'year';
 
 export type HistoryPoint = {
   timestamp: string;
@@ -99,9 +99,14 @@ export type HistoryPoint = {
 };
 
 export type HistorySummaryResponse = {
+  /** Hourly buckets for one day (24 points). */
   today: HistoryPoint[];
+  /** Daily buckets for one month (~30 points). */
   month: HistoryPoint[];
-  lifetime: HistoryPoint[];
+  /** Monthly buckets for one trailing year (12 points). */
+  year: HistoryPoint[];
+  /** Yearly buckets for the last ten years (10 points). */
+  decade: HistoryPoint[];
   totals: {
     solarKwh: number;
     gridImportKwh: number;

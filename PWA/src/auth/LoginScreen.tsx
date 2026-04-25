@@ -94,6 +94,14 @@ export function LoginScreen() {
             />
           </label>
         </div>
+        {channel === 'user' ? (
+          <p className='help-text login-channel-hint' data-testid='login-user-hint'>
+            <strong>User</strong> is for site owners: live status, energy history, and reliability (connectivity
+            and alerts).
+            You cannot change site configuration or commissioning data. Access requires a User password
+            issued for your site (see repo <code className='inline-code'>CREDENTIALS.local.example</code>).
+          </p>
+        ) : null}
         {error ? <p className='notice-inline'>{error}</p> : null}
         <button type='submit' className='btn btn--primary' disabled={busy} data-testid='login-submit'>
           {busy ? 'Signing in…' : 'Sign in'}

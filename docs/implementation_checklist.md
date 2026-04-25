@@ -1,8 +1,10 @@
 # PV-DG Implementation Checklist
 
-Last updated: 2026-04-15
+Last updated: 2026-04-25
 
 **Agent / status overview:** see **`docs/AGENT_IMPLEMENTATION_PLAN.md`** — gateway + PWA software milestones are **complete**; remaining checklist rows are mainly **board / ESPHome** field work.
+
+**Monitoring / DZX map (for humans):** see **`docs/PWA_MONITORING_AND_GATEWAY.md`** — operation vs commissioning, Monitoring sub-tabs (including **Reliability**), board vs DZX API, and removed **`power-flow`** until a UI exists.
 
 This checklist is the repo-aware migration order for the current ESPHome + PWA commissioning product.
 

@@ -1,4 +1,4 @@
-export type HistoryGranularity = '5m' | 'hour' | 'day' | 'month';
+export type HistoryGranularity = '5m' | 'hour' | 'day' | 'month' | 'year';
 
 export type EnergyHistoryPoint = {
   timestamp: string;
@@ -17,7 +17,8 @@ export type EnergyHistorySeries = {
 export type EnergyHistoryViewModel = {
   today: EnergyHistorySeries;
   month: EnergyHistorySeries;
-  lifetime: EnergyHistorySeries;
+  year: EnergyHistorySeries;
+  decade: EnergyHistorySeries;
   highlights: string[];
 };
 

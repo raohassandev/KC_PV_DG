@@ -10,6 +10,13 @@ import type {
   TopologyResponse,
   ConfigReviewResponse,
 } from './types';
+import { aggregateEnergy } from '../pwa/contracts/history';
+import {
+  decadeHistoryFixture,
+  monthHistoryFixture,
+  todayHistoryFixture,
+  yearHistoryFixture,
+} from '../pwa/mock/history.fixture';
 
 export const deviceExample: DeviceInfoResponse = {
   deviceId: 'dzx-001',
@@ -85,20 +92,28 @@ export const alertsExample: AlertResponse = {
   summary: { criticalCount: 0, warningCount: 1, infoCount: 1 },
 };
 
+const historyPointsAll = [
+  ...todayHistoryFixture.points,
+  ...monthHistoryFixture.points,
+  ...yearHistoryFixture.points,
+  ...decadeHistoryFixture.points,
+];
+const historyTotalsRollup = aggregateEnergy(historyPointsAll);
+
 export const historyExample: HistorySummaryResponse = {
-  today: [
-    { timestamp: '2026-04-15T08:00:00Z', solarKwh: 1.2, gridImportKwh: 0.1, gridExportKwh: 0.8, generatorKwh: 0, curtailedKwh: 0 },
-    { timestamp: '2026-04-15T08:05:00Z', solarKwh: 1.4, gridImportKwh: 0.0, gridExportKwh: 1.0, generatorKwh: 0, curtailedKwh: 0.1 },
-  ],
-  month: [
-    { timestamp: '2026-04-01T00:00:00Z', solarKwh: 120, gridImportKwh: 4, gridExportKwh: 32, generatorKwh: 0, curtailedKwh: 2 },
-  ],
-  lifetime: [
-    { timestamp: '2026-01-01T00:00:00Z', solarKwh: 1200, gridImportKwh: 80, gridExportKwh: 320, generatorKwh: 25, curtailedKwh: 20 },
-  ],
-  totals: { solarKwh: 1321.6, gridImportKwh: 84.1, gridExportKwh: 353.8, generatorKwh: 25, curtailedKwh: 22.1 },
+  today: todayHistoryFixture.points.map((p) => ({ ...p })),
+  month: monthHistoryFixture.points.map((p) => ({ ...p })),
+  year: yearHistoryFixture.points.map((p) => ({ ...p })),
+  decade: decadeHistoryFixture.points.map((p) => ({ ...p })),
+  totals: {
+    solarKwh: Math.round(historyTotalsRollup.solarKwh * 100) / 100,
+    gridImportKwh: Math.round(historyTotalsRollup.gridImportKwh * 100) / 100,
+    gridExportKwh: Math.round(historyTotalsRollup.gridExportKwh * 100) / 100,
+    generatorKwh: Math.round(historyTotalsRollup.generatorKwh * 100) / 100,
+    curtailedKwh: Math.round(historyTotalsRollup.curtailedKwh * 100) / 100,
+  },
   range: 'today',
-  resolution: '5m',
+  resolution: 'hour',
 };
 
 export const commissioningExample: CommissioningSummaryResponse = {

@@ -79,11 +79,22 @@ export function appendHistory(
   entry: Partial<HistorySummaryResponse> & Pick<HistorySummaryResponse, 'range' | 'resolution'>,
 ): DeviceServiceState {
   const next = cloneState(state);
-  const point = entry.today?.[0] ?? entry.month?.[0] ?? entry.lifetime?.[0];
-  if (point) {
-    next.history.today = [...next.history.today, point];
-    next.history.month = [...next.history.month, point];
-    next.history.lifetime = [...next.history.lifetime, point];
+  const point =
+    entry.today?.[0] ?? entry.month?.[0] ?? entry.year?.[0] ?? entry.decade?.[0];
+  if (!point) return next;
+
+  switch (entry.range) {
+    case 'month':
+      next.history.month = [...next.history.month, point];
+      break;
+    case 'year':
+      next.history.year = [...next.history.year, point];
+      break;
+    case 'decade':
+      next.history.decade = [...next.history.decade, point];
+      break;
+    default:
+      next.history.today = [...next.history.today, point];
   }
   return next;
 }

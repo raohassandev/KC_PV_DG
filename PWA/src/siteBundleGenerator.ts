@@ -274,7 +274,7 @@ function contractYaml(): string {
   supported: true
   transport: esphome_web_server_v3
   groups:
-    - Overview
+    - Dashboard (board + plant snapshot)
     - Control
     - Grid Meter
     - Huawei Inverter

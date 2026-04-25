@@ -1,17 +1,10 @@
 import { FeatureCard } from '../components/FeatureCard';
 import { useEffect, useState } from 'react';
 import { fetchDiagnosticsApiBundle } from '../services/diagnosticsService';
-import {
-  buildRoleAwareLiveStatus,
-  buildRoleAwareLiveStatusFromProvider,
-  loadProviderMode,
-} from '../services/liveStatusService';
+import { loadProviderMode } from '../services/liveStatusService';
 import type { PwaRole } from '../roles';
 
-type LiveBlock = ReturnType<typeof buildRoleAwareLiveStatus>;
-
 export function DiagnosticsPage({ role = 'installer' }: { role?: PwaRole }) {
-  const [live, setLive] = useState<LiveBlock>(() => buildRoleAwareLiveStatus(role));
   const [loadState, setLoadState] = useState<'loading' | 'idle' | 'offline'>('loading');
   const [bundle, setBundle] = useState<Awaited<ReturnType<typeof fetchDiagnosticsApiBundle>>>({
     topology: null,
@@ -23,20 +16,17 @@ export function DiagnosticsPage({ role = 'installer' }: { role?: PwaRole }) {
     let active = true;
     const mode = loadProviderMode();
     setLoadState('loading');
-    (async () => {
-      const liveNext = await buildRoleAwareLiveStatusFromProvider(role, mode).catch(() =>
-        buildRoleAwareLiveStatus(role),
-      );
-      const apiNext = await fetchDiagnosticsApiBundle(mode).catch(() => ({
-        topology: null,
-        device: null,
-        snapshot: null,
-      }));
-      if (!active) return;
-      setLive(liveNext);
-      setBundle(apiNext);
-      setLoadState(apiNext.device || apiNext.topology ? 'idle' : 'offline');
-    })();
+    fetchDiagnosticsApiBundle(mode)
+      .then((apiNext) => {
+        if (!active) return;
+        setBundle(apiNext);
+        setLoadState(apiNext.device || apiNext.topology ? 'idle' : 'offline');
+      })
+      .catch(() => {
+        if (!active) return;
+        setBundle({ topology: null, device: null, snapshot: null });
+        setLoadState('offline');
+      });
     return () => {
       active = false;
     };
@@ -45,26 +35,22 @@ export function DiagnosticsPage({ role = 'installer' }: { role?: PwaRole }) {
   const topo = bundle.topology;
   const dev = bundle.device;
 
+  const statusSuffix =
+    loadState === 'loading' ? 'Loading API data…' : loadState === 'offline' ? 'API offline — use Reliability to set provider and API URL.' : 'API data loaded.';
+
   return (
-    <div className='feature-page-grid'>
-      <FeatureCard
-        title='Diagnostics'
-        subtitle={`${role}${
-          loadState === 'loading' ? ' · loading…' : loadState === 'offline' ? ' · limited (no API)' : ''
-        }`}
-      >
-        <ul className='list-block'>
-          <li>System state: {live.snapshot.systemState}</li>
-          <li>Controller: {live.snapshot.deviceOnline ? 'online' : 'offline'}</li>
-          <li>Last updated: {live.snapshot.lastUpdatedAt}</li>
-          <li>Generator: {live.generatorKw ? `${live.generatorKw.toFixed(1)} kW` : 'not reported'}</li>
-        </ul>
-      </FeatureCard>
+    <div className='feature-page-grid diagnostics-page' data-testid='diagnostics-page'>
+      <div className='diagnostics-page-lede help-text' role='note'>
+        <strong>{role}</strong> · {statusSuffix} Live plant KPIs, sources, and charts stay on{' '}
+        <strong>Live status</strong> in the app bar. This tab is the <strong>local API</strong> readout only
+        (device, topology, support export).
+      </div>
       <FeatureCard title='Device (local API)' subtitle={dev ? 'From /api/device/info' : 'Unavailable'}>
         {dev ? (
           <ul className='list-block'>
             <li>Device ID: {dev.deviceId}</li>
             <li>Name: {dev.deviceName}</li>
+            <li>Controller ID: {dev.controllerId}</li>
             <li>Firmware: {dev.firmwareVersion}</li>
             <li>Build: {dev.buildId}</li>
             <li>Uptime: {Math.round(dev.uptimeSec / 60)} min</li>

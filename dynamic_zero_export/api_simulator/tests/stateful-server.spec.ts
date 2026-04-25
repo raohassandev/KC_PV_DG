@@ -71,7 +71,7 @@ test('api server exposes mutable endpoints', async () => {
 
     const history = await request(base, 'POST', '/api/sim/history-append', {
       range: 'today',
-      resolution: '5m',
+      resolution: 'hour',
       today: [{ timestamp: '2026-04-16T01:00:00Z', solarKwh: 0.5, gridImportKwh: 0, gridExportKwh: 0.2, generatorKwh: 0, curtailedKwh: 0 }],
     });
     assert.ok(history.today.length >= 3);

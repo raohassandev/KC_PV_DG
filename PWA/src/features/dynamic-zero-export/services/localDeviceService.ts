@@ -16,7 +16,9 @@ export type LocalDeviceService = {
   client?: DzxApiClient;
   provider: DzxProvider;
   loadLiveStatus(role: PwaRole): Promise<LiveStatusSnapshot>;
-  loadHistory(role: PwaRole): Promise<{ today: EnergyHistorySeries; month: EnergyHistorySeries; lifetime: EnergyHistorySeries }>;
+  loadHistory(
+    role: PwaRole,
+  ): Promise<{ today: EnergyHistorySeries; month: EnergyHistorySeries; year: EnergyHistorySeries; decade: EnergyHistorySeries }>;
   loadConnectivity(role: PwaRole): Promise<ConnectivitySnapshot>;
   loadAlerts(role: PwaRole): Promise<AlertFeed>;
   setProviderMode(mode: ProviderMode): Promise<void>;

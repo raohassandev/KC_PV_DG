@@ -27,7 +27,7 @@ export type NavPage = {
 export const NAV_PAGES: NavPage[] = [
   // Operation
   { id: 'dashboard', label: 'Dashboard', workspace: 'operation', roles: ['user', 'installer', 'manufacturer'] },
-  // Live ops shell: overview, history, connectivity, alerts (+ role/mode-gated subtabs inside ProductArea).
+  // Live ops shell: dashboard (board) + monitoring (energy, reliability; role/mode-gated subtabs).
   {
     id: 'dzx',
     label: 'Monitoring',
@@ -56,5 +56,14 @@ export function visiblePagesFor(role: PwaRole, workspace: WorkspaceId, config: S
 
 export function pageById(id: AppPageId): NavPage | undefined {
   return NAV_PAGES.find((p) => p.id === id);
+}
+
+/** Operation workspace shell labels — stable `id` for routing; softer copy for owners (`user`). */
+export function operationPageLabel(id: AppPageId, role: PwaRole): string {
+  if (role === 'user') {
+    if (id === 'dzx') return 'Energy & monitoring';
+    if (id === 'dashboard') return 'Live status';
+  }
+  return pageById(id)?.label ?? id;
 }
 

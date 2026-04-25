@@ -17,13 +17,6 @@ export type ServiceResult<T> = {
   updatedAt: string;
 };
 
-export type OverviewViewModel = DashboardModel & {
-  role: Role;
-  live: LiveStatusSnapshot;
-  connectivity: ConnectivitySnapshot;
-  alerts: AlertFeed;
-};
-
 export type ConnectivityViewModel = {
   role: Role;
   title: string;
@@ -52,11 +45,13 @@ export type HistoryViewModel = {
   role: Role;
   today: EnergyHistorySeries;
   month: EnergyHistorySeries;
-  lifetime: EnergyHistorySeries;
+  year: EnergyHistorySeries;
+  decade: EnergyHistorySeries;
   totals: {
     today: ReturnType<typeof aggregateEnergyTotals>;
     month: ReturnType<typeof aggregateEnergyTotals>;
-    lifetime: ReturnType<typeof aggregateEnergyTotals>;
+    year: ReturnType<typeof aggregateEnergyTotals>;
+    decade: ReturnType<typeof aggregateEnergyTotals>;
   };
   highlights: string[];
 };

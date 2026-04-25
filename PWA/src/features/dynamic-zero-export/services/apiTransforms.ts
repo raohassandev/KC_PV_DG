@@ -8,9 +8,11 @@ import type {
 import type {
   AlertResponse,
   ConnectivityResponse,
+  HistoryPoint,
   HistorySummaryResponse,
   LiveStatusResponse,
 } from '../../../../../dynamic_zero_export/api_contract';
+import { historyExample } from '../../../../../dynamic_zero_export/api_contract/examples';
 
 export function toLiveStatusSnapshot(response: LiveStatusResponse): LiveStatusSnapshot {
   return {
@@ -78,17 +80,43 @@ export function toAlertFeed(response: AlertResponse): AlertFeed {
   };
 }
 
-export function toHistorySeries(points: HistorySummaryResponse['today'], granularity: EnergyHistorySeries['granularity']): EnergyHistorySeries {
+export function toHistorySeries(
+  points: HistorySummaryResponse['today'] | undefined,
+  granularity: EnergyHistorySeries['granularity'],
+): EnergyHistorySeries {
+  const list = Array.isArray(points) ? points : [];
   return {
     granularity,
-    points: points.map((point) => ({ ...point })) as EnergyHistoryPoint[],
+    points: list.map((point) => ({ ...point })) as EnergyHistoryPoint[],
   };
 }
 
-export function toHistoryBundle(response: HistorySummaryResponse): { today: EnergyHistorySeries; month: EnergyHistorySeries; lifetime: EnergyHistorySeries } {
+type HistoryWire = HistorySummaryResponse & { lifetime?: HistoryPoint[] };
+
+function yearPointsFromWire(response: HistoryWire): HistoryPoint[] {
+  if (Array.isArray(response.year)) return response.year;
+  return historyExample.year;
+}
+
+function decadePointsFromWire(response: HistoryWire): HistoryPoint[] {
+  if (Array.isArray(response.decade)) return response.decade;
+  if (Array.isArray(response.lifetime) && response.lifetime.length > 0) {
+    return response.lifetime;
+  }
+  return historyExample.decade;
+}
+
+export function toHistoryBundle(response: HistorySummaryResponse): {
+  today: EnergyHistorySeries;
+  month: EnergyHistorySeries;
+  year: EnergyHistorySeries;
+  decade: EnergyHistorySeries;
+} {
+  const wire = response as HistoryWire;
   return {
-    today: toHistorySeries(response.today, '5m'),
-    month: toHistorySeries(response.month, 'day'),
-    lifetime: toHistorySeries(response.lifetime, 'month'),
+    today: toHistorySeries(wire.today, 'hour'),
+    month: toHistorySeries(wire.month, 'day'),
+    year: toHistorySeries(yearPointsFromWire(wire), 'month'),
+    decade: toHistorySeries(decadePointsFromWire(wire), 'year'),
   };
 }
