@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { deleteDriver, fetchDriver, fetchDrivers, saveDriver } from '../gatewayDriversApi';
-import { cacheDriver } from '../driverCache';
+import { cacheDriver, cacheDriverMetaList } from '../driverCache';
 import type { DriverDefinition, DriverMeta, DriverRegister } from '../types/driverLibrary';
 
 const EMPTY_DRIVER: DriverDefinition = {
@@ -156,46 +156,32 @@ export function DriversLibraryPage() {
   const [draft, setDraft] = useState<DriverDefinition>(EMPTY_DRIVER);
   const [newId, setNewId] = useState('');
 
-  if (!siteGatewaySyncAvailable) {
-    return (
-      <section className='card card-wide'>
-        <div className='card-header'>
-          <div>
-            <h2>Drivers</h2>
-            <p className='help-text'>Manufacturer driver library (meters & inverters)</p>
-          </div>
-        </div>
-        <div className='inline-banner inline-banner--warn'>
-          Gateway is not configured (or you are not logged in via gateway). Drivers require a gateway session.
-        </div>
-        <p className='help-text' style={{ marginTop: 10 }}>
-          Fix: run the gateway locally and set <span className='inline-code'>VITE_GATEWAY_URL</span>, then login as
-          manufacturer again.
-        </p>
-      </section>
-    );
-  }
+  const gatewayReady = siteGatewaySyncAvailable;
 
   const selectedMeta = useMemo(() => drivers.find((d) => d.id === selectedId) ?? null, [drivers, selectedId]);
 
   const reload = useCallback(async () => {
+    if (!gatewayReady) return;
     setBusy(true);
     setError(null);
     try {
       const list = await fetchDrivers(fetchGateway);
       setDrivers(list.sort((a, b) => a.name.localeCompare(b.name)));
+      cacheDriverMetaList(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load drivers');
     } finally {
       setBusy(false);
     }
-  }, [fetchGateway]);
+  }, [fetchGateway, gatewayReady]);
 
   useEffect(() => {
+    if (!gatewayReady) return;
     void reload();
-  }, [reload]);
+  }, [gatewayReady, reload]);
 
   const loadSelected = useCallback(async () => {
+    if (!gatewayReady) return;
     if (!selectedId) return;
     setBusy(true);
     setError(null);
@@ -208,11 +194,12 @@ export function DriversLibraryPage() {
     } finally {
       setBusy(false);
     }
-  }, [fetchGateway, selectedId]);
+  }, [fetchGateway, gatewayReady, selectedId]);
 
   useEffect(() => {
+    if (!gatewayReady) return;
     void loadSelected();
-  }, [loadSelected]);
+  }, [gatewayReady, loadSelected]);
 
   return (
     <section className='card card-wide'>
@@ -227,6 +214,18 @@ export function DriversLibraryPage() {
           </span>
         </div>
       </div>
+
+      {!gatewayReady ? (
+        <>
+          <div className='inline-banner inline-banner--warn'>
+            Gateway is not configured (or you are not logged in via gateway). Drivers require a gateway session.
+          </div>
+          <p className='help-text' style={{ marginTop: 10 }}>
+            Fix: run the gateway locally and set <span className='inline-code'>VITE_GATEWAY_URL</span>, then login as
+            manufacturer again.
+          </p>
+        </>
+      ) : null}
 
       {error ? <div className='inline-banner inline-banner--warn'>{error}</div> : null}
 

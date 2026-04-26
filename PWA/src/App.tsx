@@ -545,6 +545,18 @@ function App() {
               <span className='app-header-toolbar-spacer' />
             )}
             <div className='app-header-toolbar-trailing'>
+              {gatewayAuth ? (
+                <span
+                  className={['updated-pill', siteGatewaySyncAvailable ? '' : 'updated-pill--busy'].filter(Boolean).join(' ')}
+                  title={siteGatewaySyncAvailable ? 'Gateway session active' : 'Gateway configured but not connected'}
+                >
+                  {siteGatewaySyncAvailable ? 'Gateway: Connected' : 'Gateway: Sign in'}
+                </span>
+              ) : (
+                <span className='updated-pill' title='Gateway not configured for this PWA build'>
+                  Gateway: Not configured
+                </span>
+              )}
               <ThemeControls
                 preference={theme.preference}
                 setPreference={theme.setPreference}

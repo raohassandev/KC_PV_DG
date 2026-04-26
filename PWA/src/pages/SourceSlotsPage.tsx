@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { fetchDrivers } from '../gatewayDriversApi';
 import { useEffect, useState } from 'react';
 import type { DriverMeta } from '../types/driverLibrary';
+import { cacheDriverMetaList, readCachedDriverMetaList } from '../driverCache';
 
 export type SourceSlotsPageProps = {
   config: SiteConfig;
@@ -27,7 +28,7 @@ export function SourceSlotsPage({
   setShowAdvanced,
 }: SourceSlotsPageProps) {
   const { siteGatewaySyncAvailable, fetchGateway, role } = useAuth();
-  const [drivers, setDrivers] = useState<DriverMeta[]>([]);
+  const [drivers, setDrivers] = useState<DriverMeta[]>(() => readCachedDriverMetaList());
 
   useEffect(() => {
     if (!siteGatewaySyncAvailable) return;
@@ -35,9 +36,12 @@ export function SourceSlotsPage({
     void (async () => {
       try {
         const list = await fetchDrivers(fetchGateway);
-        if (!cancelled) setDrivers(list);
+        if (!cancelled) {
+          setDrivers(list);
+          cacheDriverMetaList(list);
+        }
       } catch {
-        if (!cancelled) setDrivers([]);
+        if (!cancelled) setDrivers(readCachedDriverMetaList());
       }
     })();
     return () => {

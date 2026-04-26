@@ -1,6 +1,7 @@
-import type { DriverDefinition } from './types/driverLibrary';
+import type { DriverDefinition, DriverMeta } from './types/driverLibrary';
 
 const KEY_PREFIX = 'pvdg.driver.';
+const META_KEY = 'pvdg.driver.meta.list';
 
 export function cacheDriver(def: DriverDefinition) {
   try {
@@ -18,6 +19,25 @@ export function readCachedDriver(driverId: string): DriverDefinition | null {
     return JSON.parse(raw) as DriverDefinition;
   } catch {
     return null;
+  }
+}
+
+export function cacheDriverMetaList(list: DriverMeta[]) {
+  try {
+    localStorage.setItem(META_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+}
+
+export function readCachedDriverMetaList(): DriverMeta[] {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return [];
+    const j = JSON.parse(raw) as unknown;
+    return Array.isArray(j) ? (j as DriverMeta[]) : [];
+  } catch {
+    return [];
   }
 }
 
