@@ -2,6 +2,10 @@ import { FormGrid } from '../layout/FormGrid';
 import { MappingCard } from '../components/MappingCard';
 import type { SourceSlot, SiteConfig } from '../siteTemplates';
 import { deviceOptionsForRole } from '../siteTemplates';
+import { useAuth } from '../auth/AuthContext';
+import { fetchDrivers } from '../gatewayDriversApi';
+import { useEffect, useState } from 'react';
+import type { DriverMeta } from '../types/driverLibrary';
 
 export type SourceSlotsPageProps = {
   config: SiteConfig;
@@ -22,6 +26,27 @@ export function SourceSlotsPage({
   showAdvanced,
   setShowAdvanced,
 }: SourceSlotsPageProps) {
+  const { siteGatewaySyncAvailable, fetchGateway, role } = useAuth();
+  const [drivers, setDrivers] = useState<DriverMeta[]>([]);
+
+  useEffect(() => {
+    if (!siteGatewaySyncAvailable) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchDrivers(fetchGateway);
+        if (!cancelled) setDrivers(list);
+      } catch {
+        if (!cancelled) setDrivers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [siteGatewaySyncAvailable, fetchGateway]);
+
+  const driverOptions = role === 'installer' || role === 'manufacturer' ? drivers : [];
+
   return (
     <FormGrid>
       <div className='panel'>
@@ -36,6 +61,7 @@ export function SourceSlotsPage({
               slot={slot}
               updateSlot={updateSlot}
               deviceOptions={deviceOptionsForRole('grid_meter')}
+              driverOptions={driverOptions}
             />
           ))}
           {generatorSources.map((slot) => (
@@ -44,6 +70,7 @@ export function SourceSlotsPage({
               slot={slot}
               updateSlot={updateSlot}
               deviceOptions={deviceOptionsForRole('generator_meter')}
+              driverOptions={driverOptions}
             />
           ))}
         </div>
@@ -59,6 +86,7 @@ export function SourceSlotsPage({
               slot={slot}
               updateSlot={updateSlot}
               deviceOptions={deviceOptionsForRole('inverter')}
+              driverOptions={driverOptions}
             />
           ))}
         </div>
@@ -88,6 +116,7 @@ export function SourceSlotsPage({
                 slot={slot}
                 updateSlot={updateSlot}
                 deviceOptions={deviceOptionsForRole(slot.role)}
+                driverOptions={driverOptions}
                 compact
               />
             ))}

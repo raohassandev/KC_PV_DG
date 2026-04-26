@@ -7,6 +7,7 @@ import {
   deviceOptionsForRole,
   roleHelp,
 } from '../siteTemplates';
+import type { DriverMeta } from '../types/driverLibrary';
 
 const templateHelp: Record<DeviceType, string> = {
   none: 'Unused slot',
@@ -42,13 +43,23 @@ export function MappingCard({
   slot,
   updateSlot,
   deviceOptions,
+  driverOptions,
   compact = false,
 }: {
   slot: SourceSlot;
   updateSlot: (slotId: string, patch: Partial<SourceSlot>) => void;
   deviceOptions: Array<[DeviceType, string]>;
+  driverOptions?: DriverMeta[];
   compact?: boolean;
 }) {
+  const showDriverSelect = slot.role === 'grid_meter' || slot.role === 'inverter';
+  const driverSelectOptions: Array<[string, string]> = [
+    ['__none__', 'Built-in template (Device Type)'],
+    ...(driverOptions ?? [])
+      .filter((d) => (slot.role === 'grid_meter' ? d.deviceType === 'meter' : d.deviceType === 'inverter'))
+      .map((d) => [d.id, `${d.name}${d.vendor ? ` · ${d.vendor}` : ''}`] as [string, string]),
+  ];
+
   return (
     <div className='slot-card'>
       <h2>{slot.label}</h2>
@@ -65,6 +76,15 @@ export function MappingCard({
           checked={slot.enabled}
           onChange={(v) => updateSlot(slot.id, { enabled: v })}
         />
+        {showDriverSelect && driverOptions && driverOptions.length > 0 ? (
+          <SelectField
+            label='Driver'
+            help='Optional: select a Manufacturer driver override (used by YAML export).'
+            value={slot.driverId ? slot.driverId : '__none__'}
+            onChange={(v) => updateSlot(slot.id, { driverId: v === '__none__' ? undefined : v })}
+            options={driverSelectOptions}
+          />
+        ) : null}
         <SelectField
           label='Device Type'
           help={deviceHelp[slot.deviceType]}
