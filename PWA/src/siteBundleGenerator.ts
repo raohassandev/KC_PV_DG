@@ -49,6 +49,11 @@ function enabledPackages(config: SiteConfig) {
 }
 
 function driverValueType(r: DriverDefinition['registers'][number]): string {
+  // If a full byte order is specified (not ABCD), we will decode it via `lambda:`
+  // and keep `value_type` in its normal (non _R) form.
+  if (r.byteOrder && r.byteOrder !== 'ABCD') {
+    return r.valueKind;
+  }
   const kind = r.valueKind;
   const wordSwap = r.wordOrder === 'lowWordFirst';
   if (kind === 'U_DWORD') return wordSwap ? 'U_DWORD_R' : 'U_DWORD';
@@ -57,6 +62,64 @@ function driverValueType(r: DriverDefinition['registers'][number]): string {
   if (kind === 'S_QWORD') return wordSwap ? 'S_QWORD_R' : 'S_QWORD';
   if (kind === 'FP32') return wordSwap ? 'FP32_R' : 'FP32';
   return kind;
+}
+
+function byteOrderIndexes(order: NonNullable<DriverDefinition['registers'][number]['byteOrder']>): number[] {
+  if (order === 'ABCD') return [0, 1, 2, 3];
+  if (order === 'BADC') return [1, 0, 3, 2];
+  if (order === 'CDAB') return [2, 3, 0, 1];
+  return [3, 2, 1, 0]; // DCBA
+}
+
+function needsByteLambda(r: DriverDefinition['registers'][number]): boolean {
+  // For 16-bit values, byte order is rarely meaningful in Modbus context; ignore.
+  if (r.valueKind === 'U_WORD' || r.valueKind === 'S_WORD') return false;
+  return !!r.byteOrder && r.byteOrder !== 'ABCD';
+}
+
+function lambdaForByteOrder(r: DriverDefinition['registers'][number]): string {
+  const idx = byteOrderIndexes(r.byteOrder ?? 'ABCD');
+  const nBytes = r.valueKind === 'U_QWORD' || r.valueKind === 'S_QWORD' ? 8 : 4;
+  const idxList =
+    nBytes === 8
+      ? [...idx.map((i) => i), ...idx.map((i) => i + 4)]
+      : idx;
+
+  const lines: string[] = [];
+  lines.push(`|-`);
+  lines.push(`  const size_t o = item->offset;`);
+  lines.push(`  if (data.size() < o + ${nBytes}) return NAN;`);
+  for (let i = 0; i < nBytes; i++) {
+    lines.push(`  const uint8_t b${i} = data[o + ${idxList[i]}];`);
+  }
+
+  if (nBytes === 4) {
+    lines.push(`  const uint32_t u = (uint32_t(b0) << 24) | (uint32_t(b1) << 16) | (uint32_t(b2) << 8) | uint32_t(b3);`);
+    if (r.valueKind === 'FP32') {
+      lines.push(`  float f = NAN;`);
+      lines.push(`  memcpy(&f, &u, sizeof(float));`);
+      lines.push(`  return f;`);
+    } else if (r.valueKind === 'S_DWORD') {
+      lines.push(`  const int32_t s = int32_t(u);`);
+      lines.push(`  return float(s);`);
+    } else {
+      // U_DWORD
+      lines.push(`  return float(u);`);
+    }
+  } else {
+    // 64-bit: note this will lose precision above 2^24 in a float sensor, but is acceptable for UI-derived values.
+    lines.push(`  const uint64_t u =`);
+    lines.push(`    (uint64_t(b0) << 56) | (uint64_t(b1) << 48) | (uint64_t(b2) << 40) | (uint64_t(b3) << 32) |`);
+    lines.push(`    (uint64_t(b4) << 24) | (uint64_t(b5) << 16) | (uint64_t(b6) << 8) | uint64_t(b7);`);
+    if (r.valueKind === 'S_QWORD') {
+      lines.push(`  const int64_t s = int64_t(u);`);
+      lines.push(`  return float(double(s));`);
+    } else {
+      // U_QWORD
+      lines.push(`  return float(double(u));`);
+    }
+  }
+  return lines.join('\n');
 }
 
 function driverYaml(def: DriverDefinition, modbusControllerId: string): string {
@@ -71,6 +134,9 @@ function driverYaml(def: DriverDefinition, modbusControllerId: string): string {
     out.push(`    address: 0x${Math.trunc(addr).toString(16).toUpperCase()}`);
     out.push(`    register_type: ${r.registerType}`);
     out.push(`    value_type: ${driverValueType(r)}`);
+    if (needsByteLambda(r)) {
+      out.push(`    lambda: ${lambdaForByteOrder(r)}`);
+    }
     if (typeof r.precision === 'number' && Number.isFinite(r.precision)) {
       out.push(`    accuracy_decimals: ${Math.max(0, Math.min(6, Math.trunc(r.precision)))}`);
     }
