@@ -25,3 +25,11 @@ https://chatgpt.com/c/69d7bd3c-bcd0-83a7-8b01-df2ab7344a58
 
 Inventory sheet
 https://chatgpt.com/c/69d6a56f-5b1c-83a5-8ae8-13896ae871d5
+
+
+Flash/OTA the newly compiled firmware to the controller, then refresh PWA.
+
+OTA (if reachable on LAN):
+
+cd /Users/israrulhaq/Desktop/DEV/KC_PV_DG
+esphome run Modular_Yaml/pv-dg-controller.yaml --device 192.168.0.111

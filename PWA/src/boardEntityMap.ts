@@ -17,6 +17,8 @@ export const boardEntityMap = {
     l1Current: '/sensor/Grid%20L1%20Current',
     l2Current: '/sensor/Grid%20L2%20Current',
     l3Current: '/sensor/Grid%20L3%20Current',
+    eqvVoltage: '/sensor/Grid%20Equivalent%20Phase%20Voltage',
+    eqvCurrent: '/sensor/Grid%20Equivalent%20Current',
     l1ActivePower: '/sensor/Grid%20L1%20Active%20Power',
     l2ActivePower: '/sensor/Grid%20L2%20Active%20Power',
     l3ActivePower: '/sensor/Grid%20L3%20Active%20Power',

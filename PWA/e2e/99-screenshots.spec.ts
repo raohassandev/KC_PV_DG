@@ -149,6 +149,13 @@ test.describe('UI screenshots (all roles)', () => {
             await clickAllTopTabsAndScreenshot(page, basePrefix, 'commissioning', outDir);
           }
 
+          // Manufacturer-only workspace screenshots (manufacturer only).
+          if (role === 'manufacturer' && (await workspaceNav.isVisible().catch(() => false))) {
+            await gotoWorkspace(page, 'Manufacturer');
+            await dismissNoticeIfPresent(page);
+            await clickAllTopTabsAndScreenshot(page, basePrefix, 'manufacturer', outDir);
+          }
+
           // Sign out so the next role starts clean.
           await page.getByTestId('account-menu-trigger').click();
           await page.getByTestId('logout-button').click();

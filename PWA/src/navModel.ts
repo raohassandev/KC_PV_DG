@@ -1,7 +1,7 @@
 import type { PwaRole } from '../../dynamic_zero_export/pwa';
 import type { SiteConfig } from './siteProfileSchema';
 
-export type WorkspaceId = 'operation' | 'commissioning';
+export type WorkspaceId = 'operation' | 'commissioning' | 'manufacturer';
 
 export type AppPageId =
   | 'dashboard'
@@ -11,6 +11,7 @@ export type AppPageId =
   | 'slots'
   | 'templates'
   | 'review'
+  | 'resources'
   | 'engineer'
   | 'yaml';
 
@@ -42,11 +43,14 @@ export const NAV_PAGES: NavPage[] = [
   { id: 'templates', label: 'Templates', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   { id: 'review', label: 'Validation', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   { id: 'yaml', label: 'YAML Export', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
-  { id: 'engineer', label: 'Engineer Actions', workspace: 'commissioning', roles: ['manufacturer'] },
+  // Manufacturer-only workspace
+  { id: 'resources', label: 'Board Resources', workspace: 'manufacturer', roles: ['manufacturer'] },
+  { id: 'engineer', label: 'Engineer Actions', workspace: 'manufacturer', roles: ['manufacturer'] },
 ];
 
 export function workspacesForRole(role: PwaRole): WorkspaceId[] {
   if (role === 'user') return ['operation'];
+  if (role === 'manufacturer') return ['operation', 'commissioning', 'manufacturer'];
   return ['operation', 'commissioning'];
 }
 

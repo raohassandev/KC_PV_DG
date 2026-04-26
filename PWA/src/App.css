@@ -1591,12 +1591,46 @@ html[data-theme='dark'] .app-energy-orbit {
   background: var(--bg-surface);
 }
 
+.source-card--collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
 .source-top {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
   margin-bottom: 10px;
+}
+
+.source-card--collapsible > .source-top {
+  margin: 0;
+  padding: 12px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.source-card--collapsible > .source-top::-webkit-details-marker {
+  display: none;
+}
+
+.source-card--collapsible > .source-top::after {
+  content: '▾';
+  margin-left: 10px;
+  color: var(--text-hint);
+  font-size: 12px;
+  line-height: 1;
+  align-self: center;
+}
+
+.source-card--collapsible[open] > .source-top::after {
+  transform: rotate(180deg);
+}
+
+.source-card--collapsible[open] > .source-metrics {
+  padding: 0 12px 12px;
 }
 
 .source-title {
@@ -1610,6 +1644,19 @@ html[data-theme='dark'] .app-energy-orbit {
   font-size: 12px;
   font-family: var(--font-mono);
   margin-top: 4px;
+}
+
+.source-summary {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-summary-sep {
+  color: var(--text-hint);
 }
 
 .status-badge {
@@ -1649,6 +1696,47 @@ html[data-theme='dark'] .app-energy-orbit {
 .source-metrics {
   display: grid;
   gap: 6px;
+}
+
+.source-metric-group {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.source-metric-group-title {
+  cursor: pointer;
+  user-select: none;
+  padding: 9px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--bg-muted) 75%, var(--bg-elevated));
+  border-bottom: 1px solid var(--border-subtle);
+  list-style: none;
+}
+
+.source-metric-group-title::-webkit-details-marker {
+  display: none;
+}
+
+.source-metric-group-title::after {
+  content: '▸';
+  float: right;
+  color: var(--text-hint);
+}
+
+.source-metric-group[open] > .source-metric-group-title::after {
+  content: '▾';
+}
+
+.source-metric-group-body {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
 }
 
 .source-metric-row {

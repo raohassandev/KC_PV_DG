@@ -177,6 +177,7 @@ export default function DashboardOverview({
 
   const execCards = execModel?.model.cards ?? [];
   const hasAlertsCard = execCards.some((c) => c.id === 'alerts' || /alerts/i.test(c.title));
+  const isAdvancedRole = role === 'installer' || role === 'manufacturer';
 
   useEffect(() => {
     let active = true;
@@ -265,6 +266,28 @@ export default function DashboardOverview({
                   ...source,
                   online: gridOnline,
                   metrics: [
+                    ...(showAdvancedGrid
+                      ? ([
+                          {
+                            label: 'Veq',
+                            value:
+                              board.gridEqvVoltage !== null
+                                ? safeNumber(board.gridEqvVoltage).toFixed(2)
+                                : 'NA',
+                            unit: 'V',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'Ieq',
+                            value:
+                              board.gridEqvCurrent !== null
+                                ? safeNumber(board.gridEqvCurrent).toFixed(4)
+                                : 'NA',
+                            unit: 'A',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                        ] as const)
+                      : []),
                     {
                       label: 'L1 Voltage',
                       value:
@@ -822,45 +845,193 @@ export default function DashboardOverview({
         </div>
 
         <div className='source-grid'>
-          {data.sources.map((source) => (
-            <div key={source.id} className='source-card'>
-              <div className='source-top'>
-                <div>
-                  <div className='source-title'>{source.name}</div>
-                  <div className='source-subtitle'>ID: {source.id}</div>
-                </div>
-                <SourceBadge
-                  enabled={source.enabled}
-                  online={source.online}
-                  optionalIdle={
-                    source.id === 'inv_1' && data.inverterLaneIdle
-                  }
-                />
-              </div>
+          {data.sources.map((source) => {
+            const byLabel = new Map(source.metrics.map((m) => [m.label, m]));
+            const get = (label: string) => byLabel.get(label);
+            const pick = (labels: string[]) =>
+              labels.map(get).filter(Boolean) as NonNullable<(typeof source.metrics)[number]>[];
 
-              <div className='source-metrics'>
-                {source.metrics.map((metric) => (
-                  <div
-                    key={`${source.id}-${metric.label}`}
-                    className='source-metric-row'
-                  >
-                    <span className='source-metric-label'>{metric.label}</span>
-                    <span
-                      className={cx(
-                        'source-metric-value',
-                        metric.status === 'offline' && 'metric-offline',
-                        metric.status === 'warn' && 'metric-warn',
-                        metric.status === 'idle' && 'metric-idle',
-                      )}
-                    >
-                      {metric.value}
-                      {metric.unit ? ` ${metric.unit}` : ''}
-                    </span>
+            const voltageCurrent = pick([
+              'L1 Voltage',
+              'L2 Voltage',
+              'L3 Voltage',
+              'L1 Current',
+              'L2 Current',
+              'L3 Current',
+              'Frequency',
+            ]);
+            const power = pick([
+              'Total Power',
+              'Total Reactive',
+              'Total Apparent',
+              'PF (Total)',
+              'L1 P',
+              'L2 P',
+              'L3 P',
+              'L1 Q',
+              'L2 Q',
+              'L3 Q',
+              'L1 S',
+              'L2 S',
+              'L3 S',
+              'PF L1',
+              'PF L2',
+              'PF L3',
+            ]);
+            const energy = pick([
+              'Import Energy',
+              'Export Energy',
+              'Import T1',
+              'Export T1',
+              'Import T2',
+            ]);
+
+            const fallback = source.metrics;
+
+            return (
+              <details
+                key={source.id}
+                className='source-card source-card--collapsible'
+                open={data.sources.length <= 2}
+              >
+                <summary className='source-top'>
+                  <div>
+                    <div className='source-title'>{source.name}</div>
+                    <div className='source-subtitle'>ID: {source.id}</div>
+                    {source.id === 'grid_1' && isAdvancedRole ? (
+                      <div className='source-summary'>
+                        <span className='mono'>
+                          Veq{' '}
+                          {data.sources.find((s) => s.id === 'grid_1')?.metrics.find((m) => m.label === 'Veq')?.value ??
+                            'NA'}
+                          V
+                        </span>
+                        <span className='source-summary-sep' aria-hidden='true'>
+                          ·
+                        </span>
+                        <span className='mono'>
+                          Ieq{' '}
+                          {data.sources.find((s) => s.id === 'grid_1')?.metrics.find((m) => m.label === 'Ieq')?.value ??
+                            'NA'}
+                          A
+                        </span>
+                        <span className='source-summary-sep' aria-hidden='true'>
+                          ·
+                        </span>
+                        <span className='mono'>P {source.metrics.find((m) => m.label === 'Total Power')?.value ?? 'NA'} kW</span>
+                        <span className='source-summary-sep' aria-hidden='true'>
+                          ·
+                        </span>
+                        <span className='mono'>
+                          Imp {source.metrics.find((m) => m.label === 'Import Energy')?.value ?? 'NA'} kWh
+                        </span>
+                        <span className='source-summary-sep' aria-hidden='true'>
+                          ·
+                        </span>
+                        <span className='mono'>
+                          Exp {source.metrics.find((m) => m.label === 'Export Energy')?.value ?? 'NA'} kWh
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                  <SourceBadge
+                    enabled={source.enabled}
+                    online={source.online}
+                    optionalIdle={source.id === 'inv_1' && data.inverterLaneIdle}
+                  />
+                </summary>
+
+                <div className='source-metrics'>
+                  {source.id === 'grid_1' && isAdvancedRole ? (
+                    <>
+                      <details className='source-metric-group' open>
+                        <summary className='source-metric-group-title'>Voltage & current</summary>
+                        <div className='source-metric-group-body'>
+                          {voltageCurrent.map((metric) => (
+                            <div key={`${source.id}-${metric.label}`} className='source-metric-row'>
+                              <span className='source-metric-label'>{metric.label}</span>
+                              <span
+                                className={cx(
+                                  'source-metric-value',
+                                  metric.status === 'offline' && 'metric-offline',
+                                  metric.status === 'warn' && 'metric-warn',
+                                  metric.status === 'idle' && 'metric-idle',
+                                )}
+                              >
+                                {metric.value}
+                                {metric.unit ? ` ${metric.unit}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+
+                      <details className='source-metric-group' open>
+                        <summary className='source-metric-group-title'>Power</summary>
+                        <div className='source-metric-group-body'>
+                          {power.map((metric) => (
+                            <div key={`${source.id}-${metric.label}`} className='source-metric-row'>
+                              <span className='source-metric-label'>{metric.label}</span>
+                              <span
+                                className={cx(
+                                  'source-metric-value',
+                                  metric.status === 'offline' && 'metric-offline',
+                                  metric.status === 'warn' && 'metric-warn',
+                                  metric.status === 'idle' && 'metric-idle',
+                                )}
+                              >
+                                {metric.value}
+                                {metric.unit ? ` ${metric.unit}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+
+                      <details className='source-metric-group'>
+                        <summary className='source-metric-group-title'>Energy</summary>
+                        <div className='source-metric-group-body'>
+                          {energy.map((metric) => (
+                            <div key={`${source.id}-${metric.label}`} className='source-metric-row'>
+                              <span className='source-metric-label'>{metric.label}</span>
+                              <span
+                                className={cx(
+                                  'source-metric-value',
+                                  metric.status === 'offline' && 'metric-offline',
+                                  metric.status === 'warn' && 'metric-warn',
+                                  metric.status === 'idle' && 'metric-idle',
+                                )}
+                              >
+                                {metric.value}
+                                {metric.unit ? ` ${metric.unit}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </>
+                  ) : (
+                    fallback.map((metric) => (
+                      <div key={`${source.id}-${metric.label}`} className='source-metric-row'>
+                        <span className='source-metric-label'>{metric.label}</span>
+                        <span
+                          className={cx(
+                            'source-metric-value',
+                            metric.status === 'offline' && 'metric-offline',
+                            metric.status === 'warn' && 'metric-warn',
+                            metric.status === 'idle' && 'metric-idle',
+                          )}
+                        >
+                          {metric.value}
+                          {metric.unit ? ` ${metric.unit}` : ''}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </details>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -4,7 +4,7 @@ export async function gotoTab(page: Page, label: string) {
   await page.getByTestId('subnav-pills').getByRole('button', { name: label }).click();
 }
 
-export async function gotoWorkspace(page: Page, label: 'Operation' | 'Commissioning') {
+export async function gotoWorkspace(page: Page, label: 'Operation' | 'Commissioning' | 'Manufacturer') {
   await page.getByTestId('workspace-nav').getByRole('button', { name: label }).click();
 }
 

@@ -12,6 +12,9 @@ logger:
   initial_level: INFO
   baud_rate: 115200
 
+debug:
+  update_interval: 5s
+
 api:
   encryption:
     key: !secret api_key
@@ -128,3 +131,63 @@ text_sensor:
     mac_address:
       id: wifi_mac_sensor
       name: "WiFi MAC"
+
+  - platform: debug
+    device:
+      name: "Board Device Info"
+      entity_category: diagnostic
+    reset_reason:
+      name: "Board Reset Reason"
+      entity_category: diagnostic
+
+sensor:
+  - platform: uptime
+    id: board_uptime_s
+    name: "Board Uptime"
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 10
+
+  - platform: wifi_signal
+    id: board_wifi_rssi
+    name: "Board WiFi Signal"
+    unit_of_measurement: "dBm"
+    accuracy_decimals: 0
+    entity_category: diagnostic
+    update_interval: 10s
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 11
+
+  - platform: internal_temperature
+    id: board_internal_temp_c
+    name: "Board Internal Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 1
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 12
+
+  - platform: debug
+    free:
+      name: "Board Heap Free"
+      entity_category: diagnostic
+    block:
+      name: "Board Heap Max Block"
+      entity_category: diagnostic
+    min_free:
+      name: "Board Heap Min Free"
+      entity_category: diagnostic
+    fragmentation:
+      name: "Board Heap Fragmentation"
+      entity_category: diagnostic
+    loop_time:
+      name: "Board Loop Time"
+      entity_category: diagnostic
+    cpu_frequency:
+      name: "Board CPU Frequency"
+      entity_category: diagnostic
