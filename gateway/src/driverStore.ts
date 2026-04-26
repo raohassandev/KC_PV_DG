@@ -100,14 +100,17 @@ export function getDriver(configDir: string, driverId: string): DriverDefinition
   const id = safeDriverId(driverId);
   if (!id) return null;
   const full = join(driversDir(configDir), `${id}.json`);
+  const builtin = builtinDrivers().find((d) => d.id === id) ?? null;
   try {
     const raw = readFileSync(full, 'utf8');
-    const j = JSON.parse(raw) as DriverDefinition;
+    const j = JSON.parse(raw) as Partial<DriverDefinition>;
     if (!j || typeof j !== 'object') return null;
-    return { ...j, id };
+    // Backward compatibility: if an older custom file is missing `registers`,
+    // keep the built-in registers instead of showing an empty driver.
+    const registers = Array.isArray(j.registers) ? j.registers : builtin?.registers ?? [];
+    return { ...(builtin ?? {}), ...(j as DriverDefinition), id, registers };
   } catch {
-    const b = builtinDrivers().find((d) => d.id === id) ?? null;
-    return b ? { ...b } : null;
+    return builtin ? { ...builtin } : null;
   }
 }
 
