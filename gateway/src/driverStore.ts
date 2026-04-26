@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { writeJsonAtomic } from './atomicFile.js';
+import { builtinDrivers } from './builtinDrivers.js';
 
 export type DeviceType = 'meter' | 'inverter';
 
@@ -50,32 +51,49 @@ function driversDir(configDir: string): string {
 }
 
 export function listDrivers(configDir: string): DriverMeta[] {
+  const builtins = builtinDrivers();
+  const builtinsById = new Map(builtins.map((d) => [d.id, d]));
+  const out: DriverMeta[] = builtins.map((d) => ({
+    id: d.id,
+    name: d.name,
+    vendor: d.vendor,
+    deviceType: d.deviceType,
+    updatedAt: d.updatedAt,
+  }));
+
   const dir = driversDir(configDir);
   try {
     const names = readdirSync(dir).filter((n) => n.endsWith('.json'));
-    return names
-      .map((n) => {
-        const id = n.replace(/\.json$/i, '');
-        const full = join(dir, n);
-        try {
-          const raw = readFileSync(full, 'utf8');
-          const j = JSON.parse(raw) as Partial<DriverDefinition>;
-          if (!j || typeof j !== 'object') return null;
-          return {
-            id,
-            name: typeof j.name === 'string' ? j.name : id,
-            vendor: typeof j.vendor === 'string' ? j.vendor : undefined,
-            deviceType: j.deviceType === 'meter' || j.deviceType === 'inverter' ? j.deviceType : 'meter',
-            updatedAt: typeof j.updatedAt === 'string' ? j.updatedAt : undefined,
-          } satisfies DriverMeta;
-        } catch {
-          return null;
+    for (const n of names) {
+      const id = n.replace(/\.json$/i, '');
+      const full = join(dir, n);
+      try {
+        const raw = readFileSync(full, 'utf8');
+        const j = JSON.parse(raw) as Partial<DriverDefinition>;
+        if (!j || typeof j !== 'object') continue;
+        const meta: DriverMeta = {
+          id,
+          name: typeof j.name === 'string' ? j.name : id,
+          vendor: typeof j.vendor === 'string' ? j.vendor : undefined,
+          deviceType: j.deviceType === 'meter' || j.deviceType === 'inverter' ? j.deviceType : 'meter',
+          updatedAt: typeof j.updatedAt === 'string' ? j.updatedAt : undefined,
+        };
+        // If this overrides a builtin, replace it.
+        if (builtinsById.has(id)) {
+          const idx = out.findIndex((m) => m.id === id);
+          if (idx >= 0) out[idx] = meta;
+          else out.push(meta);
+        } else {
+          out.push(meta);
         }
-      })
-      .filter(Boolean) as DriverMeta[];
+      } catch {
+        // skip corrupt
+      }
+    }
   } catch {
-    return [];
+    // ignore
   }
+  return out;
 }
 
 export function getDriver(configDir: string, driverId: string): DriverDefinition | null {
@@ -88,7 +106,8 @@ export function getDriver(configDir: string, driverId: string): DriverDefinition
     if (!j || typeof j !== 'object') return null;
     return { ...j, id };
   } catch {
-    return null;
+    const b = builtinDrivers().find((d) => d.id === id) ?? null;
+    return b ? { ...b } : null;
   }
 }
 
