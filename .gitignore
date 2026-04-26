@@ -33,3 +33,6 @@
 # PDFs (ignore all PDF files)
 *.pdf
 
+# Local screenshots accidentally dropped in repo root
+/Screenshot*.png
+
