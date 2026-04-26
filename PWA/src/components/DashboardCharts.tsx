@@ -15,6 +15,12 @@ export type DashboardChartsProps = {
   gridKw: number;
   pvKw: number;
   commandKw: number;
+  /** Instantaneous solar production (kW). */
+  solarKw?: number;
+  /** Instantaneous generator production (kW). */
+  generatorKw?: number;
+  /** Net grid magnitude (kW) for power-share view. */
+  gridNetKw?: number;
   inverterIdle: boolean;
   gridOnline: boolean;
   inverterOnline: boolean;
@@ -28,17 +34,23 @@ const COL = {
   muted: '#94a3b8',
 };
 
+function finite(n: unknown, fallback = 0) {
+  const v = Number(n);
+  return Number.isFinite(v) ? v : fallback;
+}
+
 export default function DashboardCharts({
   gridKw,
   pvKw,
   commandKw,
+  solarKw,
+  generatorKw,
+  gridNetKw,
   inverterIdle,
-  gridOnline,
-  inverterOnline,
 }: DashboardChartsProps) {
   const pv = inverterIdle ? 0 : Math.max(0, pvKw);
-  const gridMag = Math.abs(gridKw);
-  const cmd = Math.max(0, commandKw);
+  const gridMag = Math.abs(finite(gridKw));
+  const cmd = Math.max(0, finite(commandKw));
   const powerData = [
     { name: 'PV', value: pv, fill: COL.pv },
     { name: 'Grid', value: gridMag, fill: COL.grid },
@@ -46,11 +58,26 @@ export default function DashboardCharts({
   ];
   const maxVal = Math.max(...powerData.map((d) => d.value), 0.001);
 
-  const onlineCount = (gridOnline ? 1 : 0) + (inverterOnline ? 1 : 0);
-  const healthData = [
-    { name: 'Online', value: onlineCount, fill: COL.ok },
-    { name: 'Offline / idle', value: Math.max(0, 2 - onlineCount), fill: COL.muted },
-  ];
+  const netGrid = Math.max(0, Math.abs(finite(gridNetKw, gridMag)));
+  const solar = Math.max(0, finite(solarKw, pv));
+  const gen = Math.max(0, finite(generatorKw, 0));
+  const shareTotal = netGrid + solar + gen;
+  // Treat near-zero totals as "no meaningful data" so the pie doesn't look empty.
+  const meaningfulTotal = shareTotal >= 0.05;
+  const shareData =
+    meaningfulTotal
+      ? [
+          { name: 'Grid', value: netGrid, fill: COL.grid },
+          { name: 'Generator', value: gen, fill: '#f59e0b' },
+          { name: 'Solar', value: solar, fill: COL.pv },
+        ]
+      : [{ name: 'No data', value: 1, fill: COL.muted }];
+  const shareLabel = ({ name, value }: { name: string; value: number }) => {
+    if (!meaningfulTotal || shareTotal <= 0) return '';
+    const pct = Math.round((value / shareTotal) * 100);
+    if (pct < 5) return '';
+    return `${name} ${pct}%`;
+  };
 
   return (
     <div className='dashboard-charts-grid' data-testid='dashboard-charts'>
@@ -63,7 +90,7 @@ export default function DashboardCharts({
               <XAxis type='number' domain={[0, maxVal * 1.15]} tick={{ fontSize: 11 }} unit=' kW' />
               <YAxis type='category' dataKey='name' width={72} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v: number | string) => [`${Number(v).toFixed(2)} kW`, 'Power']} />
-              <Bar dataKey='value' radius={[0, 6, 6, 0]} maxBarSize={28}>
+              <Bar dataKey='value' radius={[0, 6, 6, 0]} maxBarSize={28} isAnimationActive={false}>
                 {powerData.map((e) => (
                   <Cell key={e.name} fill={e.fill} />
                 ))}
@@ -73,13 +100,13 @@ export default function DashboardCharts({
         </div>
       </div>
       <div className='dashboard-chart-panel'>
-        <div className='dashboard-chart-panel-title'>Source availability</div>
-        <p className='dashboard-chart-panel-hint'>Grid meter vs inverter reporting</p>
+        <div className='dashboard-chart-panel-title'>Power share</div>
+        <p className='dashboard-chart-panel-hint'>Grid vs generator vs solar (instantaneous kW)</p>
         <div className='dashboard-chart-inner'>
           <ResponsiveContainer width='100%' height={200}>
             <PieChart>
               <Pie
-                data={healthData}
+                data={shareData}
                 dataKey='value'
                 nameKey='name'
                 cx='50%'
@@ -87,13 +114,16 @@ export default function DashboardCharts({
                 innerRadius={52}
                 outerRadius={78}
                 paddingAngle={2}
+                isAnimationActive={false}
+                labelLine={false}
+                label={meaningfulTotal ? shareLabel : undefined}
               >
-                {healthData.map((e) => (
+                {shareData.map((e) => (
                   <Cell key={e.name} fill={e.fill} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend verticalAlign='bottom' height={28} />
+              <Tooltip formatter={(v: number | string) => [`${Number(v).toFixed(2)} kW`, 'Power']} />
+              {meaningfulTotal ? <Legend verticalAlign='bottom' height={28} /> : null}
             </PieChart>
           </ResponsiveContainer>
         </div>

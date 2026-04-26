@@ -152,12 +152,16 @@ function SourceBadge({
 type Props = {
   boardIp: string;
   role: PwaRole;
+  autoConnectStatus?: 'idle' | 'searching' | 'connected' | 'setup_mode' | 'not_found';
+  onAutoConnect?: () => void;
   onNavigateToMonitoring?: (sub?: FeaturePageId) => void;
 };
 
 export default function DashboardOverview({
   boardIp,
   role,
+  autoConnectStatus = 'idle',
+  onAutoConnect,
   onNavigateToMonitoring,
 }: Props) {
   const [data, setData] = useState<LiveUiData>(() => ({
@@ -170,6 +174,9 @@ export default function DashboardOverview({
   const [execModel, setExecModel] = useState<Awaited<
     ReturnType<typeof buildRoleAwareLiveStatusFromProvider>
   > | null>(null);
+
+  const execCards = execModel?.model.cards ?? [];
+  const hasAlertsCard = execCards.some((c) => c.id === 'alerts' || /alerts/i.test(c.title));
 
   useEffect(() => {
     let active = true;
@@ -253,6 +260,7 @@ export default function DashboardOverview({
             },
             sources: prev.sources.map((source) => {
               if (source.id === 'grid_1') {
+                const showAdvancedGrid = role !== 'user';
                 return {
                   ...source,
                   online: gridOnline,
@@ -323,12 +331,181 @@ export default function DashboardOverview({
                       unit: 'kW',
                       status: gridOnline ? 'ok' : 'offline',
                     },
+                    ...(showAdvancedGrid
+                      ? ([
+                          {
+                            label: 'Total Reactive',
+                            value:
+                              board.gridTotalReactivePowerVar !== null
+                                ? (safeNumber(board.gridTotalReactivePowerVar) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVAr',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'Total Apparent',
+                            value:
+                              board.gridTotalApparentPowerVa !== null
+                                ? (safeNumber(board.gridTotalApparentPowerVa) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'PF (Total)',
+                            value:
+                              board.gridPf !== null
+                                ? safeNumber(board.gridPf).toFixed(4)
+                                : 'NA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                        ] as const)
+                      : []),
                     {
                       label: 'Import Energy',
                       value: importKwh.toFixed(2),
                       unit: 'kWh',
                       status: gridOnline ? 'ok' : 'offline',
                     },
+                    ...(showAdvancedGrid
+                      ? ([
+                          {
+                            label: 'Export Energy',
+                            value:
+                              board.gridExportKwh !== null
+                                ? safeNumber(board.gridExportKwh).toFixed(2)
+                                : 'NA',
+                            unit: 'kWh',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'Import T1',
+                            value:
+                              board.gridImportKwhT1 !== null
+                                ? safeNumber(board.gridImportKwhT1).toFixed(2)
+                                : 'NA',
+                            unit: 'kWh',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'Export T1',
+                            value:
+                              board.gridExportKwhT1 !== null
+                                ? safeNumber(board.gridExportKwhT1).toFixed(2)
+                                : 'NA',
+                            unit: 'kWh',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'Import T2',
+                            value:
+                              board.gridImportKwhT2 !== null
+                                ? safeNumber(board.gridImportKwhT2).toFixed(2)
+                                : 'NA',
+                            unit: 'kWh',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L1 P',
+                            value:
+                              board.gridL1ActivePowerW !== null
+                                ? (safeNumber(board.gridL1ActivePowerW) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kW',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L2 P',
+                            value:
+                              board.gridL2ActivePowerW !== null
+                                ? (safeNumber(board.gridL2ActivePowerW) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kW',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L3 P',
+                            value:
+                              board.gridL3ActivePowerW !== null
+                                ? (safeNumber(board.gridL3ActivePowerW) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kW',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L1 Q',
+                            value:
+                              board.gridL1ReactivePowerVar !== null
+                                ? (safeNumber(board.gridL1ReactivePowerVar) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVAr',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L2 Q',
+                            value:
+                              board.gridL2ReactivePowerVar !== null
+                                ? (safeNumber(board.gridL2ReactivePowerVar) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVAr',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L3 Q',
+                            value:
+                              board.gridL3ReactivePowerVar !== null
+                                ? (safeNumber(board.gridL3ReactivePowerVar) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVAr',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L1 S',
+                            value:
+                              board.gridL1ApparentPowerVa !== null
+                                ? (safeNumber(board.gridL1ApparentPowerVa) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L2 S',
+                            value:
+                              board.gridL2ApparentPowerVa !== null
+                                ? (safeNumber(board.gridL2ApparentPowerVa) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'L3 S',
+                            value:
+                              board.gridL3ApparentPowerVa !== null
+                                ? (safeNumber(board.gridL3ApparentPowerVa) / 1000).toFixed(2)
+                                : 'NA',
+                            unit: 'kVA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'PF L1',
+                            value:
+                              board.gridL1Pf !== null ? safeNumber(board.gridL1Pf).toFixed(4) : 'NA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'PF L2',
+                            value:
+                              board.gridL2Pf !== null ? safeNumber(board.gridL2Pf).toFixed(4) : 'NA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                          {
+                            label: 'PF L3',
+                            value:
+                              board.gridL3Pf !== null ? safeNumber(board.gridL3Pf).toFixed(4) : 'NA',
+                            status: gridOnline ? 'ok' : 'offline',
+                          },
+                        ] as const)
+                      : []),
                   ],
                 };
               }
@@ -436,6 +613,20 @@ export default function DashboardOverview({
             >
               {fetchError ? 'Offline' : 'Live data'}
             </span>
+              {onAutoConnect ? (
+                <button
+                  type='button'
+                  className={cx(
+                    'btn',
+                    fetchError ? 'btn--primary' : 'btn--secondary',
+                  )}
+                  disabled={autoConnectStatus === 'searching'}
+                  onClick={() => onAutoConnect()}
+                  aria-label='Connect controller'
+                >
+                  {autoConnectStatus === 'searching' ? 'Connecting…' : 'Connect'}
+                </button>
+              ) : null}
             <span className={cx('updated-pill', fetchBusy && 'updated-pill--busy')}>
               {fetchBusy ? 'Refreshing…' : `Updated: ${data.updatedAt}`}
             </span>
@@ -445,18 +636,20 @@ export default function DashboardOverview({
         {execModel ? (
           <>
             <div className='dashboard-exec-kpis' aria-label='Plant snapshot KPIs' data-testid='dashboard-exec-kpis'>
-              {execModel.model.cards.map((card) => (
+              {execCards.map((card) => (
                 <article key={card.id} className='feature-stat-card dashboard-exec-kpi'>
                   <div className='feature-stat-label'>{card.title}</div>
                   <div className='feature-stat-value'>{card.value}</div>
                   {card.subtitle ? <div className='feature-stat-subtitle'>{card.subtitle}</div> : null}
                 </article>
               ))}
-              <article className='feature-stat-card dashboard-exec-kpi'>
-                <div className='feature-stat-label'>Alerts</div>
-                <div className='feature-stat-value'>{String(execModel.activeAlertCount)}</div>
-                <div className='feature-stat-subtitle'>Controller feed</div>
-              </article>
+              {!hasAlertsCard ? (
+                <article className='feature-stat-card dashboard-exec-kpi'>
+                  <div className='feature-stat-label'>Alerts</div>
+                  <div className='feature-stat-value'>{String(execModel.activeAlertCount)}</div>
+                  <div className='feature-stat-subtitle'>Controller feed</div>
+                </article>
+              ) : null}
             </div>
             <div className='dashboard-exec-summary'>
               <div className='dashboard-exec-summary-title'>Operations summary</div>
@@ -477,6 +670,9 @@ export default function DashboardOverview({
                 gridKw={data.summary.gridKw}
                 pvKw={data.summary.pvKw}
                 commandKw={data.summary.commandKw}
+                solarKw={execModel.solarKw}
+                generatorKw={execModel.generatorKw}
+                gridNetKw={Math.abs(execModel.gridImportKw - execModel.gridExportKw)}
                 inverterIdle={data.inverterLaneIdle}
                 gridOnline={!!data.sources.find((s) => s.id === 'grid_1')?.online}
                 inverterOnline={

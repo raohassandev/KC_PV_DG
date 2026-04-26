@@ -293,7 +293,7 @@ html[data-theme='dark'] .app-energy-orbit {
 
 /* --- App header (shell) — identity row, compact toolbar, optional metrics --- */
 .app-header {
-  margin-bottom: clamp(8px, 1.2vw, 12px);
+  margin-bottom: 10px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background: linear-gradient(
@@ -303,7 +303,7 @@ html[data-theme='dark'] .app-energy-orbit {
     var(--bg-elevated) 100%
   );
   box-shadow: var(--shadow-sm);
-  padding: clamp(12px, 2vw, 16px) clamp(14px, 2.4vw, 20px);
+  padding: 12px 16px;
   overflow: visible;
 }
 
@@ -342,21 +342,16 @@ html[data-theme='dark'] .app-energy-orbit {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
-  margin-bottom: 4px;
+  gap: 8px 10px;
+  margin-bottom: 2px;
 }
 
-.app-header-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+.app-header-brand {
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--accent-deep);
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-muted));
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
 }
 
 .app-header-product-tagline {
@@ -367,77 +362,36 @@ html[data-theme='dark'] .app-energy-orbit {
 
 .app-title {
   margin: 0;
-  font-size: clamp(1.15rem, 2.6vw, 1.42rem);
-  font-weight: 600;
+  font-size: clamp(1.1rem, 2.4vw, 1.38rem);
+  font-weight: 650;
   letter-spacing: -0.025em;
   color: var(--text);
   line-height: 1.15;
 }
 
-.app-header-subrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.app-header-connection {
-  margin: 0;
-  flex: 1 1 min(12rem, 100%);
-  min-width: 0;
+.app-header-subtitle {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px 10px;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  border: 1px solid var(--border-subtle);
+  gap: 6px 8px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  margin-top: 4px;
+  min-width: 0;
 }
 
-.app-header-connection-label {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: var(--label-track);
-  text-transform: uppercase;
-  color: var(--text-hint);
-}
-
-.app-header-connection-value {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
+.app-header-subtitle-value {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
   word-break: break-word;
-  line-height: 1.35;
 }
 
-.app-header-workspace {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 9%, var(--bg-muted));
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border-subtle));
-}
-
-.app-header-workspace-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: var(--label-track);
-  text-transform: uppercase;
-  color: var(--text-hint);
-}
-
-.app-header-workspace-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-deep);
+.app-header-subtitle-sep {
+  color: color-mix(in srgb, var(--text-hint) 70%, transparent);
 }
 
 .app-header-toolbar {
@@ -813,8 +767,8 @@ html[data-theme='dark'] .app-energy-orbit {
 }
 
 #main-content:focus-visible {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pv) 45%, transparent);
-  border-radius: var(--radius-sm);
+  /* Avoid large “empty panel” focus ring after programmatic focus on navigation. */
+  box-shadow: none;
 }
 
 .app-main {
@@ -1167,6 +1121,15 @@ html[data-theme='dark'] .app-energy-orbit {
   min-width: 0;
 }
 
+@media (min-width: 940px) {
+  /* Wide screens: keep the dashboard a single column.
+     (A second grid column created a large empty panel when no right-side card exists.) */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
 .card {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
@@ -1214,6 +1177,17 @@ html[data-theme='dark'] .app-energy-orbit {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
+
+@media (max-width: 520px) {
+  .card-header {
+    gap: 10px;
+  }
+
+  .card-header-meta {
+    justify-content: flex-start;
+    width: 100%;
+  }
 }
 
 .live-pill {
@@ -1461,8 +1435,8 @@ html[data-theme='dark'] .app-energy-orbit {
 }
 
 .metric-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -1493,9 +1467,8 @@ html[data-theme='dark'] .app-energy-orbit {
 
 .metric-card {
   position: relative;
-  flex: 1 1 156px;
-  max-width: min(220px, 100%);
-  min-width: min(156px, 100%);
+  width: 100%;
+  min-width: 0;
   background: var(--bg-muted);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1607,7 +1580,7 @@ html[data-theme='dark'] .app-energy-orbit {
 
 .source-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 14px;
 }
 
@@ -2438,15 +2411,14 @@ html[data-theme='dark'] .app-energy-orbit {
 }
 
 .feature-stat-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 10px;
 }
 
 .feature-stat-card {
-  flex: 1 1 148px;
-  max-width: min(240px, 100%);
-  min-width: min(148px, 100%);
+  width: 100%;
+  min-width: 0;
   background: var(--bg-muted);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -2742,12 +2714,6 @@ html[data-theme='dark'] .app-energy-orbit {
   .dashboard-grid,
   .feature-page-grid {
     grid-template-columns: 1fr;
-  }
-
-  .metric-card {
-    flex: 1 1 calc(50% - 6px);
-    max-width: min(220px, calc(50% - 6px));
-    min-width: min(156px, calc(50% - 6px));
   }
 
   .summary-grid .stat-card {

@@ -10,6 +10,10 @@ const gatewayUrl = process.env.VITE_GATEWAY_URL
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Avoid full reload when e2e writes HTML under PWA/ (Vite root).
+    watch: {
+      ignored: ['**/playwright-report/**', '**/test-results/**'],
+    },
     // Playwright webServer probes 127.0.0.1; default "localhost" can be IPv6-only.
     ...(process.env.E2E_SIM_PORT ? { host: '127.0.0.1' as const } : {}),
     proxy: gatewayUrl

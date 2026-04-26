@@ -4,7 +4,6 @@ import { NumberField, SelectField, TextField } from '../components/commissioning
 import { FormGrid } from '../layout/FormGrid';
 import {
   boardIpFromBaseUrl,
-  discoveryCandidates,
   fetchProvisionStatus,
   probeBoard,
   provisionWifi,
@@ -218,8 +217,7 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
             <div className='panel'>
               <h2>Site Identity</h2>
               <p className='help-text'>
-                These fields define the site identity used by the PWA and
-                generated export bundle.
+                Basic site details used for reports and commissioning.
               </p>
               <div className='form-grid'>
                 <TextField
@@ -229,20 +227,8 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                   onChange={(v) => updateSiteField('siteName', v)}
                 />
                 <TextField
-                  label='Board Name'
-                  help='ESPHome device name and firmware identity.'
-                  value={config.boardName}
-                  onChange={(v) => updateSiteField('boardName', v)}
-                />
-                <TextField
-                  label='Board IP'
-                  help='LAN address the PWA uses for live reads. It is stored in your local commissioning profile. After a successful probe on AP or mDNS, use “Apply discovery → Board IP” so this field matches the URL that responded.'
-                  value={config.boardIp}
-                  onChange={(v) => updateSiteField('boardIp', v)}
-                />
-                <TextField
-                  label='Wi-Fi SSID'
-                  help='Wi-Fi network visible to the board.'
+                  label='Wi‑Fi Name'
+                  help='The Wi‑Fi network the controller should use.'
                   value={config.wifiSsid}
                   onChange={(v) => updateSiteField('wifiSsid', v)}
                 />
@@ -262,167 +248,109 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
             </div>
 
             <div className='panel'>
-              <h2>Find Controller (no OLED)</h2>
+              <h2>Connect to Controller</h2>
               <p className='help-text'>
-                AP mode uses <code>192.168.4.1</code>. LAN mode uses <code>{config.boardName}.local</code>{' '}
-                (mDNS) or the configured board IP. Probes prefer the gateway <code>/api/board/probe</code>{' '}
-                proxy when available (avoids ESPHome keep-alive stalls in the browser). Successful
-                discovery updates the working base URL; use <strong>Apply discovery → Board IP</strong> to
-                persist the host into <strong>Board IP</strong> for the dashboard and exports.
+                Tap <strong>Connect</strong>. The app will automatically find the controller on your Wi‑Fi.
+                If it can’t be found, the controller may be in setup mode — connect your phone to the
+                controller’s Wi‑Fi (“PV‑DG Fallback”), then tap Connect again.
               </p>
-              <div className='form-grid'>
-                <TextField
-                  label='Manual Base URL (Advanced)'
-                  help='Example: http://192.168.0.100 or http://pv-dg-controller.local. Use “Apply to Board IP” to save it.'
-                  value={boardProbeManual}
-                  onChange={setBoardProbeManual}
-                />
-              </div>
               <div className='panel-actions u-mt-md'>
-                {discoveryCandidates(config.boardName).map((c) => (
-                  <button
-                    key={c.label}
-                    type='button'
-                    className='btn btn--secondary'
-                    disabled={boardProbeBusy}
-                    onClick={async () => {
-                      setBoardProbeBusy(true);
-                      setBoardProbeError(null);
-                      setBoardProbeResult(null);
-                      setProvisionError(null);
-                      setProvisionResult(null);
-                      try {
-                        const who = await probeBoard(c.baseUrl);
-                        if (!who) {
-                          setBoardProbeError('No response. Confirm AP/LAN connectivity.');
-                          return;
-                        }
-                        setBoardProbeResult(who);
-                        setBoardBaseUrl(c.baseUrl);
-                        rememberReachableBaseUrl(c.baseUrl);
-                        setNotice(`Found controller at ${c.baseUrl}`);
-                      } finally {
-                        setBoardProbeBusy(false);
-                      }
-                    }}
-                  >
-                    Probe {c.label}
-                  </button>
-                ))}
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !config.boardIp.trim()}
-                  onClick={async () => {
-                    const baseUrl = `http://${config.boardIp.trim()}`;
-                    setBoardProbeBusy(true);
-                    setBoardProbeError(null);
-                    setBoardProbeResult(null);
-                    setProvisionError(null);
-                    setProvisionResult(null);
-                    try {
-                      const who = await probeBoard(baseUrl);
-                      if (!who) {
-                        setBoardProbeError('No response at board IP.');
-                        return;
-                      }
-                      setBoardProbeResult(who);
-                      setBoardBaseUrl(baseUrl);
-                      rememberReachableBaseUrl(baseUrl);
-                      setNotice(`Found controller at ${baseUrl}`);
-                    } finally {
-                      setBoardProbeBusy(false);
-                    }
-                  }}
-                >
-                  Probe board IP
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy}
-                  onClick={async () => {
-                    const current = config.boardIp.trim();
-                    const subnetMatch = current.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/);
-                    const subnet = subnetMatch?.[1] ?? '192.168.0';
-                    setBoardProbeBusy(true);
-                    setBoardProbeError(null);
-                    setBoardProbeResult(null);
-                    setProvisionError(null);
-                    setProvisionResult(null);
-                    try {
-                      const res = await fetch(
-                        `/api/board/scan?subnet=${encodeURIComponent(subnet)}&hosts=${encodeURIComponent(
-                          '100,111,101,102,103,1,10,50,200',
-                        )}`,
-                        { cache: 'no-store', headers: { accept: 'application/json' } },
-                      );
-                      const j = (await res.json().catch(() => null)) as
-                        | { ok?: boolean; baseUrl?: string | null }
-                        | null;
-                      if (!res.ok || !j?.ok || !j.baseUrl) {
-                        setBoardProbeError(`No controller found on ${subnet}.x (quick scan).`);
-                        return;
-                      }
-                      const foundIp = j.baseUrl.replace(/^http:\/\//, '').replace(/\/+$/, '');
-                      updateSiteField('boardIp', foundIp);
-                      persistLastGoodBoardIp(foundIp);
-                      const who = await probeBoard(j.baseUrl);
-                      if (who) {
-                        setBoardProbeResult(who);
-                        setBoardBaseUrl(j.baseUrl);
-                        rememberReachableBaseUrl(j.baseUrl);
-                      }
-                      setNotice(`Found controller at ${j.baseUrl} (applied to Board IP)`);
-                    } finally {
-                      setBoardProbeBusy(false);
-                    }
-                  }}
-                >
-                  Scan LAN (quick)
-                </button>
                 <button
                   type='button'
                   className='btn btn--primary'
-                  disabled={boardProbeBusy || !boardProbeManual.trim()}
+                  disabled={boardProbeBusy}
                   onClick={async () => {
-                    const baseUrl = boardProbeManual.trim();
                     setBoardProbeBusy(true);
                     setBoardProbeError(null);
                     setBoardProbeResult(null);
                     setProvisionError(null);
                     setProvisionResult(null);
                     try {
-                      const who = await probeBoard(baseUrl);
-                      if (!who) {
-                        setBoardProbeError('No response at manual URL.');
+                      // 1) Try last known good IP (fastest)
+                      if (lastGoodBoardIp.trim()) {
+                        const baseUrl = `http://${lastGoodBoardIp.trim()}`;
+                        const who = await probeBoard(baseUrl);
+                        if (who) {
+                          setBoardProbeResult(who);
+                          setBoardBaseUrl(baseUrl);
+                          rememberReachableBaseUrl(baseUrl);
+                          updateSiteField('boardIp', lastGoodBoardIp.trim());
+                          setNotice(`Connected`);
+                          return;
+                        }
+                      }
+
+                      // 2) Try current saved IP (if present)
+                      if (config.boardIp.trim()) {
+                        const baseUrl = `http://${config.boardIp.trim()}`;
+                        const who = await probeBoard(baseUrl);
+                        if (who) {
+                          setBoardProbeResult(who);
+                          setBoardBaseUrl(baseUrl);
+                          rememberReachableBaseUrl(baseUrl);
+                          persistLastGoodBoardIp(config.boardIp.trim());
+                          setNotice(`Connected`);
+                          return;
+                        }
+                      }
+
+                      // 3) Try device name on the network (works when mDNS is available)
+                      if (config.boardName.trim()) {
+                        const baseUrl = `http://${config.boardName.trim()}.local`;
+                        const who = await probeBoard(baseUrl);
+                        if (who) {
+                          setBoardProbeResult(who);
+                          setBoardBaseUrl(baseUrl);
+                          rememberReachableBaseUrl(baseUrl);
+                          const host = boardIpFromBaseUrl(baseUrl);
+                          if (host) updateSiteField('boardIp', host);
+                          setNotice(`Connected`);
+                          return;
+                        }
+                      }
+
+                      // 4) Ask the local gateway to find it on the LAN (auto mode)
+                      const res = await fetch(`/api/board/scan`, {
+                        cache: 'no-store',
+                        headers: { accept: 'application/json' },
+                      });
+                      const j = (await res.json().catch(() => null)) as
+                        | { ok?: boolean; baseUrl?: string | null }
+                        | null;
+                      if (res.ok && j?.ok && j.baseUrl) {
+                        const foundIp = j.baseUrl.replace(/^http:\/\//, '').replace(/\/+$/, '');
+                        updateSiteField('boardIp', foundIp);
+                        persistLastGoodBoardIp(foundIp);
+                        const who = await probeBoard(j.baseUrl);
+                        if (who) {
+                          setBoardProbeResult(who);
+                          setBoardBaseUrl(j.baseUrl);
+                          rememberReachableBaseUrl(j.baseUrl);
+                          setNotice(`Connected`);
+                          return;
+                        }
+                      }
+
+                      // 5) Setup mode (AP)
+                      const apBaseUrl = 'http://192.168.4.1';
+                      const apWho = await probeBoard(apBaseUrl);
+                      if (apWho) {
+                        setBoardProbeResult(apWho);
+                        setBoardBaseUrl(apBaseUrl);
+                        rememberReachableBaseUrl(apBaseUrl);
+                        setNotice(`Controller is in setup mode`);
                         return;
                       }
-                      setBoardProbeResult(who);
-                      setBoardBaseUrl(baseUrl);
-                      rememberReachableBaseUrl(baseUrl);
-                      setNotice(`Found controller at ${baseUrl}`);
+
+                      setBoardProbeError(
+                        'Controller not found. Make sure your phone and controller are on the same Wi‑Fi, then try again.',
+                      );
                     } finally {
                       setBoardProbeBusy(false);
                     }
                   }}
                 >
-                  Probe manual URL
-                </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !boardProbeManual.trim()}
-                  onClick={() => {
-                    const raw = boardProbeManual.trim();
-                    const normalized = raw.replace(/\/+$/, '');
-                    const ipOnly = normalized.replace(/^https?:\/\//, '');
-                    updateSiteField('boardIp', ipOnly);
-                    persistLastGoodBoardIp(ipOnly);
-                    setNotice(`Board IP saved as ${ipOnly}`);
-                  }}
-                >
-                  Apply manual URL → Board IP
+                  Connect
                 </button>
                 <button
                   type='button'
@@ -442,20 +370,50 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                 >
                   Apply discovery → Board IP
                 </button>
-                <button
-                  type='button'
-                  className='btn btn--secondary'
-                  disabled={boardProbeBusy || !lastGoodBoardIp.trim()}
-                  data-testid='use-last-good-board-ip'
-                  onClick={() => {
-                    const ip = lastGoodBoardIp.trim();
-                    updateSiteField('boardIp', ip);
-                    setNotice(`Board IP restored to last known good (${ip})`);
-                  }}
-                >
-                  Use last known good IP
-                </button>
               </div>
+
+              <details className='u-mt-md'>
+                <summary className='help-text'>Advanced</summary>
+                <div className='u-mt-sm'>
+                  <div className='form-grid'>
+                    <TextField
+                      label='Controller Name'
+                      help='Used for name-based discovery on some networks.'
+                      value={config.boardName}
+                      onChange={(v) => updateSiteField('boardName', v)}
+                    />
+                    <TextField
+                      label='Controller Address'
+                      help='If your network blocks automatic discovery, enter the controller address here.'
+                      value={config.boardIp}
+                      onChange={(v) => updateSiteField('boardIp', v)}
+                    />
+                    <TextField
+                      label='Manual Address'
+                      help='Example: http://192.168.0.101'
+                      value={boardProbeManual}
+                      onChange={setBoardProbeManual}
+                    />
+                  </div>
+                  <div className='panel-actions u-mt-md'>
+                    <button
+                      type='button'
+                      className='btn btn--secondary'
+                      disabled={boardProbeBusy || !boardProbeManual.trim()}
+                      onClick={() => {
+                        const raw = boardProbeManual.trim();
+                        const normalized = raw.replace(/\/+$/, '');
+                        const ipOnly = normalized.replace(/^https?:\/\//, '');
+                        updateSiteField('boardIp', ipOnly);
+                        persistLastGoodBoardIp(ipOnly);
+                        setNotice(`Saved`);
+                      }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </details>
 
               {boardProbeError ? <p className='help-text u-mt-sm'>{boardProbeError}</p> : null}
               {boardProbeResult ? (
@@ -469,21 +427,20 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                     <div className='form-grid'>
                       <TextField
                         label='Provision Wi-Fi SSID (AP mode)'
-                        help='When the board is in AP mode, send SSID/password to join the site LAN. If unsupported, use the ESPHome captive portal link below.'
+                        help='If the controller is in setup mode, enter your Wi‑Fi name and password to connect it to your Wi‑Fi.'
                         value={provisionSsid}
                         onChange={setProvisionSsid}
                       />
                       <TextField
                         label='Provision Wi-Fi Password'
-                        help='Sent with POST /provision_wifi (AP mode). Progress is read with GET /provision_status on the same base URL until connected or failed.'
+                        help='Used only during setup mode.'
                         value={provisionPassword}
                         onChange={setProvisionPassword}
                       />
                     </div>
                     <p className='help-text u-mt-sm'>
-                      After you start provisioning, the board may reboot and leave the AP. Keep this page
-                      open: provisioning polls <code>/provision_status</code> for up to 45 seconds. If the
-                      board moves to site Wi-Fi, connect this computer to that LAN and probe the new address.
+                      After setup, the controller may reboot. Keep this page open and tap Connect again once
+                      your phone is back on the same Wi‑Fi.
                     </p>
                     <div className='panel-actions u-mt-md'>
                       <button

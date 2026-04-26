@@ -1,4 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import os from 'node:os';
 import { join } from 'node:path';
 import cors from 'cors';
 import express from 'express';
@@ -74,6 +75,139 @@ async function fetchJsonWithClose<T>(url: string, timeoutMs = 2500): Promise<T |
   } finally {
     clearTimeout(t);
   }
+}
+
+function ipv4ToInt(ip: string): number | null {
+  const m = ip.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const parts = m.slice(1).map((s) => Number(s));
+  if (parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+}
+
+function intToIpv4(n: number): string {
+  return `${(n >>> 24) & 255}.${(n >>> 16) & 255}.${(n >>> 8) & 255}.${n & 255}`;
+}
+
+function maskToPrefix(mask: string): number | null {
+  const mi = ipv4ToInt(mask);
+  if (mi === null) return null;
+  // Count leading ones.
+  let prefix = 0;
+  for (let bit = 31; bit >= 0; bit--) {
+    if (((mi >>> bit) & 1) === 1) prefix++;
+    else break;
+  }
+  // Validate contiguous ones.
+  const expected = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  if (expected !== mi) return null;
+  return prefix;
+}
+
+function listLocalIpv4Cidrs(): Array<{ iface: string; ip: string; cidr: string; prefix: number }> {
+  const nets = os.networkInterfaces();
+  const out: Array<{ iface: string; ip: string; cidr: string; prefix: number }> = [];
+  for (const [iface, addrs] of Object.entries(nets)) {
+    for (const a of addrs ?? []) {
+      if (a.family !== 'IPv4') continue;
+      if (a.internal) continue;
+      const prefix = typeof a.netmask === 'string' ? maskToPrefix(a.netmask) : null;
+      if (!prefix || prefix < 16 || prefix > 30) continue;
+      out.push({ iface, ip: a.address, cidr: `${a.address}/${prefix}`, prefix });
+    }
+  }
+  return out;
+}
+
+function isPrivateIpv4(ip: string): boolean {
+  const n = ipv4ToInt(ip);
+  if (n === null) return false;
+  const a = (n >>> 24) & 255;
+  const b = (n >>> 16) & 255;
+  // 10.0.0.0/8
+  if (a === 10) return true;
+  // 172.16.0.0/12
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true;
+  return false;
+}
+
+function buildScanTargetsFromCidrs(
+  cidrs: Array<{ iface: string; ip: string; prefix: number }>,
+): string[] {
+  const targets = new Set<string>();
+  for (const c of cidrs) {
+    if (!isPrivateIpv4(c.ip)) continue;
+    const ipInt = ipv4ToInt(c.ip);
+    if (ipInt === null) continue;
+    const mask = (0xffffffff << (32 - c.prefix)) >>> 0;
+    const net = (ipInt & mask) >>> 0;
+    const hostCount = 1 << (32 - c.prefix);
+    // Scan up to /24 fully; for larger networks, scan a focused slice.
+    const maxHostsToScan = c.prefix >= 24 ? hostCount : 512;
+    const start = net + 1;
+    const end = net + hostCount - 2;
+    let added = 0;
+    for (let addr = start; addr <= end && added < maxHostsToScan; addr++) {
+      const hostOctet = addr & 255;
+      // Skip common non-device addresses in many DHCP pools? Keep it simple; just skip .0/.255.
+      if (hostOctet === 0 || hostOctet === 255) continue;
+      targets.add(intToIpv4(addr >>> 0));
+      added++;
+    }
+  }
+
+  // Always include ESPHome AP default.
+  targets.add('192.168.4.1');
+
+  return Array.from(targets);
+}
+
+async function probeIpForController(ip: string): Promise<boolean> {
+  const baseUrl = safeBaseUrl(`http://${ip}`);
+  if (!baseUrl) return false;
+
+  // Fast, reliable identity endpoint in this firmware.
+  const controllerId = await fetchJsonWithClose<{ state?: string }>(
+    `${baseUrl}/text_sensor/Controller%20ID`,
+    900,
+  );
+  if (controllerId?.state) return true;
+
+  // Future contract.
+  const whoami = await fetchJsonWithClose<{ deviceName?: string }>(`${baseUrl}/whoami`, 900);
+  if (whoami?.deviceName) return true;
+
+  // /json is last resort (can stall/empty reply on some builds).
+  const esphome = await fetchJsonWithClose<{ name?: string; friendly_name?: string }>(
+    `${baseUrl}/json`,
+    900,
+  );
+  if (esphome?.name || esphome?.friendly_name) return true;
+
+  return false;
+}
+
+async function findFirstReachableController(
+  ips: string[],
+  concurrency = 32,
+): Promise<{ ip: string } | null> {
+  let idx = 0;
+  let found: { ip: string } | null = null;
+
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (found === null) {
+      const i = idx++;
+      if (i >= ips.length) return;
+      const ip = ips[i]!;
+      const ok = await probeIpForController(ip);
+      if (ok && found === null) found = { ip };
+    }
+  });
+
+  await Promise.all(workers);
+  return found;
 }
 
 function bearer(req: express.Request): string | undefined {
@@ -258,35 +392,63 @@ app.get('/api/board/probe', async (req, res) => {
  * - hosts: "100,111,1,10,50,200" (optional)
  */
 app.get('/api/board/scan', async (req, res) => {
-  const subnetRaw = String(req.query.subnet ?? '192.168.0').trim();
-  const subnet = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(subnetRaw) ? subnetRaw : '192.168.0';
+  // Back-compat mode: allow scanning a specific /24 with a host list.
+  const subnetRaw = String(req.query.subnet ?? '').trim();
   const hostsRaw = String(req.query.hosts ?? '').trim();
-  const hosts = (hostsRaw ? hostsRaw.split(',') : ['100', '111', '1', '10', '50', '200'])
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => Number(s))
-    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 254);
+  if (subnetRaw && hostsRaw) {
+    const subnet = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(subnetRaw) ? subnetRaw : null;
+    if (!subnet) {
+      res.status(400).json({ ok: false, baseUrl: null, tried: [], error: 'invalid subnet' });
+      return;
+    }
+    const hosts = hostsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => Number(s))
+      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 254);
 
-  const tried: string[] = [];
-  for (const h of hosts) {
-    const baseUrl = `http://${subnet}.${h}`;
-    const safe = safeBaseUrl(baseUrl);
-    if (!safe) continue;
-    tried.push(`${subnet}.${h}`);
-    // Reuse the probe endpoint logic via direct calls.
-    const whoami = await fetchJsonWithClose<{ deviceName?: string }>(`${safe}/whoami`, 1200);
-    if (whoami?.deviceName) {
-      res.json({ ok: true, baseUrl: safe, tried });
-      return;
+    const tried: string[] = [];
+    for (const h of hosts) {
+      const ip = `${subnet}.${h}`;
+      tried.push(ip);
+      const ok = await probeIpForController(ip);
+      if (ok) {
+        const safe = safeBaseUrl(`http://${ip}`);
+        res.json({ ok: true, baseUrl: safe, tried });
+        return;
+      }
     }
-    const esphome = await fetchJsonWithClose<{ name?: string; friendly_name?: string }>(`${safe}/json`, 1200);
-    if (esphome?.name || esphome?.friendly_name) {
-      res.json({ ok: true, baseUrl: safe, tried });
-      return;
-    }
+    res.json({ ok: false, baseUrl: null, tried });
+    return;
   }
 
-  res.json({ ok: false, baseUrl: null, tried });
+  // Auto mode: discover local private subnets from the gateway host and scan them.
+  const ifaces = listLocalIpv4Cidrs();
+  const cidrs = ifaces.map((x) => ({ iface: x.iface, ip: x.ip, prefix: x.prefix }));
+  const ips = buildScanTargetsFromCidrs(cidrs);
+
+  const startTs = Date.now();
+  const found = await findFirstReachableController(ips, 32);
+  const elapsedMs = Date.now() - startTs;
+
+  if (found) {
+    const safe = safeBaseUrl(`http://${found.ip}`);
+    res.json({
+      ok: true,
+      baseUrl: safe,
+      tried: [],
+      meta: { mode: 'auto', elapsedMs, interfaces: ifaces },
+    });
+    return;
+  }
+
+  res.json({
+    ok: false,
+    baseUrl: null,
+    tried: [],
+    meta: { mode: 'auto', elapsedMs, interfaces: ifaces },
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {

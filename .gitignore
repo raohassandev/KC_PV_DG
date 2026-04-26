@@ -3,9 +3,18 @@
 # You can modify this file to suit your needs.
 
 /.esphome/
+# ESPHome compile copies (see scripts/export_pv_dg_firmware.sh)
+/Modular_Yaml/firmware-out/*.bin
+/Modular_Yaml/firmware-out/*.elf
+/Modular_Yaml/firmware-out/*.factory.bin
+/Modular_Yaml/firmware-out/*.ota.bin
+/Modular_Yaml/firmware-out/bootloader.bin
+/Modular_Yaml/firmware-out/partitions.bin
+/Modular_Yaml/firmware-out/ota_data_initial.bin
 /secrets.yaml
 
 # Local-only copy of dev / deployment credentials (see CREDENTIALS.local.example)
+/Export/secrets.yaml
 /CREDENTIALS.local.md
 
 # Dynamic Zero Export API simulator persisted state (local dev)

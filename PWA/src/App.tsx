@@ -21,6 +21,7 @@ import { generateSiteBundle } from './siteBundleGenerator';
 import {
   boardIpFromBaseUrl,
   type BoardWhoami,
+  probeBoard,
   type ProvisionStatusResponse,
 } from './boardDiscovery';
 import { deriveZones as deriveCommissioningZones } from './policySchema';
@@ -38,6 +39,18 @@ import { useTheme } from './theme/useTheme';
 
 function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
+}
+
+function isIpv4(host: string): boolean {
+  const t = host.trim();
+  if (!t) return false;
+  const parts = t.split('.');
+  if (parts.length !== 4) return false;
+  return parts.every((p) => {
+    if (!/^\d{1,3}$/.test(p)) return false;
+    const n = Number(p);
+    return n >= 0 && n <= 255;
+  });
 }
 
 function App() {
@@ -80,6 +93,10 @@ function App() {
   const [gatewaySiteList, setGatewaySiteList] = useState<Array<{ siteId: string }>>([]);
   const [gatewaySyncSiteId, setGatewaySyncSiteId] = useState(session.siteId);
   const [gatewaySyncBusy, setGatewaySyncBusy] = useState(false);
+  const autoConnectRanRef = useRef(false);
+  const [autoConnectStatus, setAutoConnectStatus] = useState<
+    'idle' | 'searching' | 'connected' | 'setup_mode' | 'not_found'
+  >('idle');
 
   const theme = useTheme();
 
@@ -162,6 +179,88 @@ function App() {
     [persistLastGoodBoardIp],
   );
 
+  const autoConnectController = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      if (!silent) setNotice('Connecting…');
+      setAutoConnectStatus('searching');
+      setBoardProbeError(null);
+
+      const tryBaseUrl = async (baseUrl: string): Promise<BoardWhoami | null> => {
+        const who = await probeBoard(baseUrl);
+        if (!who) return null;
+        setBoardProbeResult(who);
+        setBoardBaseUrl(baseUrl);
+        rememberReachableBaseUrl(baseUrl);
+        const host = boardIpFromBaseUrl(baseUrl);
+        if (host) updateSiteField('boardIp', host);
+        if (!silent) setNotice('Connected');
+        setAutoConnectStatus(baseUrl.startsWith('http://192.168.4.1') ? 'setup_mode' : 'connected');
+        return who;
+      };
+
+      try {
+        // 1) Last known good IP
+        if (lastGoodBoardIp.trim()) {
+          const who = await tryBaseUrl(`http://${lastGoodBoardIp.trim()}`);
+          if (who) return who;
+        }
+
+        // 2) Saved board IP
+        if (config.boardIp.trim()) {
+          const who = await tryBaseUrl(`http://${config.boardIp.trim()}`);
+          if (who) return who;
+        }
+
+        // 3) Name-based
+        if (config.boardName.trim()) {
+          const who = await tryBaseUrl(`http://${config.boardName.trim()}.local`);
+          if (who) return who;
+        }
+
+        // 4) Gateway auto scan (best-effort; only works if gateway exists)
+        try {
+          const res = await fetch('/api/board/scan', {
+            cache: 'no-store',
+            headers: { accept: 'application/json' },
+          });
+          const j = (await res.json().catch(() => null)) as { ok?: boolean; baseUrl?: string | null } | null;
+          if (res.ok && j?.ok && j.baseUrl) {
+            const who = await tryBaseUrl(j.baseUrl);
+            if (who) return who;
+          }
+        } catch {
+          // ignore; still try AP mode
+        }
+
+        // 5) Setup mode (AP)
+        const apWho = await tryBaseUrl('http://192.168.4.1');
+        if (apWho) return apWho;
+
+        setAutoConnectStatus('not_found');
+        if (!silent) {
+          setBoardProbeError(
+            'Controller not found. Make sure your phone and controller are on the same Wi‑Fi, then try again.',
+          );
+        }
+        return null;
+      } finally {
+        if (silent) {
+          // Leave notice as-is for silent checks.
+        }
+      }
+    },
+    [
+      config.boardIp,
+      config.boardName,
+      lastGoodBoardIp,
+      rememberReachableBaseUrl,
+      updateSiteField,
+      setNotice,
+      setBoardProbeError,
+    ],
+  );
+
   useEffect(() => {
     try {
       const v = localStorage.getItem('pvdg.lastGoodBoardIp');
@@ -170,6 +269,18 @@ function App() {
       /* ignore */
     }
   }, []);
+
+  useEffect(() => {
+    if (!authenticated) {
+      autoConnectRanRef.current = false;
+      setAutoConnectStatus('idle');
+      return;
+    }
+    if (autoConnectRanRef.current) return;
+    autoConnectRanRef.current = true;
+    // First load / refresh: quietly validate connectivity and update boardIp if needed.
+    void autoConnectController({ silent: true });
+  }, [authenticated, autoConnectController]);
 
   useEffect(() => {
     try {
@@ -239,6 +350,27 @@ function App() {
   useEffect(() => {
     document.title = `PV-DG · ${activePageLabel}`;
   }, [activePageLabel]);
+
+  const headerTargetLine = useMemo(() => {
+    if (session.role === 'user') {
+      const status =
+        autoConnectStatus === 'connected'
+          ? 'Connected'
+          : autoConnectStatus === 'setup_mode'
+            ? 'Setup mode'
+            : autoConnectStatus === 'searching'
+              ? 'Connecting…'
+              : 'Not connected';
+      const wifi = config.wifiSsid ? ` · Wi‑Fi ${config.wifiSsid}` : '';
+      return `Controller: ${status}${wifi}`;
+    }
+    // Installer / manufacturer: keep it readable (avoid hostnames / "NA").
+    const name = config.boardName?.trim() ? config.boardName.trim() : 'Controller';
+    // Only show a real IP here; hide `.local` or other hostnames (too technical).
+    const ip = config.boardIp?.trim() && isIpv4(config.boardIp) ? ` · ${config.boardIp.trim()}` : '';
+    const wifi = config.wifiSsid?.trim() ? ` · Wi‑Fi ${config.wifiSsid.trim()}` : '';
+    return `${name}${ip}${wifi}`;
+  }, [session.role, autoConnectStatus, config.boardName, config.boardIp, config.wifiSsid]);
 
   useEffect(() => {
     if (!authenticated) {
@@ -324,29 +456,21 @@ function App() {
               <span className='app-header-mark' aria-hidden='true' />
               <div className='app-header-leading-text'>
                 <div className='app-header-product-row'>
-                  <span className='app-header-badge'>PV-DG</span>
-                  <span className='app-header-product-tagline'>Smart Controller</span>
+                  <span className='app-header-brand'>PV‑DG</span>
+                  <h1 className='app-title'>{config.siteName}</h1>
                 </div>
-                <h1 className='app-title'>{config.siteName}</h1>
-                <div className='app-header-subrow'>
-                  <p className='app-header-connection'>
-                    <span className='app-header-connection-label'>Target</span>
-                    <span className='app-header-connection-value'>
-                      {config.boardName} · {config.boardIp} · Wi-Fi {config.wifiSsid || 'NA'}
-                    </span>
-                  </p>
-                  <div className='app-header-workspace' aria-live='polite'>
-                    <span className='app-header-workspace-label'>
-                      {session.role === 'user' && !showWorkspaceNav ? 'View' : 'Workspace'}
-                    </span>
-                    <span className='app-header-workspace-value' data-testid='workspace-active'>
-                      {(session.role === 'user' && !showWorkspaceNav
-                        ? 'Home'
-                        : workspace === 'operation'
-                          ? 'Operation'
-                          : 'Commissioning') + (activePageLabel ? ` · ${activePageLabel}` : '')}
-                    </span>
-                  </div>
+                <div className='app-header-subtitle' aria-live='polite'>
+                  <span className='app-header-subtitle-value'>{headerTargetLine}</span>
+                  <span className='app-header-subtitle-sep' aria-hidden='true'>
+                    •
+                  </span>
+                  <span className='app-header-subtitle-value' data-testid='workspace-active'>
+                    {(session.role === 'user' && !showWorkspaceNav
+                      ? 'Home'
+                      : workspace === 'operation'
+                        ? 'Operation'
+                        : 'Commissioning') + (activePageLabel ? ` · ${activePageLabel}` : '')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -572,6 +696,8 @@ function App() {
           <DashboardOverview
             boardIp={config.boardIp}
             role={session.role}
+            autoConnectStatus={autoConnectStatus}
+            onAutoConnect={() => autoConnectController({ silent: false })}
             onNavigateToMonitoring={(sub) => {
               setDzxEnterTab(sub ?? defaultMonitoringTab);
               setPage('dzx');

@@ -4,16 +4,22 @@ import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
 test.describe('Site Setup — LAN discovery (mocked)', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/board/probe**', async (route) => {
+      const u = new URL(route.request().url());
+      const baseUrl = u.searchParams.get('baseUrl') ?? '';
+      // Simulate real-world behavior: only the correct baseUrl responds.
+      const ok = baseUrl.includes('192.168.0.222');
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          ok: true,
-          whoami: {
-            deviceName: 'e2e-mock-controller',
-            fwVersion: 'e2e-1',
-            mac: 'AA:BB:CC:DD:EE:FF',
-          },
+          ok,
+          whoami: ok
+            ? {
+                deviceName: 'e2e-mock-controller',
+                fwVersion: 'e2e-1',
+                mac: 'AA:BB:CC:DD:EE:FF',
+              }
+            : null,
         }),
       });
     });
@@ -36,11 +42,16 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await gotoWorkspace(page, 'Commissioning');
     await gotoTab(page, 'Site Setup');
 
-    const boardIpField = page.getByRole('textbox', { name: /Board IP LAN address/i });
+    // Controller address is now under Advanced.
+    await page.getByText('Advanced').click();
+    await page.getByRole('textbox', { name: /Controller Name/i }).fill('');
+    const boardIpField = page.getByRole('textbox', { name: /Controller Address/i });
 
     await expect(boardIpField).toHaveValue('192.168.0.111');
 
-    await page.getByRole('button', { name: 'Scan LAN (quick)' }).click();
+    // Force the auto-connect flow to miss the pre-filled IP so it reaches /api/board/scan.
+    await boardIpField.fill('192.168.0.250');
+    await page.getByRole('button', { name: 'Connect' }).click();
 
     await expect(boardIpField).toHaveValue('192.168.0.222');
     await expect(page.getByText('Device: e2e-mock-controller')).toBeVisible();

@@ -120,7 +120,28 @@ export async function probeBoard(baseUrl: string): Promise<BoardWhoami | null> {
   const whoami = await fetchJson<BoardWhoami>(`${base}/whoami`);
   if (whoami?.deviceName) return whoami;
 
-  // ESPHome web_server compatibility fallback (works today)
+  // ESPHome entity endpoints fallback: read identity from template sensors (service_ui.yaml).
+  // We try this *before* `${base}/json` because some ESPHome web_server v3 builds can return an
+  // empty reply or stall on `/json`, while entity endpoints remain responsive.
+  const [controllerId, fwVersion, mac, ipAddr] = await Promise.all([
+    fetchJson<{ state?: string }>(`${base}/text_sensor/Controller%20ID`),
+    fetchJson<{ state?: string }>(`${base}/text_sensor/Firmware%20Version`),
+    fetchJson<{ state?: string }>(`${base}/text_sensor/MAC%20Address`),
+    fetchJson<{ state?: string }>(`${base}/text_sensor/IP%20Address`),
+  ]);
+  if (controllerId?.state) {
+    return {
+      deviceName: controllerId.state,
+      controllerId: controllerId.state,
+      fwVersion: fwVersion?.state,
+      mac: mac?.state,
+      ip: ipAddr?.state,
+      webUiUrl: `${base}/`,
+      capabilities: { esphomeEntityEndpoints: true },
+    };
+  }
+
+  // ESPHome web_server compatibility fallback (works when /json responds correctly)
   const esphome = await fetchJson<EspHomeJson>(`${base}/json`);
   if (esphome?.name || esphome?.friendly_name) {
     return {
@@ -131,23 +152,6 @@ export async function probeBoard(baseUrl: string): Promise<BoardWhoami | null> {
       capabilities: {
         esphomeWebServer: true,
       },
-    };
-  }
-
-  // ESPHome entity endpoints fallback: read identity from template sensors (service_ui.yaml)
-  const [controllerId, fwVersion, mac] = await Promise.all([
-    fetchJson<{ state?: string }>(`${base}/text_sensor/Controller%20ID`),
-    fetchJson<{ state?: string }>(`${base}/text_sensor/Firmware%20Version`),
-    fetchJson<{ state?: string }>(`${base}/text_sensor/MAC%20Address`),
-  ]);
-  if (controllerId?.state) {
-    return {
-      deviceName: controllerId.state,
-      controllerId: controllerId.state,
-      fwVersion: fwVersion?.state,
-      mac: mac?.state,
-      webUiUrl: `${base}/`,
-      capabilities: { esphomeEntityEndpoints: true },
     };
   }
 

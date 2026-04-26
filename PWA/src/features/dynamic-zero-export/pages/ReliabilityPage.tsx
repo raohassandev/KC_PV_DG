@@ -90,7 +90,7 @@ export function ReliabilityPage({ role = 'user' }: { role?: PwaRole }) {
   return (
     <div className='feature-page-grid reliability-page' data-testid='reliability-page'>
       <div className='reliability-kpi-strip' role='region' aria-label='Connectivity and alerts at a glance'>
-        <div className='feature-stat-grid' style={{ width: '100%' }}>
+        <div className='feature-stat-grid'>
           <div className='feature-stat-card'>
             <div className='feature-stat-label'>Local API</div>
             <div className='feature-stat-value'>{apiUp ? 'Reachable' : 'Down'}</div>
