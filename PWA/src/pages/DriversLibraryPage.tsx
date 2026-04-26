@@ -147,7 +147,7 @@ function RegisterRow({
 }
 
 export function DriversLibraryPage() {
-  const { role, fetchGateway } = useAuth();
+  const { role, fetchGateway, siteGatewaySyncAvailable } = useAuth();
   const canWrite = role === 'manufacturer';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +155,26 @@ export function DriversLibraryPage() {
   const [selectedId, setSelectedId] = useState<string>('');
   const [draft, setDraft] = useState<DriverDefinition>(EMPTY_DRIVER);
   const [newId, setNewId] = useState('');
+
+  if (!siteGatewaySyncAvailable) {
+    return (
+      <section className='card card-wide'>
+        <div className='card-header'>
+          <div>
+            <h2>Drivers</h2>
+            <p className='help-text'>Manufacturer driver library (meters & inverters)</p>
+          </div>
+        </div>
+        <div className='inline-banner inline-banner--warn'>
+          Gateway is not configured (or you are not logged in via gateway). Drivers require a gateway session.
+        </div>
+        <p className='help-text' style={{ marginTop: 10 }}>
+          Fix: run the gateway locally and set <span className='inline-code'>VITE_GATEWAY_URL</span>, then login as
+          manufacturer again.
+        </p>
+      </section>
+    );
+  }
 
   const selectedMeta = useMemo(() => drivers.find((d) => d.id === selectedId) ?? null, [drivers, selectedId]);
 
