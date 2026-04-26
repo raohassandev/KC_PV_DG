@@ -15,6 +15,7 @@ export function DiagnosticsPage({ role = 'installer' }: { role?: PwaRole }) {
   useEffect(() => {
     let active = true;
     const mode = loadProviderMode();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadState('loading');
     fetchDiagnosticsApiBundle(mode)
       .then((apiNext) => {

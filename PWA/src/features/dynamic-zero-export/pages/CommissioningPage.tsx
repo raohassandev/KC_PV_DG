@@ -22,6 +22,7 @@ export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
 
   useEffect(() => {
     let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadState('loading');
     fetchCommissioningApiBundle(loadProviderMode())
       .then(({ commissioning, configReview }) => {
@@ -46,6 +47,7 @@ export function CommissioningPage({ role = 'installer' }: { role?: PwaRole }) {
 
   useEffect(() => {
     if (!siteGatewaySyncAvailable) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGatewayPwaSiteName(null);
       return;
     }

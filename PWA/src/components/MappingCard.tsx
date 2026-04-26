@@ -53,6 +53,11 @@ export function MappingCard({
     <div className='slot-card'>
       <h2>{slot.label}</h2>
       <p className='help-text'>{slotSummaryHelp(slot)}</p>
+      {slot.driverId ? (
+        <div className='inline-banner' style={{ marginBottom: 12 }}>
+          Driver override selected: <span className='inline-code'>{slot.driverId}</span>
+        </div>
+      ) : null}
       <div className='form-grid'>
         <ToggleField
           label='Enabled'
@@ -64,7 +69,7 @@ export function MappingCard({
           label='Device Type'
           help={deviceHelp[slot.deviceType]}
           value={slot.deviceType}
-          onChange={(v) => updateSlot(slot.id, { deviceType: v as DeviceType })}
+          onChange={(v) => updateSlot(slot.id, { deviceType: v as DeviceType, driverId: undefined })}
           options={deviceOptions}
           dataTestId={`slot-${slot.id}-device-type`}
         />

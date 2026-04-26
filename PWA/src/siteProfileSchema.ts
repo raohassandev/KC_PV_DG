@@ -37,6 +37,11 @@ export type SourceSlot = {
   label: string;
   enabled: boolean;
   deviceType: DeviceType;
+  /**
+   * Optional driver id from Manufacturer driver library.
+   * When set, commissioning/YAML generation should prefer this over built-in `deviceType` templates.
+   */
+  driverId?: string;
   role: SourceRole;
   /**
    * Field transport expectation for this slot.

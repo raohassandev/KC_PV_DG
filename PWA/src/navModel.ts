@@ -13,6 +13,7 @@ export type AppPageId =
   | 'review'
   | 'resources'
   | 'control'
+  | 'drivers'
   | 'engineer'
   | 'yaml';
 
@@ -43,12 +44,13 @@ export const NAV_PAGES: NavPage[] = [
   { id: 'slots', label: 'Source Slots', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   { id: 'templates', label: 'Templates', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   { id: 'review', label: 'Validation', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
+  { id: 'control', label: 'Control', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   // Manufacturer-only tooling (kept under Commissioning; not for end-users/installers)
   { id: 'engineer', label: 'Engineer Actions', workspace: 'commissioning', roles: ['manufacturer'] },
   { id: 'yaml', label: 'YAML Export', workspace: 'commissioning', roles: ['installer', 'manufacturer'] },
   // Manufacturer-only workspace
   { id: 'resources', label: 'Board Resources', workspace: 'manufacturer', roles: ['manufacturer'] },
-  { id: 'control', label: 'Control', workspace: 'manufacturer', roles: ['manufacturer'] },
+  { id: 'drivers', label: 'Drivers', workspace: 'manufacturer', roles: ['manufacturer'] },
 ];
 
 export function workspacesForRole(role: PwaRole): WorkspaceId[] {

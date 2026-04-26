@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -132,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const s = readStored();
     if (!s?.token || s.token === 'local-dev') return false;
     return role === 'installer' || role === 'manufacturer';
-  }, [session.authenticated, role]);
+  }, [gatewayUrl, session.authenticated, role]);
 
   const fetchGateway = useCallback(async (path: string, init?: RequestInit) => {
     if (!gatewayUrl) throw new Error('Gateway not configured');
@@ -146,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers.set('Authorization', `Bearer ${stored.token}`);
     }
     return fetch(url, { ...init, headers });
-  }, []);
+  }, [gatewayUrl]);
 
   const logout = useCallback(() => {
     writeStored(null);
@@ -184,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { ok: true };
     },
-    [],
+    [gatewayUrl],
   );
 
   const changePassword = useCallback(
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return { ok: true };
     },
-    [],
+    [gatewayUrl],
   );
 
   const login = useCallback(

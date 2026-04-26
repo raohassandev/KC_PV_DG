@@ -33,3 +33,7 @@ OTA (if reachable on LAN):
 
 cd /Users/israrulhaq/Desktop/DEV/KC_PV_DG
 esphome run Modular_Yaml/pv-dg-controller.yaml --device 192.168.0.111
+
+## Driver Library plan
+
+See `docs/driver_library.md`.

@@ -21,6 +21,7 @@ import {
   deleteSession,
   getSession,
 } from './sessions.js';
+import { deleteDriver, getDriver, listDrivers, saveDriver, type DriverDefinition } from './driverStore.js';
 
 const PORT = Number(process.env.PORT ?? 8788);
 const CONFIG_DIR = process.env.CONFIG_DIR ?? join(process.cwd(), 'data', 'config');
@@ -308,6 +309,100 @@ app.use(
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'kc-pvdg-gateway' });
+});
+
+// Driver library (manufacturer-managed).
+app.get('/api/drivers', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role === 'user') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  res.json({ drivers: listDrivers(CONFIG_DIR) });
+});
+
+app.get('/api/drivers/:driverId', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role === 'user') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  const driverId = String(req.params.driverId ?? '');
+  const d = getDriver(CONFIG_DIR, driverId);
+  if (!d) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+  res.json({ driver: d });
+});
+
+app.put('/api/drivers/:driverId', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role !== 'manufacturer') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  const driverId = String(req.params.driverId ?? '');
+  const body = req.body as { driver?: DriverDefinition };
+  if (!body?.driver) {
+    res.status(400).json({ error: 'invalid_body' });
+    return;
+  }
+  const saved = saveDriver(CONFIG_DIR, driverId, body.driver);
+  if (!saved) {
+    res.status(400).json({ error: 'invalid_driver_id' });
+    return;
+  }
+  appendAuditLine(CONFIG_DIR, {
+    type: 'driver.save',
+    driverId,
+    role: rec.role,
+    ts: new Date().toISOString(),
+    ip: req.ip,
+  });
+  res.json({ ok: true, driver: saved });
+});
+
+app.delete('/api/drivers/:driverId', (req, res) => {
+  const token = bearer(req);
+  const rec = getSession(token);
+  if (!rec?.role) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  if (rec.role !== 'manufacturer') {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
+  const driverId = String(req.params.driverId ?? '');
+  const ok = deleteDriver(CONFIG_DIR, driverId);
+  if (!ok) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+  appendAuditLine(CONFIG_DIR, {
+    type: 'driver.delete',
+    driverId,
+    role: rec.role,
+    ts: new Date().toISOString(),
+    ip: req.ip,
+  });
+  res.json({ ok: true });
 });
 
 /**

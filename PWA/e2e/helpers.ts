@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
 export async function gotoTab(page: Page, label: string) {
   await page.getByTestId('subnav-pills').getByRole('button', { name: label }).click();

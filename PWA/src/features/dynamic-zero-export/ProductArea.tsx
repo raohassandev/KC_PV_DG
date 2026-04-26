@@ -58,6 +58,7 @@ export function ProductArea({
 
   useEffect(() => {
     if (!navItems.some((i) => i.id === page)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPage(navItems[0]?.id ?? 'energy-history');
     }
   }, [navItems, page]);

@@ -2,6 +2,8 @@ import { type SiteConfig } from './siteProfileSchema';
 import { inverterDeviceHasBundledYaml, meterDeviceHasBundledYaml } from './deviceFirmware';
 import { deviceCatalog, deviceOptionsForRole } from './siteTemplates';
 import { deriveZones, policyWarnings } from './policySchema';
+import { readCachedDriver } from './driverCache';
+import type { DriverDefinition } from './types/driverLibrary';
 
 export type SiteBundleFile = {
   name: string;
@@ -20,6 +22,11 @@ function enabledPackages(config: SiteConfig) {
   );
   const needsTcp = config.slots.some((slot) => slot.enabled && slot.transport === 'tcp');
 
+  const firstGrid = config.slots.find((s) => s.enabled && s.role === 'grid_meter');
+  const firstInverter = config.slots.find((s) => s.enabled && s.role === 'inverter');
+  const gridDriverId = firstGrid?.driverId?.trim() || '';
+  const inverterDriverId = firstInverter?.driverId?.trim() || '';
+
   return [
     // Keep RTU (RS485) base as default. TCP is added as an optional package so RTU+TCP can coexist.
     'base_board: !include ../Modular_Yaml/base_board.yaml',
@@ -28,13 +35,52 @@ function enabledPackages(config: SiteConfig) {
       : []),
     'io_board: !include ../Modular_Yaml/io_board.yaml',
     'service_ui: !include ../Modular_Yaml/service_ui.yaml',
-    'meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml',
+    ...(gridDriverId
+      ? [`meter_driver: !include drivers/${gridDriverId}.yaml`]
+      : ['meter_em500_grid: !include ../Modular_Yaml/meter_em500_grid.yaml']),
     'control_core: !include ../Modular_Yaml/control_core.yaml',
     'display_oled: !include ../Modular_Yaml/display_oled.yaml',
-    ...(enabledDevices.has('huawei') || enabledDevices.has('huawei_smartlogger')
-      ? ['inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml']
-      : []),
+    ...(inverterDriverId
+      ? [`inverter_driver: !include drivers/${inverterDriverId}.yaml`]
+      : enabledDevices.has('huawei') || enabledDevices.has('huawei_smartlogger')
+        ? ['inverter_huawei: !include ../Modular_Yaml/inverter_huawei.yaml']
+        : []),
   ];
+}
+
+function driverValueType(r: DriverDefinition['registers'][number]): string {
+  const kind = r.valueKind;
+  const wordSwap = r.wordOrder === 'lowWordFirst';
+  if (kind === 'U_DWORD') return wordSwap ? 'U_DWORD_R' : 'U_DWORD';
+  if (kind === 'S_DWORD') return wordSwap ? 'S_DWORD_R' : 'S_DWORD';
+  if (kind === 'U_QWORD') return wordSwap ? 'U_QWORD_R' : 'U_QWORD';
+  if (kind === 'S_QWORD') return wordSwap ? 'S_QWORD_R' : 'S_QWORD';
+  if (kind === 'FP32') return wordSwap ? 'FP32_R' : 'FP32';
+  return kind;
+}
+
+function driverYaml(def: DriverDefinition, modbusControllerId: string): string {
+  const out: string[] = [];
+  out.push('sensor:');
+  for (const r of def.registers ?? []) {
+    const addr = Number(r.address);
+    if (!Number.isFinite(addr) || addr < 0) continue;
+    out.push(`  - platform: modbus_controller`);
+    out.push(`    modbus_controller_id: ${modbusControllerId}`);
+    out.push(`    name: ${quote(r.label || r.paramKey)}`);
+    out.push(`    address: 0x${Math.trunc(addr).toString(16).toUpperCase()}`);
+    out.push(`    register_type: ${r.registerType}`);
+    out.push(`    value_type: ${driverValueType(r)}`);
+    if (typeof r.precision === 'number' && Number.isFinite(r.precision)) {
+      out.push(`    accuracy_decimals: ${Math.max(0, Math.min(6, Math.trunc(r.precision)))}`);
+    }
+    if (typeof r.scale === 'number' && Number.isFinite(r.scale) && r.scale !== 1) {
+      out.push(`    filters:`);
+      out.push(`      - multiply: ${r.scale}`);
+    }
+  }
+  out.push('');
+  return out.join('\n');
 }
 
 function slotSummary(config: SiteConfig) {
@@ -357,11 +403,30 @@ ${warnings.length > 0 ? warnings.map((w) => `  - ${quote(w)}`).join('\n') : '  -
 }
 
 export function generateSiteBundle(config: SiteConfig): SiteBundleFile[] {
+  const firstGrid = config.slots.find((s) => s.enabled && s.role === 'grid_meter');
+  const firstInverter = config.slots.find((s) => s.enabled && s.role === 'inverter');
+  const gridDriverId = firstGrid?.driverId?.trim() || '';
+  const inverterDriverId = firstInverter?.driverId?.trim() || '';
+  const gridDriver = gridDriverId ? readCachedDriver(gridDriverId) : null;
+  const inverterDriver = inverterDriverId ? readCachedDriver(inverterDriverId) : null;
+
+  const driverFiles: SiteBundleFile[] = [];
+  if (gridDriver) driverFiles.push({ name: `drivers/${gridDriver.id}.yaml`, content: driverYaml(gridDriver, 'grid_meter') });
+  if (inverterDriver) driverFiles.push({ name: `drivers/${inverterDriver.id}.yaml`, content: driverYaml(inverterDriver, 'solar_inverter') });
+
+  const driverWarnings: string[] = [];
+  if (gridDriverId && !gridDriver) driverWarnings.push(`Grid meter driver not cached: ${gridDriverId}`);
+  if (inverterDriverId && !inverterDriver) driverWarnings.push(`Inverter driver not cached: ${inverterDriverId}`);
+
   return [
     { name: 'pv-dg-controller.generated.yaml', content: manifestYaml(config) },
     { name: 'site.config.yaml', content: configYaml(config) },
     { name: 'site.contract.yaml', content: contractYaml() },
-    { name: 'commissioning.summary.yaml', content: commissioningYaml(config) },
+    {
+      name: 'commissioning.summary.yaml',
+      content: commissioningYaml(config) + (driverWarnings.length ? `\n# driver_warnings:\n${driverWarnings.map((w) => `# - ${w}`).join('\n')}\n` : ''),
+    },
+    ...driverFiles,
   ];
 }
 
