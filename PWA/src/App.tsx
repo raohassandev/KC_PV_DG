@@ -17,6 +17,7 @@ import { SiteSetupPage } from './pages/SiteSetupPage';
 import { SourceSlotsPage } from './pages/SourceSlotsPage';
 import { YamlExportPage } from './pages/YamlExportPage';
 import { BoardResourcesPage } from './pages/BoardResourcesPage';
+import { ManufacturerControlPage } from './pages/ManufacturerControlPage';
 import { roleLabels } from './features/dynamic-zero-export/roles';
 import { generateSiteBundle } from './siteBundleGenerator';
 import {
@@ -777,6 +778,8 @@ function App() {
         )}
 
         {page === 'resources' && <BoardResourcesPage boardIp={config.boardIp} />}
+
+        {page === 'control' && <ManufacturerControlPage boardIp={config.boardIp} />}
 
         {page === 'engineer' && <EngineerActions boardIp={config.boardIp} />}
 
