@@ -42,6 +42,15 @@ function RegisterRow({
   onDelete: () => void;
 }) {
   const computedKey = autoKeyFromLabel(r.label || '');
+  const valueKindOptions: Array<[DriverRegister['valueKind'], string]> = [
+    ['U_WORD', 'U_WORD (uint16 · 1 reg)'],
+    ['S_WORD', 'S_WORD (int16 · 1 reg)'],
+    ['U_DWORD', 'U_DWORD (uint32 · 2 regs)'],
+    ['S_DWORD', 'S_DWORD (int32 · 2 regs)'],
+    ['U_QWORD', 'U_QWORD (uint64 · 4 regs)'],
+    ['S_QWORD', 'S_QWORD (int64 · 4 regs)'],
+    ['FP32', 'FP32 (float32 · 2 regs)'],
+  ];
   return (
     <div className='slot-card' style={{ padding: 14 }}>
       <div className='driver-reg-row'>
@@ -96,9 +105,9 @@ function RegisterRow({
           onChange={(e) => onChange({ ...r, valueKind: e.target.value as DriverRegister['valueKind'] })}
           aria-label='Value type'
         >
-          {['U_WORD', 'S_WORD', 'U_DWORD', 'S_DWORD', 'U_QWORD', 'S_QWORD', 'FP32'].map((k) => (
+          {valueKindOptions.map(([k, label]) => (
             <option key={k} value={k}>
-              {k}
+              {label}
             </option>
           ))}
         </select>
@@ -431,6 +440,19 @@ export function DriversLibraryPage() {
 
         {selectedId ? (
           <div style={{ display: 'grid', gap: 12 }}>
+            <div className='slot-card' style={{ padding: 14 }}>
+              <div className='driver-reg-header'>
+                <div>Key / Label</div>
+                <div>Type</div>
+                <div>Addr</div>
+                <div>Data</div>
+                <div>Scale</div>
+                <div>Word</div>
+                <div>Byte</div>
+                <div>Dec</div>
+                <div />
+              </div>
+            </div>
             {draft.registers.map((r, idx) => (
               <RegisterRow
                 key={`${r.paramKey}-${idx}`}
