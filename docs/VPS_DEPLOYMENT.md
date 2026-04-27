@@ -20,7 +20,7 @@ This project is intended to be deployed on a Linux VPS using **Docker Compose**,
 1. SSH into the VPS:
 
 ```bash
-ssh vps-hostinger
+ssh hostinger-vps
 ```
 
 2. Clone/pull code (or upload a release bundle):
