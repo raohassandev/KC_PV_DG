@@ -3,6 +3,22 @@ import { join } from 'node:path';
 import mqtt, { type MqttClient } from 'mqtt';
 import { appendAuditLine, writeJsonAtomic } from './atomicFile.js';
 
+function topicParts(topic: string): string[] {
+  return topic
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function safeIdFromTopicPart(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const s = raw.trim();
+  if (!s || s.length > 96) return undefined;
+  // Keep the same allowed charset as safeSiteIdParam() used for site files.
+  if (!/^[a-zA-Z0-9_-]+$/.test(s)) return undefined;
+  return s;
+}
+
 export function startMqttDiscovery(opts: {
   url?: string;
   topic: string;
@@ -28,13 +44,29 @@ export function startMqttDiscovery(opts: {
     try {
       const text = payload.toString('utf8');
       const data = JSON.parse(text) as Record<string, unknown>;
+
+      // Recommended topic format:
+      // kc_pv_dg/discovery/<installerId>/<siteId>
+      const parts = topicParts(topic);
+      const siteFromTopic = safeIdFromTopicPart(parts.at(-1));
+      const installerFromTopic = safeIdFromTopicPart(parts.at(-2));
+
       const siteId =
         (typeof data.siteId === 'string' && data.siteId) ||
         (typeof data.site_id === 'string' && data.site_id) ||
-        topic.split('/').pop() ||
+        siteFromTopic ||
         'unknown-site';
+
+      // Normalize installer id when missing (helps installer scoping for site list).
+      const normalized =
+        typeof (data as any).installer_id === 'string' || typeof (data as any).installerId === 'string'
+          ? data
+          : installerFromTopic
+            ? { ...data, installer_id: installerFromTopic }
+            : data;
+
       const path = join(opts.sitesDir, `${siteId}.json`);
-      writeJsonAtomic(path, { ...data, _mqttTopic: topic, _receivedAt: new Date().toISOString() });
+      writeJsonAtomic(path, { ...normalized, _mqttTopic: topic, _receivedAt: new Date().toISOString() });
       appendAuditLine(opts.configDir, {
         type: 'mqtt.discovery',
         siteId,
@@ -42,7 +74,9 @@ export function startMqttDiscovery(opts: {
         ts: new Date().toISOString(),
       });
     } catch (e) {
-      console.error('[gateway] discovery parse error', e);
+      // Avoid noisy stack traces on public brokers. Log a compact error.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[gateway] discovery parse error:', msg);
     }
   });
 

@@ -87,3 +87,17 @@ client.on('connect', () => {
 - Do not publish into other apps’ namespaces.
 - Keep payload size small (discovery snapshots, not time-series telemetry).
 
+### Retain policy (recommended)
+
+- For discovery snapshots, set **`retain=true`** so the latest state is available immediately after broker or gateway reconnect.
+- Publish again whenever something changes (controller IP, firmware, device inventory).
+
+Example (retained):
+
+```bash
+mosquitto_pub -h 127.0.0.1 \
+  -t kc_pv_dg/discovery/inst-001/site-001 \
+  -m '{"siteId":"site-001","installer_id":"inst-001","controllerIp":"192.168.0.101"}' \
+  -r
+```
+
