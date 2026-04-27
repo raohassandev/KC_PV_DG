@@ -50,10 +50,20 @@ function RegisterRow({
     ['U_QWORD', 'U_QWORD (uint64 · 4 regs)'],
     ['S_QWORD', 'S_QWORD (int64 · 4 regs)'],
     ['FP32', 'FP32 (float32 · 2 regs)'],
+    ['STRING', 'STRING (text · N regs)'],
   ];
+  const isEnabled = r.enabled !== false;
   return (
     <div className='slot-card' style={{ padding: 14 }}>
       <div className='driver-reg-row'>
+        <label className='driver-reg-enabled' title='Enable this register'>
+          <input
+            type='checkbox'
+            checked={isEnabled}
+            onChange={(e) => onChange({ ...r, enabled: e.target.checked })}
+            aria-label='Enable register'
+          />
+        </label>
         <div className='driver-reg-main'>
           <div className='driver-reg-label'>
             <span className='driver-reg-label__key'>{r.paramKey || computedKey || 'param'}</span>
@@ -102,7 +112,14 @@ function RegisterRow({
         <select
           className='field-select driver-reg-kind'
           value={r.valueKind}
-          onChange={(e) => onChange({ ...r, valueKind: e.target.value as DriverRegister['valueKind'] })}
+          onChange={(e) => {
+            const nextKind = e.target.value as DriverRegister['valueKind'];
+            onChange({
+              ...r,
+              valueKind: nextKind,
+              stringLengthWords: nextKind === 'STRING' ? Math.max(1, Math.trunc(r.stringLengthWords ?? 10)) : undefined,
+            });
+          }}
           aria-label='Value type'
         >
           {valueKindOptions.map(([k, label]) => (
@@ -112,14 +129,25 @@ function RegisterRow({
           ))}
         </select>
 
-        <input
-          className='field-input driver-reg-scale'
-          inputMode='decimal'
-          value={r.scale ?? ''}
-          onChange={(e) => onChange({ ...r, scale: e.target.value === '' ? undefined : Number(e.target.value) })}
-          aria-label='Scale'
-          placeholder='scale'
-        />
+        {r.valueKind === 'STRING' ? (
+          <input
+            className='field-input driver-reg-scale'
+            inputMode='numeric'
+            value={r.stringLengthWords ?? 10}
+            onChange={(e) => onChange({ ...r, stringLengthWords: clampInt(Number(e.target.value), 1, 64) })}
+            aria-label='String length (words)'
+            placeholder='words'
+          />
+        ) : (
+          <input
+            className='field-input driver-reg-scale'
+            inputMode='decimal'
+            value={r.scale ?? ''}
+            onChange={(e) => onChange({ ...r, scale: e.target.value === '' ? undefined : Number(e.target.value) })}
+            aria-label='Scale'
+            placeholder='scale'
+          />
+        )}
 
         <select
           className='field-select driver-reg-word'
@@ -442,6 +470,7 @@ export function DriversLibraryPage() {
           <div style={{ display: 'grid', gap: 12 }}>
             <div className='slot-card' style={{ padding: 14 }}>
               <div className='driver-reg-header'>
+                <div>On</div>
                 <div>Key / Label</div>
                 <div>Type</div>
                 <div>Addr</div>

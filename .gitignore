@@ -36,3 +36,6 @@
 # Local screenshots accidentally dropped in repo root
 /Screenshot*.png
 
+# PDF/XLSX parsing temporary outputs (generated)
+/docs/_extracted/
+

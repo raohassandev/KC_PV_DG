@@ -1,6 +1,7 @@
 export type DeviceType = 'meter' | 'inverter';
 
 export type DriverRegister = {
+  enabled?: boolean;
   paramKey: string;
   label: string;
   unit?: string;
@@ -13,11 +14,13 @@ export type DriverRegister = {
     | 'S_DWORD'
     | 'U_QWORD'
     | 'S_QWORD'
-    | 'FP32';
+    | 'FP32'
+    | 'STRING';
   wordOrder?: 'normal' | 'lowWordFirst';
   byteOrder?: 'ABCD' | 'BADC' | 'CDAB' | 'DCBA';
   scale?: number;
   precision?: number;
+  stringLengthWords?: number;
 };
 
 export type DriverDefinition = {

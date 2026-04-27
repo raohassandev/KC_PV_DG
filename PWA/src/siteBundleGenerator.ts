@@ -124,26 +124,49 @@ function lambdaForByteOrder(r: DriverDefinition['registers'][number]): string {
 
 function driverYaml(def: DriverDefinition, modbusControllerId: string): string {
   const out: string[] = [];
-  out.push('sensor:');
+  const sensorLines: string[] = [];
+  const textLines: string[] = [];
+
+  sensorLines.push('sensor:');
   for (const r of def.registers ?? []) {
+    if (r.enabled === false) continue;
     const addr = Number(r.address);
     if (!Number.isFinite(addr) || addr < 0) continue;
-    out.push(`  - platform: modbus_controller`);
-    out.push(`    modbus_controller_id: ${modbusControllerId}`);
-    out.push(`    name: ${quote(r.label || r.paramKey)}`);
-    out.push(`    address: 0x${Math.trunc(addr).toString(16).toUpperCase()}`);
-    out.push(`    register_type: ${r.registerType}`);
-    out.push(`    value_type: ${driverValueType(r)}`);
+    if (r.valueKind === 'STRING') {
+      const words = Math.max(1, Math.min(64, Math.trunc(r.stringLengthWords ?? 10)));
+      if (textLines.length === 0) textLines.push('text_sensor:');
+      textLines.push(`  - platform: modbus_controller`);
+      textLines.push(`    modbus_controller_id: ${modbusControllerId}`);
+      textLines.push(`    name: ${quote(r.label || r.paramKey)}`);
+      textLines.push(`    address: 0x${Math.trunc(addr).toString(16).toUpperCase()}`);
+      textLines.push(`    register_type: ${r.registerType}`);
+      textLines.push(`    register_count: ${words}`);
+      textLines.push(`    response_size: ${words * 2}`);
+      textLines.push(`    raw_encode: ANSI`);
+      continue;
+    }
+
+    sensorLines.push(`  - platform: modbus_controller`);
+    sensorLines.push(`    modbus_controller_id: ${modbusControllerId}`);
+    sensorLines.push(`    name: ${quote(r.label || r.paramKey)}`);
+    sensorLines.push(`    address: 0x${Math.trunc(addr).toString(16).toUpperCase()}`);
+    sensorLines.push(`    register_type: ${r.registerType}`);
+    sensorLines.push(`    value_type: ${driverValueType(r)}`);
     if (needsByteLambda(r)) {
-      out.push(`    lambda: ${lambdaForByteOrder(r)}`);
+      sensorLines.push(`    lambda: ${lambdaForByteOrder(r)}`);
     }
     if (typeof r.precision === 'number' && Number.isFinite(r.precision)) {
-      out.push(`    accuracy_decimals: ${Math.max(0, Math.min(6, Math.trunc(r.precision)))}`);
+      sensorLines.push(`    accuracy_decimals: ${Math.max(0, Math.min(6, Math.trunc(r.precision)))}`);
     }
     if (typeof r.scale === 'number' && Number.isFinite(r.scale) && r.scale !== 1) {
-      out.push(`    filters:`);
-      out.push(`      - multiply: ${r.scale}`);
+      sensorLines.push(`    filters:`);
+      sensorLines.push(`      - multiply: ${r.scale}`);
     }
+  }
+  out.push(...sensorLines);
+  if (textLines.length > 0) {
+    out.push('');
+    out.push(...textLines);
   }
   out.push('');
   return out.join('\n');

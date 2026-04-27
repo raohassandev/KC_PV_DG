@@ -1,0 +1,26 @@
+import type { DriverRegister } from '../driverStore.js';
+
+export const sajRegisters: DriverRegister[] = [
+  { paramKey: "type", label: "Type", registerType: "holding", address: 36608, valueKind: "U_WORD" },
+  { paramKey: "sub_type", label: "Sub Type", registerType: "holding", address: 36609, valueKind: "U_WORD" },
+  { paramKey: "sn", label: "SN", registerType: "holding", address: 36611, valueKind: "STRING", stringLengthWords: 10 },
+  { paramKey: "pc", label: "PC", registerType: "holding", address: 36621, valueKind: "STRING", stringLengthWords: 10 },
+  { paramKey: "dv", label: "DV", registerType: "holding", address: 36631, valueKind: "U_WORD", scale: 0.001 },
+  { paramKey: "mcv", label: "MCV", registerType: "holding", address: 36632, valueKind: "U_WORD", scale: 0.001 },
+  { paramKey: "scv", label: "SCV", registerType: "holding", address: 36633, valueKind: "U_WORD", scale: 0.001 },
+  { paramKey: "disp_hw_version", label: "Disp HW Version", registerType: "holding", address: 36634, valueKind: "U_WORD", scale: 0.001 },
+  { paramKey: "ctrl_hw_version", label: "Ctrl HW Version", registerType: "holding", address: 36635, valueKind: "U_WORD", scale: 0.001 },
+  { paramKey: "faultmsg", label: "FaultMSG", registerType: "holding", address: 257, valueKind: "U_WORD" },
+  { paramKey: "pv1power", label: "PV1Power", registerType: "holding", address: 265, valueKind: "U_WORD" },
+  { paramKey: "pv2power", label: "PV2Power", registerType: "holding", address: 268, valueKind: "U_WORD" },
+  { paramKey: "pv3power", label: "PV3Power", registerType: "holding", address: 271, valueKind: "U_WORD" },
+  { paramKey: "pf", label: "PF", registerType: "holding", address: 277, valueKind: "S_WORD", scale: 0.001 },
+  { paramKey: "l1power", label: "L1Power", registerType: "holding", address: 282, valueKind: "U_WORD" },
+  { paramKey: "l1pf", label: "L1PF", registerType: "holding", address: 283, valueKind: "S_WORD", scale: 0.001 },
+  { paramKey: "l2power", label: "L2Power", registerType: "holding", address: 288, valueKind: "U_WORD" },
+  { paramKey: "l2pf", label: "L2PF", registerType: "holding", address: 289, valueKind: "S_WORD", scale: 0.001 },
+  { paramKey: "l3power", label: "L3Power", registerType: "holding", address: 294, valueKind: "U_WORD" },
+  { paramKey: "l3pf", label: "L3PF", registerType: "holding", address: 295, valueKind: "S_WORD", scale: 0.001 },
+  { paramKey: "error_count", label: "Error Count", registerType: "holding", address: 310, valueKind: "U_WORD" },
+  { paramKey: "limitpower", label: "LimitPower", registerType: "holding", address: 32799, valueKind: "U_WORD" },
+];
