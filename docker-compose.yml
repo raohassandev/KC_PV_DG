@@ -1,0 +1,32 @@
+services:
+  gateway:
+    build:
+      context: ./gateway
+    environment:
+      PORT: "8788"
+      CONFIG_DIR: "/data/config"
+      MQTT_URL: "${MQTT_URL:-}"
+      MQTT_DISCOVERY_TOPIC: "${MQTT_DISCOVERY_TOPIC:-automatrix/discovery/+/+}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-}"
+      INITIAL_USER_PASSWORD: "${INITIAL_USER_PASSWORD:-}"
+      INITIAL_INSTALLER_PASSWORD: "${INITIAL_INSTALLER_PASSWORD:-}"
+      INITIAL_SUPPORT_PASSWORD: "${INITIAL_SUPPORT_PASSWORD:-}"
+      INITIAL_MANUFACTURER_PASSWORD: "${INITIAL_MANUFACTURER_PASSWORD:-}"
+      # Hardening flags (implemented in security-hardening todo)
+      KC_PVDG_PUBLIC_MODE: "${KC_PVDG_PUBLIC_MODE:-1}"
+    volumes:
+      - gateway_data:/data
+    ports:
+      - "8788:8788"
+    restart: unless-stopped
+
+  pwa:
+    build:
+      context: ./PWA
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  gateway_data:
+

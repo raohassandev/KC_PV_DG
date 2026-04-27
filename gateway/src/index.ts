@@ -3,6 +3,7 @@ import os from 'node:os';
 import { join } from 'node:path';
 import cors from 'cors';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import type { SessionState } from '../../dynamic_zero_export/pwa/contracts/session.js';
 import { appendAuditLine, writeJsonAtomic } from './atomicFile.js';
 import {
@@ -26,10 +27,12 @@ import { deleteDriver, getDriver, listDrivers, saveDriver, type DriverDefinition
 const PORT = Number(process.env.PORT ?? 8788);
 const CONFIG_DIR = process.env.CONFIG_DIR ?? join(process.cwd(), 'data', 'config');
 const SITES_DIR = join(CONFIG_DIR, 'sites');
-const CORS_ORIGIN = process.env.CORS_ORIGIN ?? '*';
+const NODE_ENV = process.env.NODE_ENV ?? 'development';
+const CORS_ORIGIN = process.env.CORS_ORIGIN ?? (NODE_ENV === 'production' ? '' : '*');
 const MQTT_URL = process.env.MQTT_URL;
 const MQTT_DISCOVERY_TOPIC = process.env.MQTT_DISCOVERY_TOPIC ?? 'automatrix/discovery/+/+';
 const PWA_DIST_DIR = process.env.PWA_DIST_DIR ?? join(process.cwd(), '..', 'PWA', 'dist');
+const KC_PVDG_PUBLIC_MODE = (process.env.KC_PVDG_PUBLIC_MODE ?? '1').trim() !== '0';
 
 let authRecord = await loadOrInitAuth(CONFIG_DIR);
 configureSessionPersistence(CONFIG_DIR);
@@ -302,10 +305,30 @@ const app = express();
 app.use(express.json({ limit: '512kb' }));
 app.use(
   cors({
-    origin: CORS_ORIGIN === '*' ? true : CORS_ORIGIN.split(',').map((s) => s.trim()),
+    origin:
+      CORS_ORIGIN === '*'
+        ? true
+        : CORS_ORIGIN
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
     credentials: true,
   }),
 );
+
+const authLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'kc-pvdg-gateway' });
@@ -411,6 +434,10 @@ app.delete('/api/drivers/:driverId', (req, res) => {
  * Returns BoardWhoami-like object (or null) compatible with PWA `probeBoard()`.
  */
 app.get('/api/board/probe', async (req, res) => {
+  if (KC_PVDG_PUBLIC_MODE) {
+    res.status(403).json({ error: 'forbidden' });
+    return;
+  }
   const baseUrl = safeBaseUrl(String(req.query.baseUrl ?? ''));
   if (!baseUrl) {
     res.status(400).json({ error: 'invalid baseUrl' });
@@ -487,6 +514,10 @@ app.get('/api/board/probe', async (req, res) => {
  * - hosts: "100,111,1,10,50,200" (optional)
  */
 app.get('/api/board/scan', async (req, res) => {
+  if (KC_PVDG_PUBLIC_MODE) {
+    res.status(403).json({ ok: false, baseUrl: null, tried: [], error: 'forbidden' });
+    return;
+  }
   // Back-compat mode: allow scanning a specific /24 with a host list.
   const subnetRaw = String(req.query.subnet ?? '').trim();
   const hostsRaw = String(req.query.hosts ?? '').trim();
@@ -546,7 +577,7 @@ app.get('/api/board/scan', async (req, res) => {
   });
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   const body = req.body as {
     channel?: LoginChannel;
     password?: string;
@@ -617,7 +648,7 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
-app.post('/api/auth/password', async (req, res) => {
+app.post('/api/auth/password', authLimiter, async (req, res) => {
   const token = bearer(req);
   const rec = getSession(token);
   if (!rec) {
@@ -687,7 +718,7 @@ app.post('/api/auth/admin/reset-password', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', authLimiter, (req, res) => {
   const token = bearer(req) ?? (req.body as { token?: string })?.token;
   deleteSession(token);
   res.json({ ok: true });
