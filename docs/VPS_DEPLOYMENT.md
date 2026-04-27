@@ -42,7 +42,7 @@ nano .env
 Minimum recommended fields:
 - `CORS_ORIGIN`: your final PWA origin(s), e.g. `https://pv-dg.example.com`
 - `KC_PVDG_PUBLIC_MODE=1`
-- `MQTT_URL=mqtt://127.0.0.1:1883` (optional; uses the VPS Mosquitto broker)
+- `MQTT_URL=mqtt://host.docker.internal:1883` (optional; uses the VPS Mosquitto broker from inside Docker)
 - `MQTT_DISCOVERY_TOPIC=kc_pv_dg/discovery/+/+` (recommended dedicated namespace)
 - strong `INITIAL_*_PASSWORD` values (first boot only; remove after initialization)
 

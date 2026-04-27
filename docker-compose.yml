@@ -15,6 +15,8 @@ services:
       INITIAL_MANUFACTURER_PASSWORD: "${INITIAL_MANUFACTURER_PASSWORD:-}"
       # Hardening flags (implemented in security-hardening todo)
       KC_PVDG_PUBLIC_MODE: "${KC_PVDG_PUBLIC_MODE:-1}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - gateway_data:/data
     ports:
