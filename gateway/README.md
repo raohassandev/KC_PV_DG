@@ -25,7 +25,7 @@ Typecheck (from repo root): `npm run check:gateway` → runs `npx tsc -p gateway
 | `PORT` | `8788` | HTTP listen port |
 | `CONFIG_DIR` | `<cwd>/data/config` | `auth.json`, `audit.log`, `sites/`, `sessions.json` |
 | `MQTT_URL` | _(empty)_ | e.g. `mqtt://user:pass@host:1883` |
-| `MQTT_DISCOVERY_TOPIC` | `automatrix/discovery/+/+` | Discovery subscription |
+| `MQTT_DISCOVERY_TOPIC` | `automatrix/discovery/+/+` | Discovery subscription (recommended: dedicate a namespace for this project, e.g. `kc_pv_dg/discovery/+/+`) |
 | `CORS_ORIGIN` | `*` | Comma-separated origins or `*` |
 | `INITIAL_USER_PASSWORD` | `DevUser!1` | Seed on first boot only |
 | `INITIAL_INSTALLER_PASSWORD` | `DevInstall!1` | Seed on first boot only |

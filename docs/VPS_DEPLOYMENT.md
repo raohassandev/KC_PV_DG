@@ -42,6 +42,8 @@ nano .env
 Minimum recommended fields:
 - `CORS_ORIGIN`: your final PWA origin(s), e.g. `https://pv-dg.example.com`
 - `KC_PVDG_PUBLIC_MODE=1`
+- `MQTT_URL=mqtt://127.0.0.1:1883` (optional; uses the VPS Mosquitto broker)
+- `MQTT_DISCOVERY_TOPIC=kc_pv_dg/discovery/+/+` (recommended dedicated namespace)
 - strong `INITIAL_*_PASSWORD` values (first boot only; remove after initialization)
 
 4. Build and start:
@@ -124,4 +126,13 @@ docker compose up -d --build
 - In production, set `KC_PVDG_PUBLIC_MODE=1` so LAN scan/probe endpoints are disabled.
 - Set `CORS_ORIGIN` to your real origin(s). Do **not** leave it empty or `*`.
 - Rotate initial passwords after first boot (remove `INITIAL_*` values from `.env`).
+
+## MQTT notes (do not disturb existing broker)
+
+Your VPS already runs a public Mosquitto broker on `0.0.0.0:1883`. Other apps are connected to it.
+
+To avoid interfering:
+- Do **not** restart or reconfigure Mosquitto as part of this deployment.
+- Use a dedicated topic namespace (default in `.env.example`): `kc_pv_dg/discovery/+/+`
+- Start with **subscribe-only** discovery ingestion (what the gateway does today).
 
