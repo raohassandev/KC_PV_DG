@@ -23,6 +23,15 @@ function safeId(raw: string): string {
   return raw.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 96);
 }
 
+function autoKeyFromLabel(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+}
+
 function RegisterRow({
   r,
   onChange,
@@ -32,115 +41,111 @@ function RegisterRow({
   onChange: (next: DriverRegister) => void;
   onDelete: () => void;
 }) {
+  const computedKey = autoKeyFromLabel(r.label || '');
   return (
     <div className='slot-card' style={{ padding: 14 }}>
-      <div style={{ display: 'grid', gap: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Key</span>
-            <input className='field-input' value={r.paramKey} onChange={(e) => onChange({ ...r, paramKey: e.target.value })} />
-          </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Label</span>
-            <input className='field-input' value={r.label} onChange={(e) => onChange({ ...r, label: e.target.value })} />
-          </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Unit</span>
-            <input className='field-input' value={r.unit ?? ''} onChange={(e) => onChange({ ...r, unit: e.target.value })} />
-          </label>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Register type</span>
-            <select
-              className='field-select'
-              value={r.registerType}
-              onChange={(e) => onChange({ ...r, registerType: e.target.value as DriverRegister['registerType'] })}
-            >
-              <option value='read'>Read (FC4)</option>
-              <option value='holding'>Holding (FC3)</option>
-              <option value='coil'>Coil (FC1)</option>
-              <option value='discrete_input'>Discrete input (FC2)</option>
-            </select>
-          </label>
-
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Address</span>
+      <div className='driver-reg-row'>
+        <div className='driver-reg-main'>
+          <div className='driver-reg-label'>
+            <span className='driver-reg-label__key'>{r.paramKey || computedKey || 'param'}</span>
             <input
-              className='field-input'
-              inputMode='numeric'
-              value={r.address}
-              onChange={(e) => onChange({ ...r, address: clampInt(Number(e.target.value), 0, 200_000) })}
+              className='field-input driver-reg-label__input'
+              value={r.label}
+              placeholder='Parameter label'
+              onChange={(e) => {
+                const nextLabel = e.target.value;
+                const nextKey = autoKeyFromLabel(nextLabel);
+                // If user hasn't customized the key, keep it auto-synced to label.
+                const currentAuto = autoKeyFromLabel(r.label || '');
+                const shouldAutoUpdate = !r.paramKey || r.paramKey === currentAuto;
+                onChange({ ...r, label: nextLabel, paramKey: shouldAutoUpdate ? nextKey : r.paramKey });
+              }}
             />
-          </label>
-
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Value type</span>
-            <select
-              className='field-select'
-              value={r.valueKind}
-              onChange={(e) => onChange({ ...r, valueKind: e.target.value as DriverRegister['valueKind'] })}
-            >
-              {['U_WORD', 'S_WORD', 'U_DWORD', 'S_DWORD', 'U_QWORD', 'S_QWORD', 'FP32'].map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Scale (multiply)</span>
-            <input
-              className='field-input'
-              inputMode='decimal'
-              value={r.scale ?? ''}
-              onChange={(e) => onChange({ ...r, scale: e.target.value === '' ? undefined : Number(e.target.value) })}
-            />
-          </label>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Word order</span>
-            <select
-              className='field-select'
-              value={r.wordOrder ?? 'normal'}
-              onChange={(e) => onChange({ ...r, wordOrder: e.target.value as DriverRegister['wordOrder'] })}
-            >
-              <option value='normal'>Normal</option>
-              <option value='lowWordFirst'>Low word first</option>
-            </select>
-          </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Byte order</span>
-            <select
-              className='field-select'
-              value={r.byteOrder ?? 'ABCD'}
-              onChange={(e) => onChange({ ...r, byteOrder: e.target.value as DriverRegister['byteOrder'] })}
-            >
-              <option value='ABCD'>ABCD</option>
-              <option value='BADC'>BADC</option>
-              <option value='CDAB'>CDAB</option>
-              <option value='DCBA'>DCBA</option>
-            </select>
-          </label>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Precision</span>
-            <input
-              className='field-input'
-              inputMode='numeric'
-              value={r.precision ?? ''}
-              onChange={(e) => onChange({ ...r, precision: e.target.value === '' ? undefined : clampInt(Number(e.target.value), 0, 6) })}
-            />
-          </label>
-          <div style={{ display: 'flex', alignItems: 'end' }}>
-            <button className='toggle-button disabled' onClick={onDelete} type='button'>
-              Remove
-            </button>
           </div>
+          <input
+            className='field-input driver-reg-unit'
+            value={r.unit ?? ''}
+            placeholder='Unit'
+            onChange={(e) => onChange({ ...r, unit: e.target.value })}
+          />
         </div>
+
+        <select
+          className='field-select driver-reg-type'
+          value={r.registerType}
+          onChange={(e) => onChange({ ...r, registerType: e.target.value as DriverRegister['registerType'] })}
+          aria-label='Register type'
+        >
+          <option value='read'>Read</option>
+          <option value='holding'>Holding</option>
+          <option value='coil'>Coil</option>
+          <option value='discrete_input'>Discrete</option>
+        </select>
+
+        <input
+          className='field-input driver-reg-addr'
+          inputMode='numeric'
+          value={r.address}
+          onChange={(e) => onChange({ ...r, address: clampInt(Number(e.target.value), 0, 200_000) })}
+          aria-label='Address'
+        />
+
+        <select
+          className='field-select driver-reg-kind'
+          value={r.valueKind}
+          onChange={(e) => onChange({ ...r, valueKind: e.target.value as DriverRegister['valueKind'] })}
+          aria-label='Value type'
+        >
+          {['U_WORD', 'S_WORD', 'U_DWORD', 'S_DWORD', 'U_QWORD', 'S_QWORD', 'FP32'].map((k) => (
+            <option key={k} value={k}>
+              {k}
+            </option>
+          ))}
+        </select>
+
+        <input
+          className='field-input driver-reg-scale'
+          inputMode='decimal'
+          value={r.scale ?? ''}
+          onChange={(e) => onChange({ ...r, scale: e.target.value === '' ? undefined : Number(e.target.value) })}
+          aria-label='Scale'
+          placeholder='scale'
+        />
+
+        <select
+          className='field-select driver-reg-word'
+          value={r.wordOrder ?? 'normal'}
+          onChange={(e) => onChange({ ...r, wordOrder: e.target.value as DriverRegister['wordOrder'] })}
+          aria-label='Word order'
+        >
+          <option value='normal'>Word: normal</option>
+          <option value='lowWordFirst'>Word: low-first</option>
+        </select>
+
+        <select
+          className='field-select driver-reg-byte'
+          value={r.byteOrder ?? 'ABCD'}
+          onChange={(e) => onChange({ ...r, byteOrder: e.target.value as DriverRegister['byteOrder'] })}
+          aria-label='Byte order'
+        >
+          <option value='ABCD'>Byte: ABCD</option>
+          <option value='BADC'>Byte: BADC</option>
+          <option value='CDAB'>Byte: CDAB</option>
+          <option value='DCBA'>Byte: DCBA</option>
+        </select>
+
+        <input
+          className='field-input driver-reg-prec'
+          inputMode='numeric'
+          value={r.precision ?? ''}
+          onChange={(e) => onChange({ ...r, precision: e.target.value === '' ? undefined : clampInt(Number(e.target.value), 0, 6) })}
+          aria-label='Precision'
+          placeholder='dec'
+        />
+
+        <button className='btn btn--secondary driver-reg-remove' onClick={onDelete} type='button'>
+          Remove
+        </button>
       </div>
     </div>
   );
