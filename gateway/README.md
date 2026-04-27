@@ -49,3 +49,20 @@ Typecheck (from repo root): `npm run check:gateway` → runs `npx tsc -p gateway
 - `audit.log` — JSON lines; append + `fsync`.
 - `sessions.json` — active bearer sessions (`version` + `sessions` map); rewritten on login/logout; survives process restart.
 - `sites/<siteId>.json` — MQTT discovery payload plus optional commissioning blob **`pwaSiteConfig`** (PWA `SiteConfig` JSON) written by the PWA or API.
+
+## MQTT discovery payload contract (recommended)
+
+To keep the VPS broker safe and multi-tenant, use a **project namespace** topic.
+
+- **Topic**: `kc_pv_dg/discovery/<installerId>/<siteId>`
+- **Payload**: JSON
+  - Required: `siteId` (or the gateway will fall back to the last topic segment)
+  - Optional: `installer_id` and any other discovery fields
+
+Example publish:
+
+```bash
+mosquitto_pub -h 127.0.0.1 \
+  -t kc_pv_dg/discovery/inst-001/site-001 \
+  -m '{"siteId":"site-001","installer_id":"inst-001","controllerIp":"192.168.0.101"}'
+```

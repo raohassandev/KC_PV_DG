@@ -136,3 +136,20 @@ To avoid interfering:
 - Use a dedicated topic namespace (default in `.env.example`): `kc_pv_dg/discovery/+/+`
 - Start with **subscribe-only** discovery ingestion (what the gateway does today).
 
+### Discovery topic format (recommended)
+
+- Topic: `kc_pv_dg/discovery/<installerId>/<siteId>`
+  - Example: `kc_pv_dg/discovery/inst-001/site-001`
+- Payload: JSON object. Recommended keys:
+  - `siteId`: string (if missing, gateway falls back to `<siteId>` from topic)
+  - `installer_id`: string (optional)
+  - any extra discovery fields (device inventory, controller IPs, etc.)
+
+### Publish example (safe namespace)
+
+```bash
+mosquitto_pub -h 127.0.0.1 \
+  -t kc_pv_dg/discovery/inst-001/site-001 \
+  -m '{"siteId":"site-001","installer_id":"inst-001","controllerIp":"192.168.0.101"}'
+```
+
