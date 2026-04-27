@@ -19,10 +19,37 @@ export function builtinDrivers(): DriverDefinition[] {
       notes:
         'Built-in baseline EM500 grid meter driver. For full validated mapping see Modular_Yaml/meter_em500_grid.yaml. You can override by saving a driver with the same id.',
       registers: [
-        { paramKey: 'freq_hz', label: 'Frequency', unit: 'Hz', registerType: 'read', address: 0x0032, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
-        { paramKey: 'p_total_kw', label: 'Total Active Power', unit: 'kW', registerType: 'read', address: 0x003a, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
-        { paramKey: 'v_eq_v', label: 'Equivalent Voltage', unit: 'V', registerType: 'read', address: 0x0034, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
-        { paramKey: 'i_eq_a', label: 'Equivalent Current', unit: 'A', registerType: 'read', address: 0x0038, valueKind: 'U_DWORD', scale: 0.0001, precision: 4 },
+        // Synced from Modular_Yaml/meter_em500_grid.yaml
+        { paramKey: 'grid_l1_voltage', label: 'Grid L1 Voltage', unit: 'V', registerType: 'read', address: 0x0002, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l2_voltage', label: 'Grid L2 Voltage', unit: 'V', registerType: 'read', address: 0x0004, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l3_voltage', label: 'Grid L3 Voltage', unit: 'V', registerType: 'read', address: 0x0006, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l1_current', label: 'Grid L1 Current', unit: 'A', registerType: 'read', address: 0x0008, valueKind: 'U_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_l2_current', label: 'Grid L2 Current', unit: 'A', registerType: 'read', address: 0x000a, valueKind: 'U_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_l3_current', label: 'Grid L3 Current', unit: 'A', registerType: 'read', address: 0x000c, valueKind: 'U_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_l1_active_power_w', label: 'Grid L1 Active Power', unit: 'W', registerType: 'read', address: 0x0014, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l2_active_power_w', label: 'Grid L2 Active Power', unit: 'W', registerType: 'read', address: 0x0016, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l3_active_power_w', label: 'Grid L3 Active Power', unit: 'W', registerType: 'read', address: 0x0018, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l1_reactive_power_var', label: 'Grid L1 Reactive Power', unit: 'var', registerType: 'read', address: 0x001a, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l2_reactive_power_var', label: 'Grid L2 Reactive Power', unit: 'var', registerType: 'read', address: 0x001c, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l3_reactive_power_var', label: 'Grid L3 Reactive Power', unit: 'var', registerType: 'read', address: 0x001e, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l1_apparent_power_va', label: 'Grid L1 Apparent Power', unit: 'VA', registerType: 'read', address: 0x0020, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l2_apparent_power_va', label: 'Grid L2 Apparent Power', unit: 'VA', registerType: 'read', address: 0x0022, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l3_apparent_power_va', label: 'Grid L3 Apparent Power', unit: 'VA', registerType: 'read', address: 0x0024, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_l1_pf', label: 'Grid L1 Power Factor', registerType: 'read', address: 0x0026, valueKind: 'S_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_l2_pf', label: 'Grid L2 Power Factor', registerType: 'read', address: 0x0028, valueKind: 'S_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_l3_pf', label: 'Grid L3 Power Factor', registerType: 'read', address: 0x002a, valueKind: 'S_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_frequency', label: 'Grid Frequency', unit: 'Hz', registerType: 'read', address: 0x0032, valueKind: 'U_DWORD', scale: 0.001, precision: 3 },
+        { paramKey: 'grid_eqv_voltage', label: 'Grid Equivalent Phase Voltage', unit: 'V', registerType: 'read', address: 0x0034, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_eqv_current', label: 'Grid Equivalent Current', unit: 'A', registerType: 'read', address: 0x0038, valueKind: 'U_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_total_power_w', label: 'Grid Total Active Power', unit: 'W', registerType: 'read', address: 0x003a, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_total_reactive_power_var', label: 'Grid Total Reactive Power', unit: 'var', registerType: 'read', address: 0x003c, valueKind: 'S_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_total_apparent_power_va', label: 'Grid Total Apparent Power', unit: 'VA', registerType: 'read', address: 0x003e, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_total_pf', label: 'Grid Total Power Factor', registerType: 'read', address: 0x0040, valueKind: 'S_DWORD', scale: 0.0001, precision: 4 },
+        { paramKey: 'grid_import_kwh', label: 'Grid Import Energy', unit: 'kWh', registerType: 'holding', address: 0x1b21, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_export_kwh', label: 'Grid Export Energy', unit: 'kWh', registerType: 'holding', address: 0x1b25, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_import_kwh_t1', label: 'Grid Import Energy Tariff 1', unit: 'kWh', registerType: 'holding', address: 0x1b49, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_export_kwh_t1', label: 'Grid Export Energy Tariff 1', unit: 'kWh', registerType: 'holding', address: 0x1b4d, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_import_kwh_t2', label: 'Grid Import Energy Tariff 2', unit: 'kWh', registerType: 'holding', address: 0x1b5d, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
       ],
     },
     {
@@ -108,7 +135,9 @@ export function builtinDrivers(): DriverDefinition[] {
       notes:
         'Built-in baseline Huawei inverter driver (read path). For full mapping see Modular_Yaml/inverter_huawei.yaml. You can override by saving a driver with the same id.',
       registers: [
-        { paramKey: 'p_ac_kw', label: 'Active Power', unit: 'kW', registerType: 'read', address: 32080, valueKind: 'U_DWORD', scale: 0.001, precision: 3 },
+        // Synced from Modular_Yaml/inverter_huawei.yaml
+        { paramKey: 'inverter_pmax_kw', label: 'Inverter Pmax', unit: 'kW', registerType: 'read', address: 30083, valueKind: 'U_DWORD', scale: 0.001, precision: 3 },
+        { paramKey: 'inverter_actual_kw', label: 'Inverter Actual Power', unit: 'kW', registerType: 'read', address: 32080, valueKind: 'S_DWORD', scale: 0.001, precision: 3 },
       ],
     },
     {
