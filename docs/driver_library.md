@@ -33,6 +33,12 @@ During commissioning, the selected driver(s) are used to generate an ESPHome mod
 - Use native ESPHome `value_type` swaps where available (`*_R` types).
 - For full byte-order variants not representable directly, generate an ESPHome `lambda:` to reorder bytes from the raw Modbus response.
 
+### 64-bit energy registers (important, non-confusing)
+- Many meters (including **EM500**) expose energy counters as **64-bit integers** across **4 Modbus registers**.
+- In the Driver Library, represent these as **`U_QWORD`** (or `S_QWORD` if the device uses signed counters) with the correct **register type** (`holding` vs `read`) and a **scale** (e.g. `0.01`).
+- ESPHome sensor state is numeric (float-backed), so extremely large 64-bit counters can lose 1-count precision; for typical site kWh totals this is acceptable.
+- A “64-bit float (FP64)” is not a standard ESPHome `modbus_controller` value type; only implement FP64 via a custom `lambda` if a device truly uses FP64 (rare in Modbus).
+
 ### Key code entry points (implementation)
 - Gateway API: add `/api/drivers` routes and a file-backed driver store.
 - PWA: add a Manufacturer “Drivers” page (Library/Edit/New).

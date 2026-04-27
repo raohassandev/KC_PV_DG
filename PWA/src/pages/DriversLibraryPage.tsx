@@ -452,6 +452,10 @@ export function DriversLibraryPage() {
                 <div>Dec</div>
                 <div />
               </div>
+              <p className='help-text' style={{ margin: '10px 2px 0' }}>
+                Tip: energy counters are usually <span className='inline-code'>U_QWORD (uint64 · 4 regs)</span> with a scale (e.g.{' '}
+                <span className='inline-code'>0.01</span>).
+              </p>
             </div>
             {draft.registers.map((r, idx) => (
               <RegisterRow
