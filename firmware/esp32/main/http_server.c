@@ -9,6 +9,7 @@
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "nvs_store.h"
+#include "ota.h"
 #include "wifi.h"
 
 static const char *TAG = "pvdg_http";
@@ -308,6 +309,50 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   return resp;
 }
 
+static esp_err_t ota_status_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+  pvdg_ota_status_t st;
+  pvdg_ota_get_status(&st);
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddStringToObject(out, "state", st.state);
+  cJSON_AddStringToObject(out, "url", st.url[0] ? st.url : "");
+  if (st.message[0]) cJSON_AddStringToObject(out, "message", st.message);
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+static esp_err_t ota_start_post(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+  char *body = NULL;
+  size_t body_len = 0;
+  if (read_body(req, &body, &body_len) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad body");
+    return ESP_OK;
+  }
+  cJSON *j = cJSON_Parse(body);
+  free(body);
+  if (!j || !cJSON_IsObject(j)) {
+    if (j) cJSON_Delete(j);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad json");
+    return ESP_OK;
+  }
+  const cJSON *url = cJSON_GetObjectItem(j, "url");
+  if (!cJSON_IsString(url) || !url->valuestring[0]) {
+    cJSON_Delete(j);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "url required");
+    return ESP_OK;
+  }
+  esp_err_t err = pvdg_ota_start(url->valuestring);
+  cJSON_Delete(j);
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  if (err != ESP_OK) cJSON_AddStringToObject(out, "error", esp_err_to_name(err));
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
 // ESPHome-compatible entity endpoints (minimal v1)
 static esp_err_t entity_handler(httpd_req_t *req) {
   const char *uri = req->uri ? req->uri : "";
@@ -453,6 +498,11 @@ esp_err_t pvdg_http_start(void) {
 
   httpd_uri_t snap = {.uri = "/telemetry/snapshot", .method = HTTP_GET, .handler = telemetry_snapshot_get};
   httpd_register_uri_handler(s_server, &snap);
+
+  httpd_uri_t otas = {.uri = "/ota/status", .method = HTTP_GET, .handler = ota_status_get};
+  httpd_register_uri_handler(s_server, &otas);
+  httpd_uri_t otap = {.uri = "/ota", .method = HTTP_POST, .handler = ota_start_post};
+  httpd_register_uri_handler(s_server, &otap);
 
   // Generic entity endpoints (register wildcard prefixes)
   httpd_uri_t sensor = {.uri = "/sensor/*", .method = HTTP_GET, .handler = entity_handler};
