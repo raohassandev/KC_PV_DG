@@ -57,7 +57,7 @@ export default function App() {
   return (
     <Provider store={store}>
       <SafeAreaProvider>
-        <StatusBar style='dark' />
+        <StatusBar style='auto' />
         <RootNavigation />
       </SafeAreaProvider>
     </Provider>
