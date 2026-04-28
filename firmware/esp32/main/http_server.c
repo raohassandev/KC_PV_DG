@@ -247,7 +247,37 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   cJSON *out = cJSON_CreateObject();
 
   pvdg_em500_grid_t em = {0};
-  bool have_em = pvdg_em500_read_grid(1 /* default slave */, &em);
+  // If site config exists, prefer the configured Modbus ID for the grid meter slot.
+  uint8_t grid_slave = 1;
+  char *site_json = NULL;
+  if (pvdg_nvs_load_site_json(&site_json) == ESP_OK && site_json) {
+    cJSON *root = cJSON_Parse(site_json);
+    if (root && cJSON_IsObject(root)) {
+      const cJSON *slots = cJSON_GetObjectItem(root, "slots");
+      if (cJSON_IsArray(slots)) {
+        const cJSON *slot = NULL;
+        cJSON_ArrayForEach(slot, slots) {
+          const cJSON *enabled = cJSON_GetObjectItem(slot, "enabled");
+          const cJSON *role = cJSON_GetObjectItem(slot, "role");
+          const cJSON *dev = cJSON_GetObjectItem(slot, "deviceType");
+          const cJSON *mb = cJSON_GetObjectItem(slot, "modbusId");
+          if (!cJSON_IsBool(enabled) || !cJSON_IsString(role) || !cJSON_IsString(dev) || !cJSON_IsNumber(mb)) continue;
+          if (!cJSON_IsTrue(enabled)) continue;
+          if (strcmp(role->valuestring, "grid_meter") != 0) continue;
+          if (strncmp(dev->valuestring, "em500", 5) != 0) continue;
+          int mbid = mb->valueint;
+          if (mbid >= 1 && mbid <= 247) {
+            grid_slave = (uint8_t)mbid;
+            break;
+          }
+        }
+      }
+    }
+    if (root) cJSON_Delete(root);
+    free(site_json);
+  }
+
+  bool have_em = pvdg_em500_read_grid(grid_slave, &em);
 
   // Grid
   cJSON_AddNumberToObject(out, "gridFrequency", have_em ? em.frequency_hz : 50.0);
