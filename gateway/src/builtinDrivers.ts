@@ -64,6 +64,7 @@ export function builtinDrivers(): DriverDefinition[] {
         { paramKey: 'grid_import_kwh_t1', label: 'Grid Import Energy Tariff 1', unit: 'kWh', registerType: 'holding', address: 0x1b49, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
         { paramKey: 'grid_export_kwh_t1', label: 'Grid Export Energy Tariff 1', unit: 'kWh', registerType: 'holding', address: 0x1b4d, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
         { paramKey: 'grid_import_kwh_t2', label: 'Grid Import Energy Tariff 2', unit: 'kWh', registerType: 'holding', address: 0x1b5d, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
+        { paramKey: 'grid_export_kwh_t2', label: 'Grid Export Energy Tariff 2', unit: 'kWh', registerType: 'holding', address: 0x1b61, valueKind: 'U_QWORD', scale: 0.01, precision: 2 },
       ],
     },
     {

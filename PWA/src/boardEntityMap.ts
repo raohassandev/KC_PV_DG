@@ -11,6 +11,7 @@ export const boardEntityMap = {
     importEnergyTariff1: '/sensor/Grid%20Import%20Energy%20Tariff%201',
     exportEnergyTariff1: '/sensor/Grid%20Export%20Energy%20Tariff%201',
     importEnergyTariff2: '/sensor/Grid%20Import%20Energy%20Tariff%202',
+    exportEnergyTariff2: '/sensor/Grid%20Export%20Energy%20Tariff%202',
     l1Voltage: '/sensor/Grid%20L1%20Voltage',
     l2Voltage: '/sensor/Grid%20L2%20Voltage',
     l3Voltage: '/sensor/Grid%20L3%20Voltage',
@@ -32,6 +33,14 @@ export const boardEntityMap = {
     l2PowerFactor: '/sensor/Grid%20L2%20Power%20Factor',
     l3PowerFactor: '/sensor/Grid%20L3%20Power%20Factor',
   },
+  generator1: {
+    status: '/text_sensor/Generator%201%20Meter%20Status',
+    totalActivePower: '/sensor/Generator%201%20Total%20Active%20Power',
+  },
+  generator2: {
+    status: '/text_sensor/Generator%202%20Meter%20Status',
+    totalActivePower: '/sensor/Generator%202%20Total%20Active%20Power',
+  },
   controller: {
     state: '/text_sensor/Controller%20State',
   },
@@ -39,5 +48,50 @@ export const boardEntityMap = {
     status: '/text_sensor/Inverter%20Status',
     actualPower: '/sensor/Inverter%20Actual%20Power',
     pmax: '/sensor/Inverter%20Pmax',
+  },
+  inverter2: {
+    status: '/text_sensor/Inverter%202%20Status',
+    actualPower: '/sensor/Inverter%202%20Actual%20Power',
+    pmax: '/sensor/Inverter%202%20Pmax',
+  },
+  inverter3: {
+    status: '/text_sensor/Inverter%203%20Status',
+    actualPower: '/sensor/Inverter%203%20Actual%20Power',
+    pmax: '/sensor/Inverter%203%20Pmax',
+  },
+  inverter4: {
+    status: '/text_sensor/Inverter%204%20Status',
+    actualPower: '/sensor/Inverter%204%20Actual%20Power',
+    pmax: '/sensor/Inverter%204%20Pmax',
+  },
+  inverter5: {
+    status: '/text_sensor/Inverter%205%20Status',
+    actualPower: '/sensor/Inverter%205%20Actual%20Power',
+    pmax: '/sensor/Inverter%205%20Pmax',
+  },
+  inverter6: {
+    status: '/text_sensor/Inverter%206%20Status',
+    actualPower: '/sensor/Inverter%206%20Actual%20Power',
+    pmax: '/sensor/Inverter%206%20Pmax',
+  },
+  inverter7: {
+    status: '/text_sensor/Inverter%207%20Status',
+    actualPower: '/sensor/Inverter%207%20Actual%20Power',
+    pmax: '/sensor/Inverter%207%20Pmax',
+  },
+  inverter8: {
+    status: '/text_sensor/Inverter%208%20Status',
+    actualPower: '/sensor/Inverter%208%20Actual%20Power',
+    pmax: '/sensor/Inverter%208%20Pmax',
+  },
+  inverter9: {
+    status: '/text_sensor/Inverter%209%20Status',
+    actualPower: '/sensor/Inverter%209%20Actual%20Power',
+    pmax: '/sensor/Inverter%209%20Pmax',
+  },
+  inverter10: {
+    status: '/text_sensor/Inverter%2010%20Status',
+    actualPower: '/sensor/Inverter%2010%20Actual%20Power',
+    pmax: '/sensor/Inverter%2010%20Pmax',
   },
 } as const;
