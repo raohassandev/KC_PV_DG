@@ -31,7 +31,7 @@ export function builtinDrivers(): DriverDefinition[] {
       vendor: 'Rozwell / EM500 family',
       deviceType: 'meter',
       notes:
-        'Built-in baseline EM500 grid meter driver. For full validated mapping see Modular_Yaml/meter_em500_grid.yaml. You can override by saving a driver with the same id.',
+        'Synced with Modular_Yaml/meter_em500_grid.yaml: Table 1 = read (FC04), energy = holding (FC03). QWORD bases hardware-verified. Override by saving a driver with the same id.',
       registers: [
         // Synced from Modular_Yaml/meter_em500_grid.yaml
         { paramKey: 'grid_l1_voltage', label: 'Grid L1 Voltage', unit: 'V', registerType: 'read', address: 0x0002, valueKind: 'U_DWORD', scale: 0.01, precision: 2 },

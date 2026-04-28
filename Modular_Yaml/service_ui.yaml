@@ -35,6 +35,150 @@ switch:
       sorting_weight: 2
 
   - platform: template
+    id: enable_gen1_meter
+    name: "Enable Generator Meter 1"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: gen1_meter
+    turn_off_action:
+      - component.suspend: gen1_meter
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 4
+
+  - platform: template
+    id: enable_gen2_meter
+    name: "Enable Generator Meter 2"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: gen2_meter
+    turn_off_action:
+      - component.suspend: gen2_meter
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 5
+
+  - platform: template
+    id: enable_inverter_2
+    name: "Enable Inverter 2"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_2
+    turn_off_action:
+      - component.suspend: solar_inverter_2
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 6
+
+  - platform: template
+    id: enable_inverter_3
+    name: "Enable Inverter 3"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_3
+    turn_off_action:
+      - component.suspend: solar_inverter_3
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 7
+
+  - platform: template
+    id: enable_inverter_4
+    name: "Enable Inverter 4"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_4
+    turn_off_action:
+      - component.suspend: solar_inverter_4
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 8
+
+  - platform: template
+    id: enable_inverter_5
+    name: "Enable Inverter 5"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_5
+    turn_off_action:
+      - component.suspend: solar_inverter_5
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 9
+
+  - platform: template
+    id: enable_inverter_6
+    name: "Enable Inverter 6"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_6
+    turn_off_action:
+      - component.suspend: solar_inverter_6
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 10
+
+  - platform: template
+    id: enable_inverter_7
+    name: "Enable Inverter 7"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - component.resume: solar_inverter_7
+    turn_off_action:
+      - component.suspend: solar_inverter_7
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 11
+
+  - platform: template
+    id: enable_inverter_8
+    name: "Enable Inverter 8"
+    optimistic: true
+    # Do not restore from flash: prevents ghost polling at unit 28 on typical 1–7 PV sites.
+    restore_mode: DISABLED
+    turn_on_action:
+      - component.resume: solar_inverter_8
+    turn_off_action:
+      - component.suspend: solar_inverter_8
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 12
+
+  - platform: template
+    id: enable_inverter_9
+    name: "Enable Inverter 9"
+    optimistic: true
+    restore_mode: DISABLED
+    turn_on_action:
+      - component.resume: solar_inverter_9
+    turn_off_action:
+      - component.suspend: solar_inverter_9
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 13
+
+  - platform: template
+    id: enable_inverter_10
+    name: "Enable Inverter 10"
+    optimistic: true
+    restore_mode: DISABLED
+    turn_on_action:
+      - component.resume: solar_inverter_10
+    turn_off_action:
+      - component.suspend: solar_inverter_10
+    web_server:
+      sorting_group_id: grp_service
+      sorting_weight: 14
+
+  - platform: template
     id: inverter_write_enable
     name: "Write Commands To Inverter"
     optimistic: true
@@ -226,9 +370,15 @@ text_sensor:
     id: grid_status
     name: "Grid Meter Status"
     lambda: |-
+      static char s[80];
       if (!id(enable_grid_meter).state) return {"DISABLED"};
-      return { id(grid_seen) ? "ONLINE" : "NO DATA" };
-    update_interval: 5s
+      if (id(grid_seen)) return {"ONLINE"};
+      if (id(grid_mb_fault_valid)) {
+        snprintf(s, sizeof(s), "NO COMM fc=%u reg=%u", (unsigned) id(grid_mb_fault_fc), (unsigned) id(grid_mb_fault_reg));
+        return { s };
+      }
+      return {"NO DATA"};
+    update_interval: 2s
     web_server:
       sorting_group_id: grp_grid
       sorting_weight: 1
@@ -239,10 +389,131 @@ text_sensor:
     lambda: |-
       if (!id(enable_inverter).state) return {"DISABLED"};
       return { id(inverter_seen) ? "ONLINE" : "NO DATA" };
-    update_interval: 5s
+    update_interval: 2s
     web_server:
       sorting_group_id: grp_inverter
       sorting_weight: 1
+
+  - platform: template
+    id: gen1_status
+    name: "Generator 1 Meter Status"
+    lambda: |-
+      if (!id(enable_gen1_meter).state) return {"DISABLED"};
+      return { id(gen1_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 90
+
+  - platform: template
+    id: gen2_status
+    name: "Generator 2 Meter Status"
+    lambda: |-
+      if (!id(enable_gen2_meter).state) return {"DISABLED"};
+      return { id(gen2_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_grid
+      sorting_weight: 91
+
+  - platform: template
+    id: inverter2_status
+    name: "Inverter 2 Status"
+    lambda: |-
+      if (!id(enable_inverter_2).state) return {"DISABLED"};
+      return { id(inverter2_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 90
+
+  - platform: template
+    id: inverter3_status
+    name: "Inverter 3 Status"
+    lambda: |-
+      if (!id(enable_inverter_3).state) return {"DISABLED"};
+      return { id(inverter3_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 91
+
+  - platform: template
+    id: inverter4_status
+    name: "Inverter 4 Status"
+    lambda: |-
+      if (!id(enable_inverter_4).state) return {"DISABLED"};
+      return { id(inverter4_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 92
+
+  - platform: template
+    id: inverter5_status
+    name: "Inverter 5 Status"
+    lambda: |-
+      if (!id(enable_inverter_5).state) return {"DISABLED"};
+      return { id(inverter5_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 93
+
+  - platform: template
+    id: inverter6_status
+    name: "Inverter 6 Status"
+    lambda: |-
+      if (!id(enable_inverter_6).state) return {"DISABLED"};
+      return { id(inverter6_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 94
+
+  - platform: template
+    id: inverter7_status
+    name: "Inverter 7 Status"
+    lambda: |-
+      if (!id(enable_inverter_7).state) return {"DISABLED"};
+      return { id(inverter7_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 95
+
+  - platform: template
+    id: inverter8_status
+    name: "Inverter 8 Status"
+    lambda: |-
+      if (!id(enable_inverter_8).state) return {"DISABLED"};
+      return { id(inverter8_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 96
+
+  - platform: template
+    id: inverter9_status
+    name: "Inverter 9 Status"
+    lambda: |-
+      if (!id(enable_inverter_9).state) return {"DISABLED"};
+      return { id(inverter9_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 97
+
+  - platform: template
+    id: inverter10_status
+    name: "Inverter 10 Status"
+    lambda: |-
+      if (!id(enable_inverter_10).state) return {"DISABLED"};
+      return { id(inverter10_seen) ? "ONLINE" : "NO DATA" };
+    update_interval: 2s
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 98
 
 button:
   - platform: restart

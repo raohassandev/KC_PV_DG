@@ -2,13 +2,29 @@ substitutions:
   devicename: "pv-dg-controller"
   friendly_name: "PV DG Controller"
 
+  # RS232 UART pins (adjust to your board wiring if needed)
+  rs232_tx_pin: GPIO17
+  rs232_rx_pin: GPIO16
+  rs232_baud_rate: "9600"
+
 packages:
-  # Default commissioning build uses RTU (RS485).
-  # For mixed RTU + TCP/IP builds, the PWA bundle will include `modbus_tcp_manager.yaml` as an addon.
+  # Default commissioning build supports RTU (RS485 + optional RS232) and Modbus TCP/IP.
   base_board: !include base_board.yaml
   io_board: !include io_board.yaml
   service_ui: !include service_ui.yaml
+  modbus_tcp_manager: !include modbus_tcp_manager.yaml
   meter_em500_grid: !include meter_em500_grid.yaml
+  meter_em500_gen1: !include meter_em500_gen1.yaml
+  meter_em500_gen2: !include meter_em500_gen2.yaml
   inverter_huawei: !include inverter_huawei.yaml
+  inverter_huawei_2: !include inverter_huawei_2.yaml
+  inverter_huawei_3: !include inverter_huawei_3.yaml
+  inverter_huawei_4: !include inverter_huawei_4.yaml
+  inverter_huawei_5: !include inverter_huawei_5.yaml
+  inverter_huawei_6: !include inverter_huawei_6.yaml
+  inverter_huawei_7: !include inverter_huawei_7.yaml
+  inverter_huawei_8: !include inverter_huawei_8.yaml
+  inverter_huawei_9: !include inverter_huawei_9.yaml
+  inverter_huawei_10: !include inverter_huawei_10.yaml
   control_core: !include control_core.yaml
   display_oled: !include display_oled.yaml

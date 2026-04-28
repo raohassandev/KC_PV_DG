@@ -1,0 +1,34 @@
+sensor:
+  - platform: modbus_controller
+    modbus_controller_id: solar_inverter_2
+    id: inverter2_pmax_kw
+    name: "Inverter 2 Pmax"
+    register_type: read
+    address: 30083
+    value_type: U_DWORD
+    unit_of_measurement: "kW"
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+    on_value:
+      - lambda: "id(inverter2_seen) = true;"
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 110
+
+  - platform: modbus_controller
+    modbus_controller_id: solar_inverter_2
+    id: inverter2_actual_kw
+    name: "Inverter 2 Actual Power"
+    register_type: read
+    address: 32080
+    value_type: S_DWORD
+    unit_of_measurement: "kW"
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+    on_value:
+      - lambda: "id(inverter2_seen) = true;"
+    web_server:
+      sorting_group_id: grp_inverter
+      sorting_weight: 111
