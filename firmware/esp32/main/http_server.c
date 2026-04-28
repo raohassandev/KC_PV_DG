@@ -202,6 +202,39 @@ static esp_err_t entity_handler(httpd_req_t *req) {
     is_numeric = true;
     known = true;
   } else if (strcmp(uri, "/sensor/Grid%20Total%20Power%20Factor") == 0) {
+  } else if (strcmp(uri, "/sensor/Grid%20L1%20Voltage") == 0) {
+    value = 230.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20L2%20Voltage") == 0) {
+    value = 230.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20L3%20Voltage") == 0) {
+    value = 230.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20L1%20Current") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20L2%20Current") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20L3%20Current") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Equivalent%20Phase%20Voltage") == 0) {
+    value = 230.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Equivalent%20Current") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  }
     value = 1.0;
     is_numeric = true;
     known = true;
@@ -221,6 +254,14 @@ static esp_err_t entity_handler(httpd_req_t *req) {
     known = true;
   } else if (strcmp(uri, "/text_sensor/Generator%202%20Meter%20Status") == 0) {
     state = "NA";
+    known = true;
+  } else if (strcmp(uri, "/sensor/Generator%201%20Total%20Active%20Power") == 0) {
+    is_numeric = true;
+    value = 0.0;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Generator%202%20Total%20Active%20Power") == 0) {
+    is_numeric = true;
+    value = 0.0;
     known = true;
   } else if (strncmp(uri, "/text_sensor/Inverter%20", 20) == 0 && strstr(uri, "%20Status")) {
     // Inverter 2..10 status
