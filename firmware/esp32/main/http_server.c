@@ -174,26 +174,72 @@ static esp_err_t site_config_put(httpd_req_t *req) {
 // ESPHome-compatible entity endpoints (minimal v1)
 static esp_err_t entity_handler(httpd_req_t *req) {
   const char *uri = req->uri ? req->uri : "";
-  // Default: NA
+  const bool is_text = strncmp(uri, "/text_sensor/", 12) == 0;
+
+  // Default: unknown -> return empty object for numeric sensors, NA for text sensors.
   const char *state = "NA";
   double value = 0.0;
   bool is_numeric = false;
+  bool known = false;
 
   // Key endpoints used by mobile dashboard
-  if (strcmp(uri, "/text_sensor/Controller%20State") == 0) state = "ONLINE";
-  else if (strcmp(uri, "/text_sensor/Grid%20Meter%20Status") == 0) state = "ONLINE";
-  else if (strcmp(uri, "/sensor/Grid%20Frequency") == 0) { value = 50.0; is_numeric = true; }
-  else if (strcmp(uri, "/sensor/Grid%20Total%20Active%20Power") == 0) { value = 0.0; is_numeric = true; }
-  else if (strcmp(uri, "/sensor/Grid%20Import%20Energy") == 0) { value = 0.0; is_numeric = true; }
-  else if (strcmp(uri, "/sensor/Grid%20Total%20Power%20Factor") == 0) { value = 1.0; is_numeric = true; }
-  else if (strcmp(uri, "/text_sensor/Inverter%20Status") == 0) state = "ONLINE";
-  else if (strcmp(uri, "/sensor/Inverter%20Actual%20Power") == 0) { value = 0.0; is_numeric = true; }
-  else if (strcmp(uri, "/sensor/Inverter%20Pmax") == 0) { value = 0.0; is_numeric = true; }
-  else if (strcmp(uri, "/text_sensor/Generator%201%20Meter%20Status") == 0) state = "NA";
-  else if (strcmp(uri, "/text_sensor/Generator%202%20Meter%20Status") == 0) state = "NA";
+  if (strcmp(uri, "/text_sensor/Controller%20State") == 0) {
+    state = "ONLINE";
+    known = true;
+  } else if (strcmp(uri, "/text_sensor/Grid%20Meter%20Status") == 0) {
+    state = "ONLINE";
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Frequency") == 0) {
+    value = 50.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Total%20Active%20Power") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Import%20Energy") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Grid%20Total%20Power%20Factor") == 0) {
+    value = 1.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/text_sensor/Inverter%20Status") == 0) {
+    state = "ONLINE";
+    known = true;
+  } else if (strcmp(uri, "/sensor/Inverter%20Actual%20Power") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/sensor/Inverter%20Pmax") == 0) {
+    value = 0.0;
+    is_numeric = true;
+    known = true;
+  } else if (strcmp(uri, "/text_sensor/Generator%201%20Meter%20Status") == 0) {
+    state = "NA";
+    known = true;
+  } else if (strcmp(uri, "/text_sensor/Generator%202%20Meter%20Status") == 0) {
+    state = "NA";
+    known = true;
+  } else if (strncmp(uri, "/text_sensor/Inverter%20", 20) == 0 && strstr(uri, "%20Status")) {
+    // Inverter 2..10 status
+    state = "NA";
+    known = true;
+  } else if (strncmp(uri, "/sensor/Inverter%20", 16) == 0 && (strstr(uri, "%20Actual%20Power") || strstr(uri, "%20Pmax"))) {
+    // Inverter 2..10 numeric metrics
+    is_numeric = true;
+    value = 0.0;
+    known = true;
+  }
 
   cJSON *out = cJSON_CreateObject();
-  if (is_numeric) {
+  if (!known) {
+    if (is_text) {
+      cJSON_AddStringToObject(out, "state", "NA");
+    }
+    // else: keep empty object -> mobile fetchEntity returns null
+  } else if (is_numeric) {
     cJSON_AddNumberToObject(out, "value", value);
   } else {
     cJSON_AddStringToObject(out, "state", state);
