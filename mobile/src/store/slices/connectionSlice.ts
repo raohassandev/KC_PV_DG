@@ -6,6 +6,7 @@ export type ConnectionState = {
   lastGoodBoardIp: string;
   probeDraft: string;
   autoConnectStatus: 'idle' | 'searching' | 'connected' | 'not_found';
+  controllerToken: string;
   probeBusy: boolean;
   probeError: string | null;
   whoami: BoardWhoami | null;
@@ -21,6 +22,7 @@ const initialState: ConnectionState = {
   lastGoodBoardIp: '',
   probeDraft: '',
   autoConnectStatus: 'idle',
+  controllerToken: '',
   probeBusy: false,
   probeError: null,
   whoami: null,
@@ -41,6 +43,7 @@ const connectionSlice = createSlice({
       if (typeof action.payload.lastGoodBoardIp === 'string')
         state.lastGoodBoardIp = action.payload.lastGoodBoardIp;
       if (typeof action.payload.probeDraft === 'string') state.probeDraft = action.payload.probeDraft;
+      if (typeof action.payload.controllerToken === 'string') state.controllerToken = action.payload.controllerToken;
       if (
         action.payload.autoConnectStatus === 'idle' ||
         action.payload.autoConnectStatus === 'searching' ||
@@ -58,6 +61,9 @@ const connectionSlice = createSlice({
     },
     setLastGoodBoardIp(state, action: PayloadAction<string>) {
       state.lastGoodBoardIp = action.payload;
+    },
+    setControllerToken(state, action: PayloadAction<string>) {
+      state.controllerToken = action.payload;
     },
     autoConnectStarted(state) {
       state.autoConnectStatus = 'searching';
@@ -113,6 +119,7 @@ export const {
   setBoardBaseUrl,
   setProbeDraft,
   setLastGoodBoardIp,
+  setControllerToken,
   autoConnectStarted,
   autoConnectConnected,
   autoConnectNotFound,

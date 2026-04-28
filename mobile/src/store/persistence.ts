@@ -35,7 +35,7 @@ export async function loadPersisted(): Promise<{
 
 export async function persistAll(payload: {
   site: SiteConfig;
-  connection: Pick<ConnectionState, 'boardBaseUrl' | 'lastGoodBoardIp' | 'probeDraft'>;
+  connection: Pick<ConnectionState, 'boardBaseUrl' | 'lastGoodBoardIp' | 'probeDraft' | 'controllerToken'>;
   auth: PersistedAuth;
 }) {
   try {

@@ -38,6 +38,7 @@ export default function App() {
             boardBaseUrl: s.connection.boardBaseUrl,
             lastGoodBoardIp: s.connection.lastGoodBoardIp,
             probeDraft: s.connection.probeDraft,
+            controllerToken: s.connection.controllerToken,
           },
           auth: {
             gatewayUrl: s.auth.gatewayUrl,

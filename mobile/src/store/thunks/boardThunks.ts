@@ -4,6 +4,7 @@ import {
   boardIpFromBaseUrl,
   discoveryCandidates,
   fetchProvisionStatus,
+  pairController,
   probeBoard,
   provisionWifi,
 } from '../../api/boardDiscovery';
@@ -18,6 +19,7 @@ import {
   provisionFinished,
   provisionStarted,
   setBoardBaseUrl,
+  setControllerToken,
   setLastGoodBoardIp,
 } from '../slices/connectionSlice';
 import { pollFailed, pollStarted, pollSucceeded } from '../slices/dashboardSlice';
@@ -140,12 +142,13 @@ export const runProvisionWifi = createAsyncThunk(
   async (_, { dispatch, getState, rejectWithValue }) => {
     const state = getState() as RootState;
     const base = state.connection.boardBaseUrl.trim();
+    const token = state.connection.controllerToken.trim() || null;
     const ssid = state.connection.provisionSsid.trim();
     const password = state.connection.provisionPassword;
     if (!base) return rejectWithValue('Set controller base URL');
     if (!ssid) return rejectWithValue('Enter Wi‑Fi SSID');
     dispatch(provisionStarted());
-    const res = await provisionWifi(base, { ssid, password });
+    const res = await provisionWifi(base, { ssid, password }, token);
     if (!res?.accepted) {
       dispatch(provisionFinished({ error: 'Provision request rejected or unreachable' }));
       return rejectWithValue('provision');
@@ -160,8 +163,9 @@ export const pollProvisionStatus = createAsyncThunk(
   async (_, { dispatch, getState }) => {
     const state = getState() as RootState;
     const base = state.connection.boardBaseUrl.trim();
+    const token = state.connection.controllerToken.trim() || null;
     if (!base) return;
-    const st = await fetchProvisionStatus(base);
+    const st = await fetchProvisionStatus(base, token);
     if (st) {
       dispatch(
         provisionFinished({
@@ -169,5 +173,18 @@ export const pollProvisionStatus = createAsyncThunk(
         }),
       );
     }
+  },
+);
+
+export const runPairController = createAsyncThunk(
+  'board/pair',
+  async (_, { dispatch, getState, rejectWithValue }) => {
+    const state = getState() as RootState;
+    const base = state.connection.boardBaseUrl.trim();
+    if (!base) return rejectWithValue('Set controller base URL');
+    const res = await pairController(base);
+    if (!res?.token) return rejectWithValue('Pairing failed');
+    dispatch(setControllerToken(res.token));
+    return res.token;
   },
 );

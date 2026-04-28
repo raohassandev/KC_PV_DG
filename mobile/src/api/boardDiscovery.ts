@@ -78,9 +78,15 @@ async function fetchJson<T>(url: string, timeoutMs = 4500): Promise<T | null> {
   return null;
 }
 
+function authHeaders(token: string | null | undefined): Record<string, string> {
+  const t = token?.trim();
+  return t ? { 'X-PVDG-Token': t } : {};
+}
+
 async function postJson<T>(
   url: string,
   payload: unknown,
+  token?: string | null,
   timeoutMs = 6500,
 ): Promise<T | null> {
   const ctrl = new AbortController();
@@ -88,7 +94,7 @@ async function postJson<T>(
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      headers: { 'content-type': 'application/json', accept: 'application/json', ...authHeaders(token) },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
@@ -163,15 +169,37 @@ export function discoveryCandidates(boardName: string): Array<{ label: string; b
 export async function provisionWifi(
   baseUrl: string,
   req: ProvisionWifiRequest,
+  token?: string | null,
 ): Promise<ProvisionWifiResponse | null> {
   const base = safeUrl(baseUrl);
-  return postJson<ProvisionWifiResponse>(`${base}/provision_wifi`, req);
+  return postJson<ProvisionWifiResponse>(`${base}/provision_wifi`, req, token);
 }
 
 export async function fetchProvisionStatus(
   baseUrl: string,
+  token?: string | null,
 ): Promise<ProvisionStatusResponse | null> {
   const base = safeUrl(baseUrl);
-  return fetchJson<ProvisionStatusResponse>(`${base}/provision_status`, 2200);
+  const url = `${base}/provision_status`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2200);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { accept: 'application/json', ...authHeaders(token) },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ProvisionStatusResponse;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function pairController(baseUrl: string): Promise<{ token: string } | null> {
+  const base = safeUrl(baseUrl);
+  return postJson<{ token: string }>(`${base}/pair`, {});
 }
 

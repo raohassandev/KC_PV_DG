@@ -19,6 +19,7 @@ import {
   autoConnectController,
   pollProvisionStatus,
   runBoardProbe,
+  runPairController,
   runProvisionWifi,
 } from '../store/thunks/boardThunks';
 
@@ -31,6 +32,7 @@ export function BoardScreen() {
   const probeError = useAppSelector((s) => s.connection.probeError);
   const autoStatus = useAppSelector((s) => s.connection.autoConnectStatus);
   const whoami = useAppSelector((s) => s.connection.whoami);
+  const controllerToken = useAppSelector((s) => s.connection.controllerToken);
   const ssid = useAppSelector((s) => s.connection.provisionSsid);
   const pass = useAppSelector((s) => s.connection.provisionPassword);
   const provBusy = useAppSelector((s) => s.connection.provisionBusy);
@@ -111,8 +113,14 @@ export function BoardScreen() {
             <Text style={styles.mono}>Device: {whoami.deviceName}</Text>
             {whoami.ip ? <Text style={styles.mono}>IP: {whoami.ip}</Text> : null}
             {whoami.fwVersion ? <Text style={styles.mono}>FW: {whoami.fwVersion}</Text> : null}
+            <Text style={styles.mono}>
+              Token: {controllerToken ? `${controllerToken.slice(0, 6)}…` : '(not paired)'}
+            </Text>
           </View>
         ) : null}
+        <ButtonRow>
+          <SecondaryButton label='Pair (get token)' onPress={() => void dispatch(runPairController())} />
+        </ButtonRow>
       </Card>
 
       <Card title='Wi‑Fi provisioning'>
