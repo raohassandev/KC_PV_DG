@@ -5,6 +5,7 @@ export type ConnectionState = {
   boardBaseUrl: string;
   lastGoodBoardIp: string;
   probeDraft: string;
+  autoConnectStatus: 'idle' | 'searching' | 'connected' | 'not_found';
   probeBusy: boolean;
   probeError: string | null;
   whoami: BoardWhoami | null;
@@ -19,6 +20,7 @@ const initialState: ConnectionState = {
   boardBaseUrl: 'http://192.168.4.1',
   lastGoodBoardIp: '',
   probeDraft: '',
+  autoConnectStatus: 'idle',
   probeBusy: false,
   probeError: null,
   whoami: null,
@@ -39,6 +41,14 @@ const connectionSlice = createSlice({
       if (typeof action.payload.lastGoodBoardIp === 'string')
         state.lastGoodBoardIp = action.payload.lastGoodBoardIp;
       if (typeof action.payload.probeDraft === 'string') state.probeDraft = action.payload.probeDraft;
+      if (
+        action.payload.autoConnectStatus === 'idle' ||
+        action.payload.autoConnectStatus === 'searching' ||
+        action.payload.autoConnectStatus === 'connected' ||
+        action.payload.autoConnectStatus === 'not_found'
+      ) {
+        state.autoConnectStatus = action.payload.autoConnectStatus;
+      }
     },
     setBoardBaseUrl(state, action: PayloadAction<string>) {
       state.boardBaseUrl = action.payload;
@@ -48,6 +58,22 @@ const connectionSlice = createSlice({
     },
     setLastGoodBoardIp(state, action: PayloadAction<string>) {
       state.lastGoodBoardIp = action.payload;
+    },
+    autoConnectStarted(state) {
+      state.autoConnectStatus = 'searching';
+      state.probeError = null;
+    },
+    autoConnectConnected(state, action: PayloadAction<BoardWhoami>) {
+      state.autoConnectStatus = 'connected';
+      state.whoami = action.payload;
+      state.probeError = null;
+    },
+    autoConnectNotFound(state, action: PayloadAction<string | undefined>) {
+      state.autoConnectStatus = 'not_found';
+      state.probeError = action.payload ?? 'Controller not found on this Wi‑Fi';
+    },
+    autoConnectReset(state) {
+      state.autoConnectStatus = 'idle';
     },
     probeStarted(state) {
       state.probeBusy = true;
@@ -87,6 +113,10 @@ export const {
   setBoardBaseUrl,
   setProbeDraft,
   setLastGoodBoardIp,
+  autoConnectStarted,
+  autoConnectConnected,
+  autoConnectNotFound,
+  autoConnectReset,
   probeStarted,
   probeSucceeded,
   probeFailed,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { discoveryCandidates } from '../api/boardDiscovery';
 import { Card } from '../components/ui/Card';
@@ -16,6 +16,7 @@ import {
 } from '../store/slices/connectionSlice';
 import {
   applyProbeIpToSite,
+  autoConnectController,
   pollProvisionStatus,
   runBoardProbe,
   runProvisionWifi,
@@ -28,6 +29,7 @@ export function BoardScreen() {
   const probeDraft = useAppSelector((s) => s.connection.probeDraft);
   const probeBusy = useAppSelector((s) => s.connection.probeBusy);
   const probeError = useAppSelector((s) => s.connection.probeError);
+  const autoStatus = useAppSelector((s) => s.connection.autoConnectStatus);
   const whoami = useAppSelector((s) => s.connection.whoami);
   const ssid = useAppSelector((s) => s.connection.provisionSsid);
   const pass = useAppSelector((s) => s.connection.provisionPassword);
@@ -37,11 +39,32 @@ export function BoardScreen() {
 
   const candidates = useMemo(() => discoveryCandidates(boardName), [boardName]);
 
+  useEffect(() => {
+    // Kick off auto-search when board name / base IP context changes.
+    if (autoStatus === 'idle') {
+      void dispatch(autoConnectController());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardName]);
+
   return (
     <AppScreen
       title='Controller connection'
       subtitle='Probe the ESPHome host on LAN (HTTP cleartext enabled). Wi‑Fi provisioning uses the same base URL.'
     >
+      <Card title='Auto search (same Wi‑Fi)'>
+        <Text style={styles.help}>
+          Status: <Text style={styles.status}>{autoStatus}</Text>
+        </Text>
+        <ButtonRow>
+          <PrimaryButton
+            label={autoStatus === 'searching' ? 'Searching…' : 'Auto search'}
+            busy={autoStatus === 'searching'}
+            onPress={() => void dispatch(autoConnectController())}
+          />
+        </ButtonRow>
+      </Card>
+
       <Card title='Base URL'>
         <LabeledInput
           label='http://host — AP mode or LAN'
@@ -113,6 +136,7 @@ export function BoardScreen() {
 
 const styles = StyleSheet.create({
   help: { fontSize: 13, color: colors.textMuted, marginBottom: 6 },
+  status: { fontWeight: '700', color: colors.text },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
