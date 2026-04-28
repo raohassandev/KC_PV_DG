@@ -171,6 +171,75 @@ static esp_err_t site_config_put(httpd_req_t *req) {
   return resp;
 }
 
+static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
+  // v1 snapshot mirrors the PWA/mobile `fetchBoardSnapshot` shape (a flat object).
+  // For now it is backed by the same stub values as entity endpoints.
+  cJSON *out = cJSON_CreateObject();
+
+  // Grid
+  cJSON_AddNumberToObject(out, "gridFrequency", 50.0);
+  cJSON_AddNumberToObject(out, "gridTotalActivePowerW", 0.0);
+  cJSON_AddNullToObject(out, "gridTotalReactivePowerVar");
+  cJSON_AddNullToObject(out, "gridTotalApparentPowerVa");
+  cJSON_AddNumberToObject(out, "gridL1Voltage", 230.0);
+  cJSON_AddNumberToObject(out, "gridL2Voltage", 230.0);
+  cJSON_AddNumberToObject(out, "gridL3Voltage", 230.0);
+  cJSON_AddNumberToObject(out, "gridL1Current", 0.0);
+  cJSON_AddNumberToObject(out, "gridL2Current", 0.0);
+  cJSON_AddNumberToObject(out, "gridL3Current", 0.0);
+  cJSON_AddNumberToObject(out, "gridEqvVoltage", 230.0);
+  cJSON_AddNumberToObject(out, "gridEqvCurrent", 0.0);
+  cJSON_AddNullToObject(out, "gridL1ActivePowerW");
+  cJSON_AddNullToObject(out, "gridL2ActivePowerW");
+  cJSON_AddNullToObject(out, "gridL3ActivePowerW");
+  cJSON_AddNullToObject(out, "gridL1ReactivePowerVar");
+  cJSON_AddNullToObject(out, "gridL2ReactivePowerVar");
+  cJSON_AddNullToObject(out, "gridL3ReactivePowerVar");
+  cJSON_AddNullToObject(out, "gridL1ApparentPowerVa");
+  cJSON_AddNullToObject(out, "gridL2ApparentPowerVa");
+  cJSON_AddNullToObject(out, "gridL3ApparentPowerVa");
+  cJSON_AddNullToObject(out, "gridL1Pf");
+  cJSON_AddNullToObject(out, "gridL2Pf");
+  cJSON_AddNullToObject(out, "gridL3Pf");
+  cJSON_AddStringToObject(out, "gridStatus", "ONLINE");
+  cJSON_AddNumberToObject(out, "gridImportKwh", 0.0);
+  cJSON_AddNullToObject(out, "gridExportKwh");
+  cJSON_AddNullToObject(out, "gridImportKwhT1");
+  cJSON_AddNullToObject(out, "gridExportKwhT1");
+  cJSON_AddNullToObject(out, "gridImportKwhT2");
+  cJSON_AddNullToObject(out, "gridExportKwhT2");
+  cJSON_AddNumberToObject(out, "gridPf", 1.0);
+
+  // Controller + inverter lane 1
+  cJSON_AddStringToObject(out, "controllerState", "ONLINE");
+  cJSON_AddStringToObject(out, "inverterStatus", "ONLINE");
+  cJSON_AddNumberToObject(out, "inverterActualPower", 0.0);
+  cJSON_AddNumberToObject(out, "inverterPmax", 0.0);
+
+  // Generators
+  cJSON_AddStringToObject(out, "gen1Status", "NA");
+  cJSON_AddNullToObject(out, "gen1TotalActivePowerW");
+  cJSON_AddStringToObject(out, "gen2Status", "NA");
+  cJSON_AddNullToObject(out, "gen2TotalActivePowerW");
+
+  // Inverters 2..10 (present in schema; default missing for now)
+  for (int i = 2; i <= 10; i++) {
+    char key_status[20];
+    char key_actual[24];
+    char key_pmax[20];
+    snprintf(key_status, sizeof(key_status), "inverter%dStatus", i);
+    snprintf(key_actual, sizeof(key_actual), "inverter%dActualPower", i);
+    snprintf(key_pmax, sizeof(key_pmax), "inverter%dPmax", i);
+    cJSON_AddStringToObject(out, key_status, "NA");
+    cJSON_AddNullToObject(out, key_actual);
+    cJSON_AddNullToObject(out, key_pmax);
+  }
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
 // ESPHome-compatible entity endpoints (minimal v1)
 static esp_err_t entity_handler(httpd_req_t *req) {
   const char *uri = req->uri ? req->uri : "";
@@ -310,6 +379,9 @@ esp_err_t pvdg_http_start(void) {
   httpd_register_uri_handler(s_server, &scg);
   httpd_uri_t scp = {.uri = "/site/config", .method = HTTP_PUT, .handler = site_config_put};
   httpd_register_uri_handler(s_server, &scp);
+
+  httpd_uri_t snap = {.uri = "/telemetry/snapshot", .method = HTTP_GET, .handler = telemetry_snapshot_get};
+  httpd_register_uri_handler(s_server, &snap);
 
   // Generic entity endpoints (register wildcard prefixes)
   httpd_uri_t sensor = {.uri = "/sensor/*", .method = HTTP_GET, .handler = entity_handler};
