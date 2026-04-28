@@ -70,6 +70,24 @@ export type EntityResponse = {
   state?: string | number;
 };
 
+async function fetchSnapshotJson(ip: string): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 1600);
+  try {
+    const res = await fetch(`http://${ip}/telemetry/snapshot`, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as unknown;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function fetchEntity(
   ip: string,
   path: string,
@@ -87,6 +105,18 @@ async function fetchEntity(
   } catch {
     return null;
   }
+}
+
+export async function fetchBoardSnapshotSmart(ip: string) {
+  const j = await fetchSnapshotJson(ip);
+  if (j && typeof j === 'object' && !Array.isArray(j)) {
+    // Basic shape check: must at least contain controllerState/gridStatus keys.
+    const o = j as Record<string, unknown>;
+    if (typeof o.controllerState === 'string' || typeof o.gridStatus === 'string') {
+      return o as Awaited<ReturnType<typeof fetchBoardSnapshot>>;
+    }
+  }
+  return await fetchBoardSnapshot(ip);
 }
 
 export async function fetchBoardSnapshot(ip: string) {

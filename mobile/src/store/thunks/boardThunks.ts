@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchBoardSnapshot } from '../../api/boardApi';
+import { fetchBoardSnapshotSmart } from '../../api/boardApi';
 import {
   boardIpFromBaseUrl,
   discoveryCandidates,
@@ -111,7 +111,7 @@ export const pollBoardSnapshot = createAsyncThunk(
     }
     dispatch(pollStarted());
     try {
-      const snap = await fetchBoardSnapshot(ip);
+      const snap = await fetchBoardSnapshotSmart(ip);
       dispatch(pollSucceeded(snap));
       return snap;
     } catch (e) {
