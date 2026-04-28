@@ -5,8 +5,10 @@ import type { ComponentProps } from 'react';
 import { colors } from '../theme/colors';
 import { BoardScreen } from '../screens/BoardScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { ExportScreen } from '../screens/ExportScreen';
 import { GatewayScreen } from '../screens/GatewayScreen';
 import { SiteScreen } from '../screens/SiteScreen';
+import { SourceSlotsScreen } from '../screens/SourceSlotsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -68,6 +70,22 @@ export function RootNavigation() {
           options={{
             title: 'Site',
             tabBarIcon: tabBarIcon('clipboard-outline', 'clipboard'),
+          }}
+        />
+        <Tab.Screen
+          name='Slots'
+          component={SourceSlotsScreen}
+          options={{
+            title: 'Slots',
+            tabBarIcon: tabBarIcon('git-branch-outline', 'git-branch'),
+          }}
+        />
+        <Tab.Screen
+          name='Export'
+          component={ExportScreen}
+          options={{
+            title: 'Export',
+            tabBarIcon: tabBarIcon('share-outline', 'share'),
           }}
         />
         <Tab.Screen

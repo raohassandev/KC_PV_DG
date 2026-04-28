@@ -5,7 +5,8 @@ import { ButtonRow, SecondaryButton } from '../components/ui/Buttons';
 import { LabeledInput } from '../components/ui/LabeledInput';
 import { colors } from '../theme/colors';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { resetSiteToStarter, updateSiteField, updateSlot } from '../store/slices/siteConfigSlice';
+import { replaceSiteConfig, resetSiteToStarter, updateSiteField, updateSlot } from '../store/slices/siteConfigSlice';
+import { SITE_SCENARIO_TEMPLATES } from '../domain/siteScenarioTemplates';
 
 export function SiteScreen() {
   const dispatch = useAppDispatch();
@@ -13,6 +14,24 @@ export function SiteScreen() {
 
   return (
     <AppScreen title='Site setup' subtitle='Identity, board IP for polling, and enabled source slots.'>
+      <Card title='Scenario templates'>
+        <Text style={styles.help}>
+          Start from a known topology. This will replace slots + defaults; then fine-tune in Slots.
+        </Text>
+        <View style={styles.templateList}>
+          {SITE_SCENARIO_TEMPLATES.map((t) => (
+            <Pressable
+              key={t.id}
+              style={styles.templateRow}
+              onPress={() => dispatch(replaceSiteConfig(t.build()))}
+            >
+              <Text style={styles.templateTitle}>{t.title}</Text>
+              <Text style={styles.templateDesc}>{t.description}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Card>
+
       <Card title='Site identity'>
         <LabeledInput label='Site name' value={c.siteName} onChangeText={(v) => dispatch(updateSiteField({ key: 'siteName', value: v }))} />
         <LabeledInput
@@ -120,4 +139,15 @@ const styles = StyleSheet.create({
   },
   slotTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   slotMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  templateList: { gap: 8 },
+  templateRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
+  templateTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  templateDesc: { marginTop: 4, fontSize: 12, color: colors.textMuted, lineHeight: 16 },
 });
