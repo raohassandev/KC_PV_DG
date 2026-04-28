@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import type { ComponentProps } from 'react';
 import { colors } from '../theme/colors';
 import { BoardScreen } from '../screens/BoardScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
@@ -7,6 +9,20 @@ import { GatewayScreen } from '../screens/GatewayScreen';
 import { SiteScreen } from '../screens/SiteScreen';
 
 const Tab = createBottomTabNavigator();
+
+type IonName = ComponentProps<typeof Ionicons>['name'];
+
+function tabBarIcon(outline: IonName, solid: IonName) {
+  return ({
+    color,
+    size,
+    focused,
+  }: {
+    color: string;
+    size: number;
+    focused: boolean;
+  }) => <Ionicons name={focused ? solid : outline} size={size} color={color} />;
+}
 
 const navTheme = {
   ...DefaultTheme,
@@ -30,10 +46,38 @@ export function RootNavigation() {
           tabBarInactiveTintColor: colors.textMuted,
         }}
       >
-        <Tab.Screen name='Dashboard' component={DashboardScreen} options={{ title: 'Dashboard' }} />
-        <Tab.Screen name='Board' component={BoardScreen} options={{ title: 'Board' }} />
-        <Tab.Screen name='Site' component={SiteScreen} options={{ title: 'Site' }} />
-        <Tab.Screen name='Gateway' component={GatewayScreen} options={{ title: 'Gateway' }} />
+        <Tab.Screen
+          name='Dashboard'
+          component={DashboardScreen}
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: tabBarIcon('stats-chart-outline', 'stats-chart'),
+          }}
+        />
+        <Tab.Screen
+          name='Board'
+          component={BoardScreen}
+          options={{
+            title: 'Board',
+            tabBarIcon: tabBarIcon('hardware-chip-outline', 'hardware-chip'),
+          }}
+        />
+        <Tab.Screen
+          name='Site'
+          component={SiteScreen}
+          options={{
+            title: 'Site',
+            tabBarIcon: tabBarIcon('clipboard-outline', 'clipboard'),
+          }}
+        />
+        <Tab.Screen
+          name='Gateway'
+          component={GatewayScreen}
+          options={{
+            title: 'Gateway',
+            tabBarIcon: tabBarIcon('cloud-outline', 'cloud'),
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
