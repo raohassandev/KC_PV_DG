@@ -101,13 +101,31 @@ function RegisterRow({
           <option value='discrete_input'>Discrete</option>
         </select>
 
-        <input
-          className='field-input driver-reg-addr'
-          inputMode='numeric'
-          value={r.address}
-          onChange={(e) => onChange({ ...r, address: clampInt(Number(e.target.value), 0, 200_000) })}
-          aria-label='Address'
-        />
+        <div className='driver-reg-addr-wrap'>
+          <input
+            className='field-input driver-reg-addr'
+            inputMode='text'
+            value={Number.isFinite(r.address) ? `0x${r.address.toString(16).toUpperCase()}` : ''}
+            placeholder='0x…'
+            title='Modbus start address (hex), same convention as Modular_Yaml (e.g. 0x1B21)'
+            onChange={(e) => {
+              const raw = e.target.value.trim();
+              if (raw === '') {
+                onChange({ ...r, address: 0 });
+                return;
+              }
+              const hex = /^0x[0-9a-f]+$/i.test(raw) ? parseInt(raw.slice(2), 16) : NaN;
+              const dec = /^[0-9]+$/.test(raw) ? parseInt(raw, 10) : NaN;
+              const n = Number.isFinite(hex) ? hex : Number.isFinite(dec) ? dec : NaN;
+              if (!Number.isFinite(n)) return;
+              onChange({ ...r, address: clampInt(n, 0, 200_000) });
+            }}
+            aria-label='Address (hex or decimal)'
+          />
+          <span className='driver-reg-addr-dec' title='Decimal' aria-hidden>
+            = {r.address}
+          </span>
+        </div>
 
         <select
           className='field-select driver-reg-kind'
@@ -225,6 +243,11 @@ export function DriversLibraryPage() {
   const loadSelected = useCallback(async () => {
     if (!gatewayReady) return;
     if (!selectedId) return;
+    const existsOnServer = drivers.some((d) => d.id === selectedId);
+    if (!existsOnServer) {
+      // Create-draft flow: id is not in the library yet — avoid GET (404) overwriting the local draft.
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -236,7 +259,7 @@ export function DriversLibraryPage() {
     } finally {
       setBusy(false);
     }
-  }, [fetchGateway, gatewayReady, selectedId]);
+  }, [fetchGateway, gatewayReady, selectedId, drivers]);
 
   useEffect(() => {
     if (!gatewayReady) return;
@@ -290,7 +313,12 @@ export function DriversLibraryPage() {
                   ))}
                 </select>
               </label>
-              <button className='toggle-button disabled' type='button' onClick={() => void reload()}>
+              <button
+                className={['toggle-button', busy ? 'disabled' : 'enabled'].join(' ')}
+                type='button'
+                disabled={busy}
+                onClick={() => void reload()}
+              >
                 Reload
               </button>
             </div>
@@ -328,6 +356,12 @@ export function DriversLibraryPage() {
         {selectedId ? (
           <div className='slot-card' style={{ padding: 14 }}>
             <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                <h3 className='driver-detail-heading'>Driver details</h3>
+                <span className='help-text' style={{ margin: 0 }}>
+                  Id: <span className='inline-code'>{selectedId}</span>
+                </span>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label style={{ display: 'grid', gap: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 600 }}>Name</span>
@@ -430,7 +464,7 @@ export function DriversLibraryPage() {
                 </button>
 
                 <button
-                  className={['toggle-button', canWrite ? 'disabled' : 'disabled'].join(' ')}
+                  className={['toggle-button', canWrite ? 'enabled' : 'disabled'].join(' ')}
                   type='button'
                   disabled={!canWrite}
                   onClick={async () => {
@@ -453,15 +487,11 @@ export function DriversLibraryPage() {
                 </button>
               </div>
 
-              <p className='help-text' style={{ margin: 0 }}>
-                Selected: <span className='inline-code'>{selectedId}</span>
-                {selectedMeta?.updatedAt ? (
-                  <>
-                    {' '}
-                    • updated <span className='inline-code'>{selectedMeta.updatedAt}</span>
-                  </>
-                ) : null}
-              </p>
+              {selectedMeta?.updatedAt ? (
+                <p className='help-text' style={{ margin: 0 }}>
+                  Last saved: <span className='inline-code'>{selectedMeta.updatedAt}</span>
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -473,7 +503,7 @@ export function DriversLibraryPage() {
                 <div>On</div>
                 <div>Key / Label</div>
                 <div>Type</div>
-                <div>Addr</div>
+                <div>Addr (hex)</div>
                 <div>Data</div>
                 <div>Scale</div>
                 <div>Word</div>
@@ -482,8 +512,10 @@ export function DriversLibraryPage() {
                 <div />
               </div>
               <p className='help-text' style={{ margin: '10px 2px 0' }}>
-                Tip: energy counters are usually <span className='inline-code'>U_QWORD (uint64 · 4 regs)</span> with a scale (e.g.{' '}
-                <span className='inline-code'>0.01</span>).
+                Same fields as gateway <span className='inline-code'>DriverRegister</span> / built-in drivers. Addresses: hex
+                (e.g. <span className='inline-code'>0x1B21</span>) or decimal. Energy counters are usually{' '}
+                <span className='inline-code'>holding</span> + <span className='inline-code'>U_QWORD</span> + scale{' '}
+                <span className='inline-code'>0.01</span>.
               </p>
             </div>
             {draft.registers.map((r, idx) => (
