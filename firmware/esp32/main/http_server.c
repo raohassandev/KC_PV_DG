@@ -11,6 +11,7 @@
 #include "nvs_store.h"
 #include "ota.h"
 #include "wifi.h"
+#include "em500.h"
 
 static const char *TAG = "pvdg_http";
 
@@ -242,12 +243,15 @@ static esp_err_t site_config_put(httpd_req_t *req) {
 
 static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   // v1 snapshot mirrors the PWA/mobile `fetchBoardSnapshot` shape (a flat object).
-  // For now it is backed by the same stub values as entity endpoints.
+  // v1: prefer a real EM500 grid read if available; otherwise return stub values.
   cJSON *out = cJSON_CreateObject();
 
+  pvdg_em500_grid_t em = {0};
+  bool have_em = pvdg_em500_read_grid(1 /* default slave */, &em);
+
   // Grid
-  cJSON_AddNumberToObject(out, "gridFrequency", 50.0);
-  cJSON_AddNumberToObject(out, "gridTotalActivePowerW", 0.0);
+  cJSON_AddNumberToObject(out, "gridFrequency", have_em ? em.frequency_hz : 50.0);
+  cJSON_AddNumberToObject(out, "gridTotalActivePowerW", have_em ? em.total_active_power_w : 0.0);
   cJSON_AddNullToObject(out, "gridTotalReactivePowerVar");
   cJSON_AddNullToObject(out, "gridTotalApparentPowerVa");
   cJSON_AddNumberToObject(out, "gridL1Voltage", 230.0);
@@ -256,8 +260,8 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   cJSON_AddNumberToObject(out, "gridL1Current", 0.0);
   cJSON_AddNumberToObject(out, "gridL2Current", 0.0);
   cJSON_AddNumberToObject(out, "gridL3Current", 0.0);
-  cJSON_AddNumberToObject(out, "gridEqvVoltage", 230.0);
-  cJSON_AddNumberToObject(out, "gridEqvCurrent", 0.0);
+  cJSON_AddNumberToObject(out, "gridEqvVoltage", have_em ? em.eqv_voltage_v : 230.0);
+  cJSON_AddNumberToObject(out, "gridEqvCurrent", have_em ? em.eqv_current_a : 0.0);
   cJSON_AddNullToObject(out, "gridL1ActivePowerW");
   cJSON_AddNullToObject(out, "gridL2ActivePowerW");
   cJSON_AddNullToObject(out, "gridL3ActivePowerW");
@@ -277,7 +281,7 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   cJSON_AddNullToObject(out, "gridExportKwhT1");
   cJSON_AddNullToObject(out, "gridImportKwhT2");
   cJSON_AddNullToObject(out, "gridExportKwhT2");
-  cJSON_AddNumberToObject(out, "gridPf", 1.0);
+  cJSON_AddNumberToObject(out, "gridPf", have_em ? em.total_pf : 1.0);
 
   // Controller + inverter lane 1
   cJSON_AddStringToObject(out, "controllerState", "ONLINE");
