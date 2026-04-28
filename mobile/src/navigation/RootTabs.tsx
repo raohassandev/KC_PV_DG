@@ -9,6 +9,7 @@ import { ExportScreen } from '../screens/ExportScreen';
 import { GatewayScreen } from '../screens/GatewayScreen';
 import { SiteScreen } from '../screens/SiteScreen';
 import { SourceSlotsScreen } from '../screens/SourceSlotsScreen';
+import { ValidationScreen } from '../screens/ValidationScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -86,6 +87,14 @@ export function RootNavigation() {
           options={{
             title: 'Export',
             tabBarIcon: tabBarIcon('share-outline', 'share'),
+          }}
+        />
+        <Tab.Screen
+          name='Validate'
+          component={ValidationScreen}
+          options={{
+            title: 'Validate',
+            tabBarIcon: tabBarIcon('checkmark-circle-outline', 'checkmark-circle'),
           }}
         />
         <Tab.Screen
