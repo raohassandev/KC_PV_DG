@@ -6,8 +6,9 @@ test.describe('App shell & accessibility', () => {
     await freshApp(page);
     await loginAs(page, 'user');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByText('PV-DG', { exact: true })).toBeVisible();
-    await expect(page.getByText('Smart Controller')).toBeVisible();
+    // Brand uses a non-breaking hyphen: "PV‑DG"
+    await expect(page.getByText(/PV.?DG/i)).toBeVisible();
+    await expect(page.getByText(/Controller:\s*/i)).toBeVisible();
     await expect(page.getByTestId('workspace-active')).toContainText('Home · Energy & monitoring');
     await expect(page.getByTestId('workspace-nav')).toHaveCount(0);
   });

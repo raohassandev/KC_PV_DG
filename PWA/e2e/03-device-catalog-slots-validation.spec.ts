@@ -1,9 +1,17 @@
 import { expect, test } from '@playwright/test';
-import { freshApp, gotoTab, gotoWorkspace, loginAs } from './helpers';
+import {
+  e2eMinimalGridInvSlots,
+  freshApp,
+  gotoTab,
+  gotoWorkspace,
+  loginAs,
+  seedPersistedSiteConfig,
+} from './helpers';
 
 test.describe('Device catalog & validation logic', () => {
   test.beforeEach(async ({ page }) => {
     await freshApp(page);
+    await seedPersistedSiteConfig(page, { slots: e2eMinimalGridInvSlots });
     await loginAs(page, 'installer');
   });
 

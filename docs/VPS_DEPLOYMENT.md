@@ -15,6 +15,9 @@ This project is intended to be deployed on a Linux VPS using **Docker Compose**,
 - A directory on the VPS for this app, e.g. `/opt/kc_pv_dg/`.
 - (Recommended) a reverse proxy that already hosts your other apps (nginx/Traefik/Caddy). We can later plug this stack behind it.
 
+If you want a **real HTTPS subdomain** for the PWA (recommended), follow:
+- `docs/SUBDOMAIN_PWA_ACCESS.md`
+
 ## First deploy
 
 1. SSH into the VPS:
@@ -55,9 +58,14 @@ docker compose up -d --build
 5. Smoke tests:
 
 - Gateway health:
-  - `GET http://<vps-host>:8788/api/health`
+  - `GET http://127.0.0.1:8788/api/health` (from the VPS)
 - PWA:
-  - `http://<vps-host>:8080/`
+  - `http://127.0.0.1:8080/` (from the VPS)
+
+### Recommended: serve the PWA on a subdomain (HTTPS)
+
+To serve the PWA at `https://pwa.yourdomain.com` (and optionally the API at `https://api.yourdomain.com`), see:
+- `docs/SUBDOMAIN_PWA_ACCESS.md`
 
 ## Data persistence
 

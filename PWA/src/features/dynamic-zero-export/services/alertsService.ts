@@ -4,20 +4,24 @@ import {
   type AlertFeed,
   type PwaRole,
 } from '../../../../../dynamic_zero_export/pwa';
-import { alertsFixture } from '../mock/alerts';
+import { emptyAlertFeed } from '../emptyMonitoringState';
 import { createDzxProvider, type ProviderMode } from './provider';
 import { loadProviderMode } from './liveStatusService';
 
 const ALERTS_KEY = 'dzx.alerts';
 
+function baseFeed(): AlertFeed {
+  return emptyAlertFeed();
+}
+
 export function loadAlertFeed(): AlertFeed {
-  if (typeof window === 'undefined') return alertsFixture;
+  if (typeof window === 'undefined') return baseFeed();
   try {
     const raw = localStorage.getItem(ALERTS_KEY);
-    if (!raw) return alertsFixture;
-    return { ...alertsFixture, ...(JSON.parse(raw) as Partial<AlertFeed>) } as AlertFeed;
+    if (!raw) return baseFeed();
+    return { ...baseFeed(), ...(JSON.parse(raw) as Partial<AlertFeed>) } as AlertFeed;
   } catch {
-    return alertsFixture;
+    return baseFeed();
   }
 }
 

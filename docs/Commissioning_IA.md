@@ -37,6 +37,15 @@ This document explains the **purpose** of major PWA surfaces, how they stay **us
 - **Why:** This is the **authoritative assignment** of device types, Modbus transport (RTU vs TCP), unit IDs, and capacities per slot — what the exported `site.config` and operator views rely on.
 - **Configure:** Yes — primary installer workflow.
 
+### Dashboard device visibility (dynamic)
+
+- **Rule:** The Operation dashboard shows device cards based on the site’s configured **enabled slots** (grid meters, generator meters, inverters).
+- **Board reality check:** If a configured device has no matching board endpoints (firmware doesn’t include that instance), it should appear as **Missing** rather than silently disappearing.
+- **Current supported max (baseline firmware):**
+  - 1 grid meter (`grid_1`)
+  - up to 2 generator meters (`gen_1`, `gen_2`)
+  - up to 10 inverters (`inv_1` … `inv_10`)
+
 ### Templates *(documentation tab)*
 
 - **What it is:** **Embedded documentation** in the commissioning shell — same role as a chapter in an install manual, not a standalone “app feature.”

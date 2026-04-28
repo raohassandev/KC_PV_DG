@@ -43,7 +43,8 @@ test('storage persists and resets state', () => {
 });
 
 test('api server exposes mutable endpoints', async () => {
-  const server = createApiServer(8790);
+  const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-api-state-'));
+  const server = createApiServer(8790, stateDir);
   const httpServer = await server.listen();
   try {
     const base = 'http://127.0.0.1:8790';
@@ -67,15 +68,16 @@ test('api server exposes mutable endpoints', async () => {
     assert.equal(alerts.active[0].acknowledged, true);
 
     const commissioning = await request(base, 'GET', '/api/commissioning-summary');
-    assert.equal(commissioning.siteName, 'Demo Plant');
+    assert.equal(commissioning.siteName, 'Example site');
 
     const history = await request(base, 'POST', '/api/sim/history-append', {
       range: 'today',
       resolution: 'hour',
       today: [{ timestamp: '2026-04-16T01:00:00Z', solarKwh: 0.5, gridImportKwh: 0, gridExportKwh: 0.2, generatorKwh: 0, curtailedKwh: 0 }],
     });
-    assert.ok(history.today.length >= 3);
+    assert.ok(history.today.length >= 1);
   } finally {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+    rmSync(stateDir, { recursive: true, force: true });
   }
 });

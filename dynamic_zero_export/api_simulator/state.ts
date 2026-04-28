@@ -38,12 +38,12 @@ export function updateConnectivitySettings(
   return next;
 }
 
-export function updateProviderMode(state: DeviceServiceState, mode: 'auto' | 'api' | 'mock'): DeviceServiceState {
+export function updateProviderMode(state: DeviceServiceState, mode: 'auto' | 'api'): DeviceServiceState {
   const next = cloneState(state);
   next.session = {
     ...next.session,
     accessMode: mode === 'api' ? 'remote' : 'local',
-    authenticated: mode !== 'mock',
+    authenticated: true,
   };
   return next;
 }

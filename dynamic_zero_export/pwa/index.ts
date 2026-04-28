@@ -14,8 +14,3 @@ export * from './view-models/manufacturer-dashboard';
 export * from './view-models/energy-history';
 export * from './view-models/connectivity';
 export * from './view-models/alerts';
-export * from './mock/live-status.fixture';
-export * from './mock/history.fixture';
-export * from './mock/connectivity.fixture';
-export * from './mock/alerts.fixture';
-

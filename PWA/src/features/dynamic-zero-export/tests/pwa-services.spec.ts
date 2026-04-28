@@ -15,8 +15,9 @@ test('session service loads defaults and updates role', () => {
 
 test('live status service returns snapshot', () => {
   const snapshot = loadLiveStatus();
-  assert.ok(snapshot.siteName.length > 0);
-  assert.ok(snapshot.powerKw > 0);
+  assert.ok(typeof snapshot.siteName === 'string');
+  assert.ok(Number.isFinite(snapshot.powerKw));
+  assert.ok(snapshot.lastUpdatedAt.length > 0);
 });
 
 test('live status shapes by role', () => {
@@ -30,7 +31,7 @@ test('live status shapes by role', () => {
 test('history service loads bundle and shapes totals', () => {
   const bundle = loadHistoryBundle();
   const model = buildHistoryViewModel('user', bundle);
-  assert.ok(model.totals.today.solarKwh > 0);
+  assert.equal(model.totals.today.solarKwh, 0);
   assert.ok(model.highlights.length >= 3);
 });
 

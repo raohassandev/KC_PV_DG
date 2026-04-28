@@ -6,18 +6,19 @@ import type {
   CommissioningSummaryResponse,
   ConfigReviewResponse,
 } from '../../../../../dynamic_zero_export/api_contract';
-import { liveStatusFixture } from '../mock/liveStatus';
+import { emptyLiveStatusSnapshot } from '../emptyMonitoringState';
 import type { PwaRole } from '../roles';
 
 export function buildCommissioningViewModel(role: PwaRole = 'installer'): CommissioningSummaryModel {
+  const live = emptyLiveStatusSnapshot(role);
   return {
-    siteName: liveStatusFixture.siteName,
+    siteName: live.siteName,
     role,
     cards: [
       { label: 'Topology', value: 'SINGLE_BUS', note: 'Current commissioning profile' },
       { label: 'Source', value: 'RTU meter', note: 'Validated EM500/legacy path' },
       { label: 'Policy', value: 'Zero export', note: 'Commissioning baseline' },
-      { label: 'Device', value: liveStatusFixture.deviceOnline ? 'Online' : 'Offline' },
+      { label: 'Device', value: live.deviceOnline ? 'Online' : 'Offline' },
     ],
     warnings: ['Huawei inverter write gate stays pending until site validation'],
     checklist: [

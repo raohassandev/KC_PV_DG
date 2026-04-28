@@ -58,3 +58,34 @@ If you want **auto LAN scanning** and local driver persistence while offline:
 
 This is intentionally separate from the VPS gateway because a VPS cannot (and should not) scan customer LANs.
 
+## Modbus transports supported by the controller firmware
+
+The controller firmware can read Modbus data from multiple transports:
+
+- **Modbus RTU over RS485**: default commissioning build (ESPHome `modbus:` + `modbus_controller:` on `uart_id: rs485`)
+- **Modbus RTU over RS232**: secondary UART bus (`uart_id: rs232`, Modbus bus `plant_bus_rs232`)
+- **Modbus TCP/IP**: via the `Modular_Yaml/modbus_tcp_manager.yaml` addon (external component `modbus_tcp_manager`)
+
+Notes:
+- RS232 is **not** 3.3V TTL UART. If you use the RS232 port, use a proper RS232 level shifter (e.g. MAX3232) or a converter that presents UART-level signals to the ESP32.
+- If you use an **RS232→RS485 converter**, it behaves like a separate RTU bus. Put those devices on the RS232 UART bus.
+- For first bring-up of Modbus TCP, the addon includes a few generic “raw register” sensors (HR/IR 0..1) so you can immediately confirm reads are working.
+
+### Binding devices to RS232 vs RS485 (single firmware build)
+
+The default `base_board.yaml` defines two RTU busses:
+- `plant_bus` (RS485 UART)
+- `plant_bus_rs232` (RS232 UART)
+
+It also allows selecting which bus the built-in controllers use via substitutions:
+- `grid_meter_bus_id`: `plant_bus` or `plant_bus_rs232`
+- `inverter_bus_id`: `plant_bus` or `plant_bus_rs232`
+
+Example (use RS232 bus for the grid meter only):
+
+```yaml
+substitutions:
+  grid_meter_bus_id: plant_bus_rs232
+  inverter_bus_id: plant_bus
+```
+

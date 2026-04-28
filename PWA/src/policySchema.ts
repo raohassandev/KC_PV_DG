@@ -1,5 +1,5 @@
 import { inverterDeviceHasBundledYaml, meterDeviceHasBundledYaml } from './deviceFirmware';
-import { type SiteConfig } from './siteProfileSchema';
+import { normalizeSiteConfig, type SiteConfig } from './siteProfileSchema';
 
 export type TopologyType =
   | 'SINGLE_BUS'
@@ -181,7 +181,7 @@ export function saveProfile(profileName: string, config: SiteConfig) {
 export function loadProfile(profileName: string): SiteConfig | null {
   const raw = localStorage.getItem(`pvdg.profile.${profileName}`);
   if (!raw) return null;
-  return JSON.parse(raw) as SiteConfig;
+  return normalizeSiteConfig(JSON.parse(raw) as SiteConfig);
 }
 
 export function snapshotCommissioning(

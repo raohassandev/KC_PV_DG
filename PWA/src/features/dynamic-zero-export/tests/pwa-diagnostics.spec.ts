@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createApiServer } from '../../../../../dynamic_zero_export/api_simulator';
 import { fetchDiagnosticsApiBundle } from '../services/diagnosticsService';
 
-test('diagnostics bundle loads topology and device from simulator', async () => {
+test('diagnostics bundle loads topology and device from monitoring API', async () => {
   const stateDir = mkdtempSync(path.join(tmpdir(), 'dzx-diag-'));
   const sim = createApiServer(8793, stateDir);
   const server = await sim.listen();
@@ -21,8 +21,8 @@ test('diagnostics bundle loads topology and device from simulator', async () => 
   }
 });
 
-test('diagnostics bundle is empty in mock mode', async () => {
-  const bundle = await fetchDiagnosticsApiBundle('mock');
+test('diagnostics bundle is empty when no monitoring API base URL is configured', async () => {
+  const bundle = await fetchDiagnosticsApiBundle('auto');
   assert.equal(bundle.device, null);
   assert.equal(bundle.topology, null);
 });

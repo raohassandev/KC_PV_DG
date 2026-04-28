@@ -101,7 +101,7 @@ export function createDeviceServiceRuntime(storage: DeviceServiceStorage): Devic
       },
       postProviderMode: (body) => {
         const patch = asObject(body);
-        const mode = patch.mode === 'api' || patch.mode === 'mock' ? patch.mode : 'auto';
+        const mode = patch.mode === 'api' ? 'api' : 'auto';
         state = updateProviderMode(state, mode);
         persist();
         return state.session;

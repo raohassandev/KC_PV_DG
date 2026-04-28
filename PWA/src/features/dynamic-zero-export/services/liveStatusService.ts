@@ -6,7 +6,7 @@ import {
   type LiveStatusSnapshot,
   type PwaRole,
 } from '../../../../../dynamic_zero_export/pwa';
-import { liveStatusFixture } from '../mock/liveStatus';
+import { emptyLiveStatusSnapshot } from '../emptyMonitoringState';
 import { createDzxProvider, type ProviderMode } from './provider';
 
 const LIVE_KEY = 'dzx.liveStatus';
@@ -17,14 +17,18 @@ const LEGACY_PROVIDER_KEYS = [
   'dzx.historyProviderMode',
 ] as const;
 
+function baseSnapshot(): LiveStatusSnapshot {
+  return emptyLiveStatusSnapshot('user');
+}
+
 export function loadLiveStatus(): LiveStatusSnapshot {
-  if (typeof window === 'undefined') return liveStatusFixture;
+  if (typeof window === 'undefined') return baseSnapshot();
   try {
     const raw = localStorage.getItem(LIVE_KEY);
-    if (!raw) return liveStatusFixture;
-    return { ...liveStatusFixture, ...(JSON.parse(raw) as Partial<LiveStatusSnapshot>) };
+    if (!raw) return baseSnapshot();
+    return { ...baseSnapshot(), ...(JSON.parse(raw) as Partial<LiveStatusSnapshot>) };
   } catch {
-    return liveStatusFixture;
+    return baseSnapshot();
   }
 }
 
@@ -42,10 +46,11 @@ export function saveLiveStatus(snapshot: LiveStatusSnapshot): LiveStatusSnapshot
 export function loadProviderMode(): ProviderMode {
   if (typeof window === 'undefined') return 'auto';
   const stored = localStorage.getItem(PROVIDER_KEY);
-  if (stored === 'api' || stored === 'mock' || stored === 'auto') return stored;
+  if (stored === 'api' || stored === 'auto') return stored;
+  if (stored === 'mock') return 'auto';
   for (const key of LEGACY_PROVIDER_KEYS) {
     const legacy = localStorage.getItem(key);
-    if (legacy === 'api' || legacy === 'mock' || legacy === 'auto') {
+    if (legacy === 'api' || legacy === 'auto') {
       try {
         localStorage.setItem(PROVIDER_KEY, legacy);
         for (const k of LEGACY_PROVIDER_KEYS) {
@@ -56,6 +61,7 @@ export function loadProviderMode(): ProviderMode {
       }
       return legacy;
     }
+    if (legacy === 'mock') return 'auto';
   }
   return 'auto';
 }

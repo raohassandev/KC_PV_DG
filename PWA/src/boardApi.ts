@@ -122,6 +122,7 @@ export async function fetchBoardSnapshot(ip: string) {
     gridImportKwhT1,
     gridExportKwhT1,
     gridImportKwhT2,
+    gridExportKwhT2,
     gridPf,
     inverterStatus,
     inverterActualPower,
@@ -262,6 +263,7 @@ export async function fetchBoardSnapshot(ip: string) {
     gridImportKwhT1: gridImportKwhT1 !== null ? Number(gridImportKwhT1) : null,
     gridExportKwhT1: gridExportKwhT1 !== null ? Number(gridExportKwhT1) : null,
     gridImportKwhT2: gridImportKwhT2 !== null ? Number(gridImportKwhT2) : null,
+    gridExportKwhT2: gridExportKwhT2 !== null ? Number(gridExportKwhT2) : null,
     gridPf: gridPf !== null ? Number(gridPf) : null,
     inverterStatus: inverterStatus !== null ? String(inverterStatus) : 'NA',
     inverterActualPower:

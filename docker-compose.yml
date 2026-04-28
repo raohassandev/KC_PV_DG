@@ -20,7 +20,7 @@ services:
     volumes:
       - gateway_data:/data
     ports:
-      - "8788:8788"
+      - "127.0.0.1:8788:8788"
     restart: unless-stopped
 
   pwa:
@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: PWA/Dockerfile
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     restart: unless-stopped
 
 volumes:

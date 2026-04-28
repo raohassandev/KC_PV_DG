@@ -1,15 +1,13 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { fetchBoardSnapshot } from '../boardApi';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchBoardSnapshot, type BoardSnapshot } from '../boardApi';
 import type { PwaRole } from '../features/dynamic-zero-export/roles';
 import type { FeaturePageId } from '../features/dynamic-zero-export/navigation';
-import {
-  buildRoleAwareLiveStatusFromProvider,
-  loadProviderMode,
-} from '../features/dynamic-zero-export/services/liveStatusService';
+import type { SourceSlot } from '../siteProfileSchema';
 
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 
 type MetricStatus = 'ok' | 'warn' | 'offline' | 'idle';
+type SourcePresence = 'present' | 'missing';
 
 type LiveUiData = {
   boardName: string;
@@ -32,6 +30,7 @@ type LiveUiData = {
     name: string;
     enabled: boolean;
     online: boolean;
+    presence?: SourcePresence;
     metrics: Array<{
       label: string;
       value: string | number;
@@ -45,6 +44,10 @@ function cx(...xs: Array<string | false | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
+function firstEnabledInverterSlot(slots: SourceSlot[]): SourceSlot | undefined {
+  return slots.find((s) => s.enabled && s.role === 'inverter');
+}
+
 function safeNumber(value: unknown, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -55,11 +58,89 @@ function inverterLaneIdleFromStatus(status: string): boolean {
   return String(status).trim().toUpperCase() !== 'ONLINE';
 }
 
+function renderGenMetrics(totalW: number | null, online: boolean) {
+  return [
+    {
+      label: 'Total Power',
+      value: totalW !== null ? (safeNumber(totalW) / 1000).toFixed(2) : 'NA',
+      unit: 'kW',
+      status: online ? ('ok' as const) : ('offline' as const),
+    },
+  ];
+}
+
+function renderInverterMetrics(
+  actualKw: number | null,
+  pmaxKw: number | null,
+  online: boolean,
+  invMetricStatus: (base: MetricStatus) => MetricStatus,
+) {
+  return [
+    {
+      label: 'Actual Power',
+      value: actualKw !== null ? safeNumber(actualKw).toFixed(2) : 'NA',
+      unit: 'kW',
+      status: invMetricStatus(online ? 'ok' : 'offline'),
+    },
+    {
+      label: 'Pmax',
+      value: pmaxKw !== null ? safeNumber(pmaxKw).toFixed(2) : 'NA',
+      unit: 'kW',
+      status: invMetricStatus(online ? 'ok' : 'offline'),
+    },
+  ];
+}
+
+function sourcesFromSlots(slots: SourceSlot[]): LiveUiData['sources'] {
+  const enabled = slots.filter((s) => s.enabled);
+  const grids = enabled.filter((s) => s.role === 'grid_meter');
+  const gens = enabled.filter((s) => s.role === 'generator_meter');
+  const inverters = enabled.filter((s) => s.role === 'inverter');
+
+  const out: LiveUiData['sources'] = [];
+
+  // Use each slot's real id + label so dashboard cards stay aligned with Source Slots
+  // (e.g. inv_5 must not be renamed inv_2 just because it is the 2nd enabled inverter).
+  for (const slot of grids) {
+    out.push({
+      id: slot.id,
+      name: slot.label?.trim() || slot.id,
+      enabled: true,
+      online: false,
+      metrics: [],
+    });
+  }
+
+  const maxGens = 2;
+  for (const slot of gens.slice(0, maxGens)) {
+    out.push({
+      id: slot.id,
+      name: slot.label?.trim() || slot.id,
+      enabled: true,
+      online: false,
+      metrics: [],
+    });
+  }
+
+  const maxInv = 10;
+  for (const slot of inverters.slice(0, maxInv)) {
+    out.push({
+      id: slot.id,
+      name: slot.label?.trim() || slot.id,
+      enabled: true,
+      online: false,
+      metrics: [],
+    });
+  }
+
+  return out;
+}
+
 function buildInitialData(): LiveUiData {
   return {
-    boardName: 'pv-dg-controller',
+    boardName: '',
     boardIp: '0.0.0.0',
-    wifiSsid: 'NA',
+    wifiSsid: '',
     controllerState: 'NA',
     updatedAt: new Date().toLocaleTimeString(),
     inverterLaneIdle: true,
@@ -71,22 +152,7 @@ function buildInitialData(): LiveUiData {
       pf: 0,
       importKwh: 0,
     },
-    sources: [
-      {
-        id: 'grid_1',
-        name: 'Grid Meter 1',
-        enabled: true,
-        online: false,
-        metrics: [],
-      },
-      {
-        id: 'inv_1',
-        name: 'Inverter 1',
-        enabled: true,
-        online: false,
-        metrics: [],
-      },
-    ],
+    sources: [],
   };
 }
 
@@ -126,18 +192,29 @@ function SourceBadge({
   enabled,
   online,
   optionalIdle,
+  presence = 'present',
 }: {
   enabled: boolean;
   online: boolean;
   optionalIdle?: boolean;
+  presence?: SourcePresence;
 }) {
   const label =
-    !enabled ? 'Disabled' : online ? 'Online' : optionalIdle ? 'Not connected' : 'Offline';
+    presence === 'missing'
+      ? 'Missing'
+      : !enabled
+        ? 'Disabled'
+        : online
+          ? 'Online'
+          : optionalIdle
+            ? 'Not connected'
+            : 'Offline';
 
   return (
     <span
       className={cx(
         'status-badge',
+        presence === 'missing' && 'status-optional',
         !enabled && 'status-disabled',
         enabled && online && 'status-online',
         enabled && !online && optionalIdle && 'status-optional',
@@ -150,7 +227,9 @@ function SourceBadge({
 }
 
 type Props = {
+  siteName: string;
   boardIp: string;
+  slots: SourceSlot[];
   role: PwaRole;
   autoConnectStatus?: 'idle' | 'searching' | 'connected' | 'setup_mode' | 'not_found';
   onAutoConnect?: () => void;
@@ -158,7 +237,9 @@ type Props = {
 };
 
 export default function DashboardOverview({
+  siteName,
   boardIp,
+  slots,
   role,
   autoConnectStatus = 'idle',
   onAutoConnect,
@@ -167,38 +248,70 @@ export default function DashboardOverview({
   const [data, setData] = useState<LiveUiData>(() => ({
     ...buildInitialData(),
     boardIp,
+    sources: [],
   }));
   const [fetchBusy, setFetchBusy] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const firstBoardFetch = useRef(true);
-  const [execModel, setExecModel] = useState<Awaited<
-    ReturnType<typeof buildRoleAwareLiveStatusFromProvider>
-  > | null>(null);
-
-  const execCards = execModel?.model.cards ?? [];
-  const hasAlertsCard = execCards.some((c) => c.id === 'alerts' || /alerts/i.test(c.title));
+  /** Last successful board poll — used when slots change to rebuild source rows without losing layout. */
+  const lastBoardRef = useRef<{ responded: boolean; board: BoardSnapshot } | null>(null);
   const isAdvancedRole = role === 'installer' || role === 'manufacturer';
 
-  useEffect(() => {
-    let active = true;
-    const pull = () => {
-      void buildRoleAwareLiveStatusFromProvider(role, loadProviderMode()).then((m) => {
-        if (active) setExecModel(m);
-      });
-    };
-    pull();
-    const interval = window.setInterval(pull, 12_000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [role]);
+  const primaryInverterModbusId = useMemo(() => {
+    const inv = firstEnabledInverterSlot(slots);
+    return inv && Number.isFinite(inv.modbusId) ? String(inv.modbusId) : '';
+  }, [slots]);
+
+  /** Stable across `config.slots` reference churn so we do not reset merged board telemetry every render. */
+  const slotLayoutKey = useMemo(
+    () =>
+      slots
+        .map(
+          (s) =>
+            `${s.id}\t${s.enabled}\t${s.role}\t${(s.label ?? '').trim()}\t${s.modbusId}\t${s.deviceType}`,
+        )
+        .join('\n'),
+    [slots],
+  );
+
+  const anyGridOnline = useMemo(
+    () => data.sources.some((s) => s.id.startsWith('grid_') && s.online),
+    [data.sources],
+  );
 
   useEffect(() => {
-    setData((prev) => ({ ...prev, boardIp }));
+    setData((prev) => ({ ...prev, boardIp, sources: [] }));
     setFetchError(null);
     firstBoardFetch.current = true;
+    lastBoardRef.current = null;
   }, [boardIp]);
+
+  useEffect(() => {
+    const nextSources = sourcesFromSlots(slots);
+    if (!nextSources.length) {
+      setData((prev) => ({ ...prev, sources: [] }));
+      return;
+    }
+    const b = lastBoardRef.current;
+    if (!b?.responded || !b.board) {
+      setData((prev) => ({ ...prev, sources: [] }));
+      return;
+    }
+    setData((prev) => ({
+      ...prev,
+      sources: nextSources.map((s) => {
+        const prevRow = prev.sources.find((p) => p.id === s.id);
+        return {
+          ...s,
+          metrics: prevRow?.metrics ?? [],
+          online: prevRow?.online ?? s.online,
+          presence: prevRow?.presence,
+        };
+      }),
+    }));
+    // slotLayoutKey is the semantic fingerprint; `slots` is read from the same render when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid resetting sources on every `config.slots` reference change
+  }, [slotLayoutKey]);
 
   useEffect(() => {
     let mounted = true;
@@ -209,9 +322,43 @@ export default function DashboardOverview({
         const board = await fetchBoardSnapshot(boardIp);
         if (!mounted) return;
 
-        setFetchError(null);
+        const boardResponded =
+          board.controllerState !== 'NA' ||
+          board.gridStatus !== 'NA' ||
+          board.inverterStatus !== 'NA' ||
+          board.gen1Status !== 'NA' ||
+          board.gen2Status !== 'NA' ||
+          board.gridFrequency !== null ||
+          board.gridTotalActivePowerW !== null;
+
+        if (!boardResponded && boardIp.trim()) {
+          setFetchError(
+            'Controller returned no data at this Board IP. Confirm the IP, that this computer can reach the ESPHome host (same LAN / VPN), and CORS on web_server, or open the PWA through your gateway.',
+          );
+        } else {
+          setFetchError(null);
+        }
+
+        lastBoardRef.current = { responded: boardResponded, board };
 
         setData((prev) => {
+          if (!boardResponded) {
+            return {
+              ...prev,
+              updatedAt: new Date().toLocaleTimeString(),
+              sources: [],
+              inverterLaneIdle: true,
+              summary: {
+                gridKw: 0,
+                pvKw: 0,
+                commandKw: 0,
+                frequencyHz: 0,
+                pf: 0,
+                importKwh: 0,
+              },
+            };
+          }
+
           const gridKw =
             board.gridTotalActivePowerW !== null
               ? safeNumber(board.gridTotalActivePowerW) / 1000
@@ -232,8 +379,8 @@ export default function DashboardOverview({
 
           const gridOnline =
             String(board.gridStatus).toUpperCase() === 'ONLINE';
-          const inverterOnline =
-            String(board.inverterStatus).toUpperCase() === 'ONLINE';
+          const gen1Online = String(board.gen1Status).toUpperCase() === 'ONLINE';
+          const gen2Online = String(board.gen2Status).toUpperCase() === 'ONLINE';
           const inverterLaneIdle = inverterLaneIdleFromStatus(
             String(board.inverterStatus),
           );
@@ -259,11 +406,17 @@ export default function DashboardOverview({
                   ? safeNumber(board.inverterActualPower)
                   : prev.summary.pvKw,
             },
-            sources: prev.sources.map((source) => {
-              if (source.id === 'grid_1') {
+            sources: sourcesFromSlots(slots).map((source) => {
+              // If the board is reachable (controllerState present) but a specific device status is NA,
+              // treat that device instance as missing from this firmware build.
+              const markMissing = (status: string) =>
+                board.controllerState && String(status).toUpperCase() === 'NA' ? 'missing' : 'present';
+
+              if (source.id.startsWith('grid_')) {
                 const showAdvancedGrid = role !== 'user';
                 return {
                   ...source,
+                  presence: markMissing(String(board.gridStatus)),
                   online: gridOnline,
                   metrics: [
                     ...(showAdvancedGrid
@@ -533,34 +686,113 @@ export default function DashboardOverview({
                 };
               }
 
-              if (source.id === 'inv_1') {
+              const invMatch = source.id.match(/^inv_(\d+)$/);
+              if (invMatch) {
+                const idx = Number(invMatch[1] ?? 0);
+
+                const inv = (() => {
+                  switch (idx) {
+                    case 1:
+                      return {
+                        status: String(board.inverterStatus),
+                        actual: board.inverterActualPower,
+                        pmax: board.inverterPmax,
+                      };
+                    case 2:
+                      return {
+                        status: String(board.inverter2Status),
+                        actual: board.inverter2ActualPower,
+                        pmax: board.inverter2Pmax,
+                      };
+                    case 3:
+                      return {
+                        status: String(board.inverter3Status),
+                        actual: board.inverter3ActualPower,
+                        pmax: board.inverter3Pmax,
+                      };
+                    case 4:
+                      return {
+                        status: String(board.inverter4Status),
+                        actual: board.inverter4ActualPower,
+                        pmax: board.inverter4Pmax,
+                      };
+                    case 5:
+                      return {
+                        status: String(board.inverter5Status),
+                        actual: board.inverter5ActualPower,
+                        pmax: board.inverter5Pmax,
+                      };
+                    case 6:
+                      return {
+                        status: String(board.inverter6Status),
+                        actual: board.inverter6ActualPower,
+                        pmax: board.inverter6Pmax,
+                      };
+                    case 7:
+                      return {
+                        status: String(board.inverter7Status),
+                        actual: board.inverter7ActualPower,
+                        pmax: board.inverter7Pmax,
+                      };
+                    case 8:
+                      return {
+                        status: String(board.inverter8Status),
+                        actual: board.inverter8ActualPower,
+                        pmax: board.inverter8Pmax,
+                      };
+                    case 9:
+                      return {
+                        status: String(board.inverter9Status),
+                        actual: board.inverter9ActualPower,
+                        pmax: board.inverter9Pmax,
+                      };
+                    case 10:
+                      return {
+                        status: String(board.inverter10Status),
+                        actual: board.inverter10ActualPower,
+                        pmax: board.inverter10Pmax,
+                      };
+                    default:
+                      return null;
+                  }
+                })();
+
+                if (!inv) return source;
+                const online = String(inv.status).toUpperCase() === 'ONLINE';
+                const metricTone = idx === 1 ? invMetricStatus : (s: MetricStatus) => s;
+
                 return {
                   ...source,
-                  online: inverterOnline,
-                  metrics: [
-                    {
-                      label: 'Actual Power',
-                      value:
-                        board.inverterActualPower !== null
-                          ? safeNumber(board.inverterActualPower).toFixed(2)
-                          : 'NA',
-                      unit: 'kW',
-                      status: invMetricStatus(
-                        inverterOnline ? 'ok' : 'offline',
-                      ),
-                    },
-                    {
-                      label: 'Pmax',
-                      value:
-                        board.inverterPmax !== null
-                          ? safeNumber(board.inverterPmax).toFixed(2)
-                          : 'NA',
-                      unit: 'kW',
-                      status: invMetricStatus(
-                        inverterOnline ? 'ok' : 'offline',
-                      ),
-                    },
-                  ],
+                  presence: markMissing(String(inv.status)),
+                  online,
+                  metrics: renderInverterMetrics(inv.actual, inv.pmax, online, metricTone),
+                };
+              }
+
+              const genMatch = source.id.match(/^gen_(\d+)$/);
+              if (genMatch) {
+                const n = Number(genMatch[1] ?? 0);
+                if (n === 1) {
+                  return {
+                    ...source,
+                    presence: markMissing(String(board.gen1Status)),
+                    online: gen1Online,
+                    metrics: renderGenMetrics(board.gen1TotalActivePowerW, gen1Online),
+                  };
+                }
+                if (n === 2) {
+                  return {
+                    ...source,
+                    presence: markMissing(String(board.gen2Status)),
+                    online: gen2Online,
+                    metrics: renderGenMetrics(board.gen2TotalActivePowerW, gen2Online),
+                  };
+                }
+                return {
+                  ...source,
+                  presence: 'missing',
+                  online: false,
+                  metrics: renderGenMetrics(null, false),
                 };
               }
 
@@ -570,13 +802,21 @@ export default function DashboardOverview({
         });
       } catch {
         if (!mounted) return;
+        lastBoardRef.current = null;
         setFetchError('Board HTTP request failed. Confirm Board IP and LAN connectivity.');
         setData((prev) => ({
           ...prev,
           updatedAt: new Date().toLocaleTimeString(),
-          sources: prev.sources.map((s) =>
-            s.enabled ? { ...s, online: false, metrics: s.metrics.map((m) => ({ ...m, status: 'offline' })) } : s,
-          ),
+          sources: [],
+          inverterLaneIdle: true,
+          summary: {
+            gridKw: 0,
+            pvKw: 0,
+            commandKw: 0,
+            frequencyHz: 0,
+            pf: 0,
+            importKwh: 0,
+          },
         }));
       } finally {
         if (mounted) {
@@ -593,7 +833,7 @@ export default function DashboardOverview({
       mounted = false;
       clearInterval(timer);
     };
-  }, [boardIp]);
+  }, [boardIp, role, slotLayoutKey]);
 
   return (
     <section className='dashboard-grid'>
@@ -602,21 +842,12 @@ export default function DashboardOverview({
           <div>
             <h2 className='dashboard-page-title'>Dashboard</h2>
             <p className='dashboard-page-lede'>
-              {execModel ? (
-                <>
-                  <strong>{execModel.snapshot.siteName}</strong>
-                  <span className='dashboard-lede-sep' aria-hidden='true'>
-                    ·
-                  </span>
-                  {execModel.snapshot.systemState}
-                  <span className='dashboard-lede-sep' aria-hidden='true'>
-                    ·
-                  </span>
-                  {execModel.snapshot.connectivityLabel}
-                </>
-              ) : (
-                'Loading plant snapshot…'
-              )}
+              <strong>{siteName}</strong>
+              <span className='dashboard-lede-sep' aria-hidden='true'>
+                ·
+              </span>
+              Live data from Board IP (ESPHome HTTP). Source Status lists devices exposed by the flashed
+              build once the board responds; slot settings are saved in this browser.
             </p>
             <div className='dashboard-chips' aria-label='Live target summary'>
               <span className='dashboard-chip'>Board {data.boardName}</span>
@@ -656,61 +887,26 @@ export default function DashboardOverview({
           </div>
         </div>
 
-        {execModel ? (
-          <>
-            <div className='dashboard-exec-kpis' aria-label='Plant snapshot KPIs' data-testid='dashboard-exec-kpis'>
-              {execCards.map((card) => (
-                <article key={card.id} className='feature-stat-card dashboard-exec-kpi'>
-                  <div className='feature-stat-label'>{card.title}</div>
-                  <div className='feature-stat-value'>{card.value}</div>
-                  {card.subtitle ? <div className='feature-stat-subtitle'>{card.subtitle}</div> : null}
-                </article>
-              ))}
-              {!hasAlertsCard ? (
-                <article className='feature-stat-card dashboard-exec-kpi'>
-                  <div className='feature-stat-label'>Alerts</div>
-                  <div className='feature-stat-value'>{String(execModel.activeAlertCount)}</div>
-                  <div className='feature-stat-subtitle'>Controller feed</div>
-                </article>
-              ) : null}
+        <Suspense
+          fallback={
+            <div className='dashboard-charts-skeleton' role='status'>
+              Loading charts…
             </div>
-            <div className='dashboard-exec-summary'>
-              <div className='dashboard-exec-summary-title'>Operations summary</div>
-              <ul className='list-block dashboard-exec-summary-list'>
-                {execModel.summary.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <Suspense
-              fallback={
-                <div className='dashboard-charts-skeleton' role='status'>
-                  Loading charts…
-                </div>
-              }
-            >
-              <DashboardCharts
-                gridKw={data.summary.gridKw}
-                pvKw={data.summary.pvKw}
-                commandKw={data.summary.commandKw}
-                solarKw={execModel.solarKw}
-                generatorKw={execModel.generatorKw}
-                gridNetKw={Math.abs(execModel.gridImportKw - execModel.gridExportKw)}
-                inverterIdle={data.inverterLaneIdle}
-                gridOnline={!!data.sources.find((s) => s.id === 'grid_1')?.online}
-                inverterOnline={
-                  !!data.sources.find((s) => s.id === 'inv_1')?.online && !data.inverterLaneIdle
-                }
-              />
-            </Suspense>
-            <hr className='dashboard-section-rule' />
-            <div className='dashboard-section-label'>Board telemetry</div>
-          </>
-        ) : (
-          <div className='dashboard-exec-loading' role='status'>
-            Loading plant snapshot…
-          </div>
-        )}
+          }
+        >
+          <DashboardCharts
+            gridKw={data.summary.gridKw}
+            pvKw={data.summary.pvKw}
+            commandKw={data.summary.commandKw}
+            inverterIdle={data.inverterLaneIdle}
+            gridOnline={anyGridOnline}
+            inverterOnline={
+              !!data.sources.find((s) => s.id === 'inv_1')?.online && !data.inverterLaneIdle
+            }
+          />
+        </Suspense>
+        <hr className='dashboard-section-rule' />
+        <div className='dashboard-section-label'>Board telemetry</div>
 
         {role === 'user' && onNavigateToMonitoring ? (
           <div className='owner-dashboard-ctas' data-testid='owner-dashboard-ctas'>
@@ -754,10 +950,10 @@ export default function DashboardOverview({
             className={cx(
               'dashboard-strip-item',
               'dashboard-strip-pill',
-              data.sources.find((s) => s.id === 'grid_1')?.online ? 'strip-online' : 'strip-offline',
+              anyGridOnline ? 'strip-online' : 'strip-offline',
             )}
           >
-            Grid {data.sources.find((s) => s.id === 'grid_1')?.online ? 'Online' : 'Offline'}
+            Grid {anyGridOnline ? 'Online' : 'Offline'}
           </span>
           <span className={cx('dashboard-strip-item', 'dashboard-strip-pill', 'strip-neutral')}>
             Inverter{' '}
@@ -806,7 +1002,9 @@ export default function DashboardOverview({
             tone='pv'
             hint={
               data.inverterLaneIdle
-                ? 'Connect inverter on RS485 (addr 10) when ready'
+                ? primaryInverterModbusId
+                  ? `Connect primary inverter on RS485 (Modbus unit ${primaryInverterModbusId}) when ready`
+                  : 'Enable an inverter source slot when commissioning PV on RS485'
                 : undefined
             }
           />
@@ -840,7 +1038,7 @@ export default function DashboardOverview({
         <div className='card-header'>
           <div>
             <h2>Source Status</h2>
-            <p>{data.sources.length} source entries</p>
+            <p data-testid='dashboard-source-count'>{data.sources.length} source entries</p>
           </div>
         </div>
 
@@ -898,12 +1096,11 @@ export default function DashboardOverview({
                   <div>
                     <div className='source-title'>{source.name}</div>
                     <div className='source-subtitle'>ID: {source.id}</div>
-                    {source.id === 'grid_1' && isAdvancedRole ? (
+                    {source.id.startsWith('grid_') && isAdvancedRole ? (
                       <div className='source-summary'>
                         <span className='mono'>
                           Veq{' '}
-                          {data.sources.find((s) => s.id === 'grid_1')?.metrics.find((m) => m.label === 'Veq')?.value ??
-                            'NA'}
+                          {source.metrics.find((m) => m.label === 'Veq')?.value ?? 'NA'}
                           V
                         </span>
                         <span className='source-summary-sep' aria-hidden='true'>
@@ -911,8 +1108,7 @@ export default function DashboardOverview({
                         </span>
                         <span className='mono'>
                           Ieq{' '}
-                          {data.sources.find((s) => s.id === 'grid_1')?.metrics.find((m) => m.label === 'Ieq')?.value ??
-                            'NA'}
+                          {source.metrics.find((m) => m.label === 'Ieq')?.value ?? 'NA'}
                           A
                         </span>
                         <span className='source-summary-sep' aria-hidden='true'>
@@ -937,12 +1133,13 @@ export default function DashboardOverview({
                   <SourceBadge
                     enabled={source.enabled}
                     online={source.online}
+                    presence={source.presence}
                     optionalIdle={source.id === 'inv_1' && data.inverterLaneIdle}
                   />
                 </summary>
 
                 <div className='source-metrics'>
-                  {source.id === 'grid_1' && isAdvancedRole ? (
+                  {source.id.startsWith('grid_') && isAdvancedRole ? (
                     <>
                       <details className='source-metric-group' open>
                         <summary className='source-metric-group-title'>Voltage & current</summary>

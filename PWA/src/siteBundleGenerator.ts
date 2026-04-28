@@ -1,4 +1,4 @@
-import { type SiteConfig } from './siteProfileSchema';
+import { type SiteConfig, type SourceSlot } from './siteProfileSchema';
 import { inverterDeviceHasBundledYaml, meterDeviceHasBundledYaml } from './deviceFirmware';
 import { deviceCatalog, deviceOptionsForRole } from './siteTemplates';
 import { deriveZones, policyWarnings } from './policySchema';
@@ -12,6 +12,34 @@ export type SiteBundleFile = {
 
 function quote(value: string) {
   return JSON.stringify(value);
+}
+
+/** Per-slot link layer + timing (exported for firmware / tooling). */
+function slotLinkYaml(slot: SourceSlot, style: 'summary' | 'nested'): string {
+  const term =
+    slot.transport === 'rtu' ? quote(slot.rs485Termination ?? 'auto') : 'null';
+  if (style === 'nested') {
+    return `      link:
+        serial_baud: ${slot.serialBaud ?? 9600}
+        serial_parity: ${quote(slot.serialParity ?? 'none')}
+        serial_stop_bits: ${slot.serialStopBits === 2 ? 2 : 1}
+        serial_data_bits: 8
+        rs485_termination: ${term}
+        poll_interval_ms: ${slot.modbusPollIntervalMs ?? 1000}
+        request_timeout_ms: ${slot.modbusRequestTimeoutMs ?? 1200}
+        tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+        tcp_port: ${slot.tcpPort ?? 502}`;
+  }
+  return `    link:
+      serial_baud: ${slot.serialBaud ?? 9600}
+      serial_parity: ${quote(slot.serialParity ?? 'none')}
+      serial_stop_bits: ${slot.serialStopBits === 2 ? 2 : 1}
+      serial_data_bits: 8
+      rs485_termination: ${term}
+      poll_interval_ms: ${slot.modbusPollIntervalMs ?? 1000}
+      request_timeout_ms: ${slot.modbusRequestTimeoutMs ?? 1200}
+      tcp_host: ${slot.tcpHost ? quote(slot.tcpHost) : 'null'}
+      tcp_port: ${slot.tcpPort ?? 502}`;
 }
 
 function enabledPackages(config: SiteConfig) {
@@ -189,7 +217,8 @@ function slotSummary(config: SiteConfig) {
     bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
     generator_type: ${slot.generatorType ? quote(slot.generatorType) : 'null'}
     ip_hint: ${slot.ipHint ? quote(slot.ipHint) : 'null'}
-    notes: ${slot.notes ? quote(slot.notes) : 'null'}`,
+    notes: ${slot.notes ? quote(slot.notes) : 'null'}
+${slotLinkYaml(slot, 'summary')}`,
     )
     .join('\n');
 }
@@ -213,7 +242,8 @@ ${gridSlots
       device_type: ${quote(slot.deviceType)}
       capacity_kw: ${slot.capacityKw}
       network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
-      bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}`,
+      bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
+${slotLinkYaml(slot, 'nested')}`,
   )
   .join('\n')}
   generator_meters:
@@ -229,7 +259,8 @@ ${generatorSlots
       capacity_kw: ${slot.capacityKw}
       network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
       bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
-      generator_type: ${slot.generatorType ? quote(slot.generatorType) : 'null'}`,
+      generator_type: ${slot.generatorType ? quote(slot.generatorType) : 'null'}
+${slotLinkYaml(slot, 'nested')}`,
   )
   .join('\n')}
 
@@ -245,7 +276,8 @@ ${inverterSlots
     device_type: ${quote(slot.deviceType)}
     rated_kw: ${slot.capacityKw}
     network_id: ${slot.networkId ? quote(slot.networkId) : 'null'}
-    bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}`,
+    bus_side: ${slot.busSide ? quote(slot.busSide) : 'null'}
+${slotLinkYaml(slot, 'summary')}`,
   )
   .join('\n')}`;
 }

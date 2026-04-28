@@ -25,13 +25,9 @@ export type DzxApiClient = {
   getConfigReview(): Promise<ConfigReviewResponse>;
   getSession(): Promise<SessionResponse>;
   getSnapshot(): Promise<ApiSnapshotResponse>;
-  setProviderMode(mode: 'auto' | 'api' | 'mock'): Promise<SessionResponse>;
+  setProviderMode(mode: 'auto' | 'api'): Promise<SessionResponse>;
   setConnectivitySettings(body: unknown): Promise<ConnectivityResponse>;
   acknowledgeAlerts(ids: string[]): Promise<AlertResponse>;
-  simulateLiveStatus(body: Partial<LiveStatusResponse>): Promise<LiveStatusResponse>;
-  simulateConnectivity(body: Partial<ConnectivityResponse>): Promise<ConnectivityResponse>;
-  simulateAlerts(body: unknown): Promise<AlertResponse>;
-  appendHistory(body: unknown): Promise<HistorySummaryResponse>;
 };
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -76,9 +72,5 @@ export function createDzxApiClient(baseUrl: string): DzxApiClient {
     setProviderMode: (mode) => postJson<SessionResponse>(normalized, '/api/provider-mode', { mode }),
     setConnectivitySettings: (body) => postJson<ConnectivityResponse>(normalized, '/api/connectivity/settings', body),
     acknowledgeAlerts: (ids) => postJson<AlertResponse>(normalized, '/api/alerts/ack', { ids }),
-    simulateLiveStatus: (body) => postJson<LiveStatusResponse>(normalized, '/api/sim/live-status', body),
-    simulateConnectivity: (body) => postJson<ConnectivityResponse>(normalized, '/api/sim/connectivity', body),
-    simulateAlerts: (body) => postJson<AlertResponse>(normalized, '/api/sim/alerts', body),
-    appendHistory: (body) => postJson<HistorySummaryResponse>(normalized, '/api/sim/history-append', body),
   };
 }

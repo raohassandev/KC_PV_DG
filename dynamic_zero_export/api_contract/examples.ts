@@ -10,13 +10,6 @@ import type {
   TopologyResponse,
   ConfigReviewResponse,
 } from './types';
-import { aggregateEnergy } from '../pwa/contracts/history';
-import {
-  decadeHistoryFixture,
-  monthHistoryFixture,
-  todayHistoryFixture,
-  yearHistoryFixture,
-} from '../pwa/mock/history.fixture';
 
 export const deviceExample: DeviceInfoResponse = {
   deviceId: 'dzx-001',
@@ -28,9 +21,10 @@ export const deviceExample: DeviceInfoResponse = {
   localTimeIso: '2026-04-15T00:00:00Z',
 };
 
+/** Contract / test harness shapes only — not live site data. */
 export const liveStatusExample: LiveStatusResponse = {
   role: 'user',
-  siteName: 'Demo Plant',
+  siteName: 'Example site',
   controllerState: 'healthy',
   systemOnline: true,
   powerKw: 125.4,
@@ -92,32 +86,24 @@ export const alertsExample: AlertResponse = {
   summary: { criticalCount: 0, warningCount: 1, infoCount: 1 },
 };
 
-const historyPointsAll = [
-  ...todayHistoryFixture.points,
-  ...monthHistoryFixture.points,
-  ...yearHistoryFixture.points,
-  ...decadeHistoryFixture.points,
-];
-const historyTotalsRollup = aggregateEnergy(historyPointsAll);
-
 export const historyExample: HistorySummaryResponse = {
-  today: todayHistoryFixture.points.map((p) => ({ ...p })),
-  month: monthHistoryFixture.points.map((p) => ({ ...p })),
-  year: yearHistoryFixture.points.map((p) => ({ ...p })),
-  decade: decadeHistoryFixture.points.map((p) => ({ ...p })),
+  today: [],
+  month: [],
+  year: [],
+  decade: [],
   totals: {
-    solarKwh: Math.round(historyTotalsRollup.solarKwh * 100) / 100,
-    gridImportKwh: Math.round(historyTotalsRollup.gridImportKwh * 100) / 100,
-    gridExportKwh: Math.round(historyTotalsRollup.gridExportKwh * 100) / 100,
-    generatorKwh: Math.round(historyTotalsRollup.generatorKwh * 100) / 100,
-    curtailedKwh: Math.round(historyTotalsRollup.curtailedKwh * 100) / 100,
+    solarKwh: 0,
+    gridImportKwh: 0,
+    gridExportKwh: 0,
+    generatorKwh: 0,
+    curtailedKwh: 0,
   },
   range: 'today',
   resolution: 'hour',
 };
 
 export const commissioningExample: CommissioningSummaryResponse = {
-  siteName: 'Demo Plant',
+  siteName: 'Example site',
   topologySummary: 'Single bus, grid-first, zero export',
   sourceSummary: ['Grid meter present', 'Inverter group present'],
   policySummary: ['Zero export', 'Deadband 1 kW'],
@@ -153,4 +139,3 @@ export const snapshotExample: ApiSnapshotResponse = {
   configReview: configReviewExample,
   session: sessionExample,
 };
-

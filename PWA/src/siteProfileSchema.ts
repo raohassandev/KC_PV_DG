@@ -45,13 +45,26 @@ export type SourceSlot = {
   role: SourceRole;
   /**
    * Field transport expectation for this slot.
-   * - rtu: RS485/serial Modbus RTU (current production path)
+   * - rtu: RS485 Modbus RTU
+   * - rs232: RS-232 Modbus RTU (same framing as RTU; different physical port on the board)
    * - tcp: Modbus TCP/IP (board/gateway LAN client; browser does not speak raw TCP)
    */
-  transport?: 'rtu' | 'tcp';
+  transport?: 'rtu' | 'tcp' | 'rs232';
   modbusId: number;
   tcpHost?: string;
   tcpPort?: number;
+  /** Serial (RTU / RS-232): baud. Default 9600. */
+  serialBaud?: number;
+  serialParity?: 'none' | 'even' | 'odd';
+  serialStopBits?: 1 | 2;
+  /** Modbus on serial uses 8 data bits; stored for YAML export. */
+  serialDataBits?: 8;
+  /** RS-485 line termination / bias intent (ignored for RS-232 / TCP in firmware unless mapped). */
+  rs485Termination?: 'auto' | 'on' | 'off';
+  /** Modbus controller read cadence hint for this device (ms). */
+  modbusPollIntervalMs?: number;
+  /** Modbus request timeout hint for this device (ms). */
+  modbusRequestTimeoutMs?: number;
   capacityKw: number;
   networkId?: string;
   busSide?: 'A' | 'B' | 'both';
@@ -106,11 +119,26 @@ export type SiteConfig = {
   slots: SourceSlot[];
 };
 
+const SLOT_ID_MIGRATIONS: Record<string, { from: number; to: number }> = {
+  gen_1: { from: 3, to: 11 },
+  gen_2: { from: 4, to: 12 },
+  inv_1: { from: 10, to: 21 },
+  inv_2: { from: 11, to: 22 },
+  inv_3: { from: 12, to: 23 },
+  inv_4: { from: 13, to: 24 },
+  inv_5: { from: 14, to: 25 },
+  inv_6: { from: 15, to: 26 },
+  inv_7: { from: 16, to: 27 },
+  inv_8: { from: 17, to: 28 },
+  inv_9: { from: 18, to: 29 },
+  inv_10: { from: 19, to: 30 },
+};
+
 export const defaultSite: SiteConfig = {
-  siteName: 'New Site',
-  boardName: 'pv-dg-controller',
-  boardIp: '192.168.0.111',
-  wifiSsid: 'Rao',
+  siteName: '',
+  boardName: '',
+  boardIp: '',
+  wifiSsid: '',
   customerName: '',
   timezone: 'Asia/Karachi',
   controllerRuntimeMode: 'sync_controller',
@@ -141,74 +169,270 @@ export const defaultSite: SiteConfig = {
   rampPctStep: 3,
   minPvPercent: 0,
   maxPvPercent: 100,
-  slots: [
-    {
-      id: 'grid_1',
-      label: 'Grid Meter 1',
-      enabled: true,
-      deviceType: 'em500',
-      role: 'grid_meter',
-      transport: 'rtu',
-      modbusId: 1,
-      tcpPort: 502,
-      capacityKw: 0,
-      networkId: 'main',
-      busSide: 'A',
-    },
-    {
-      id: 'gen_1',
-      label: 'Generator Meter 1',
-      enabled: false,
-      deviceType: 'none',
-      role: 'generator_meter',
-      transport: 'rtu',
-      modbusId: 3,
-      tcpPort: 502,
-      capacityKw: 500,
-      networkId: 'main',
-      busSide: 'A',
-      generatorType: 'diesel',
-    },
-    {
-      id: 'gen_2',
-      label: 'Generator Meter 2',
-      enabled: false,
-      deviceType: 'none',
-      role: 'generator_meter',
-      transport: 'rtu',
-      modbusId: 4,
-      tcpPort: 502,
-      capacityKw: 500,
-      networkId: 'main',
-      busSide: 'A',
-      generatorType: 'diesel',
-    },
-    {
-      id: 'gen_3',
-      label: 'Generator Meter 3',
-      enabled: false,
-      deviceType: 'none',
-      role: 'generator_meter',
-      transport: 'rtu',
-      modbusId: 5,
-      tcpPort: 502,
-      capacityKw: 500,
-      networkId: 'main',
-      busSide: 'A',
-      generatorType: 'diesel',
-    },
-    {
-      id: 'inv_1',
-      label: 'Inverter 1',
-      enabled: true,
-      deviceType: 'huawei',
-      role: 'inverter',
-      transport: 'rtu',
-      modbusId: 10,
-      tcpPort: 502,
-      capacityKw: 100,
-      networkId: 'main',
-      busSide: 'A',
-    },
-  ],
+  slots: [],
 };
+
+/**
+ * Rows appended when loading a persisted site that predates the empty `defaultSite.slots` default,
+ * so commissioning still lists the full harness (e.g. inv_10 in advanced catalog).
+ */
+const COMMISSIONING_BACKFILL_STUBS: SourceSlot[] = [
+  {
+    id: 'gen_2',
+    label: 'Generator Meter 2',
+    enabled: false,
+    deviceType: 'none',
+    role: 'generator_meter',
+    transport: 'rtu',
+    modbusId: 12,
+    tcpPort: 502,
+    capacityKw: 500,
+    networkId: 'main',
+    busSide: 'A',
+    generatorType: 'diesel',
+  },
+  {
+    id: 'gen_3',
+    label: 'Generator Meter 3',
+    enabled: false,
+    deviceType: 'none',
+    role: 'generator_meter',
+    transport: 'rtu',
+    modbusId: 5,
+    tcpPort: 502,
+    capacityKw: 500,
+    networkId: 'main',
+    busSide: 'A',
+    generatorType: 'diesel',
+  },
+  {
+    id: 'inv_2',
+    label: 'Inverter 2',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 22,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_3',
+    label: 'Inverter 3',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 23,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_4',
+    label: 'Inverter 4',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 24,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_5',
+    label: 'Inverter 5',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 25,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_6',
+    label: 'Inverter 6',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 26,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_7',
+    label: 'Inverter 7',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 27,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_8',
+    label: 'Inverter 8',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 28,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_9',
+    label: 'Inverter 9',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 29,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+  {
+    id: 'inv_10',
+    label: 'Inverter 10',
+    enabled: false,
+    deviceType: 'none',
+    role: 'inverter',
+    transport: 'rtu',
+    modbusId: 30,
+    tcpPort: 502,
+    capacityKw: 100,
+    networkId: 'main',
+    busSide: 'A',
+  },
+];
+
+/** Modbus on serial: default 9600 N 8 1 */
+export const DEFAULT_SLOT_LINK = {
+  serialBaud: 9600,
+  serialParity: 'none' as const,
+  serialStopBits: 1 as const,
+  serialDataBits: 8 as const,
+  rs485Termination: 'auto' as const,
+  modbusPollIntervalMs: 1000,
+  modbusRequestTimeoutMs: 1200,
+};
+
+function clampInt(v: number, min: number, max: number) {
+  if (!Number.isFinite(v)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(v)));
+}
+
+export function applySlotLinkDefaults(slot: SourceSlot): SourceSlot {
+  const transport: SourceSlot['transport'] =
+    slot.transport === 'tcp' || slot.transport === 'rs232' ? slot.transport : 'rtu';
+
+  const stop: 1 | 2 = slot.serialStopBits === 2 ? 2 : DEFAULT_SLOT_LINK.serialStopBits;
+  const parity =
+    slot.serialParity === 'even' || slot.serialParity === 'odd' || slot.serialParity === 'none'
+      ? slot.serialParity
+      : DEFAULT_SLOT_LINK.serialParity;
+  const term =
+    slot.rs485Termination === 'on' || slot.rs485Termination === 'off' || slot.rs485Termination === 'auto'
+      ? slot.rs485Termination
+      : DEFAULT_SLOT_LINK.rs485Termination;
+
+  return {
+    ...slot,
+    transport,
+    serialBaud: clampInt(slot.serialBaud ?? DEFAULT_SLOT_LINK.serialBaud, 300, 115200),
+    serialParity: parity,
+    serialStopBits: stop,
+    serialDataBits: slot.serialDataBits === 8 ? 8 : DEFAULT_SLOT_LINK.serialDataBits,
+    rs485Termination: term,
+    modbusPollIntervalMs: clampInt(
+      slot.modbusPollIntervalMs ?? DEFAULT_SLOT_LINK.modbusPollIntervalMs,
+      250,
+      60_000,
+    ),
+    modbusRequestTimeoutMs: clampInt(
+      slot.modbusRequestTimeoutMs ?? DEFAULT_SLOT_LINK.modbusRequestTimeoutMs,
+      200,
+      10_000,
+    ),
+  };
+}
+
+export function formatSlotLinkSummary(slot: SourceSlot): string {
+  const poll = slot.modbusPollIntervalMs ?? DEFAULT_SLOT_LINK.modbusPollIntervalMs;
+  if (slot.transport === 'tcp') {
+    const host = slot.tcpHost?.trim() || '—';
+    const port = slot.tcpPort ?? 502;
+    return `${host}:${port} · ${poll} ms poll`;
+  }
+  const baud = slot.serialBaud ?? DEFAULT_SLOT_LINK.serialBaud;
+  const par =
+    slot.serialParity === 'even' ? 'E' : slot.serialParity === 'odd' ? 'O' : 'N';
+  const sb = slot.serialStopBits === 2 ? 2 : 1;
+  const bus = slot.transport === 'rs232' ? 'RS-232' : 'RS-485';
+  return `${bus} ${baud} ${par}8${sb} · ${poll} ms`;
+}
+
+function applySlotModbusMigration(slot: SourceSlot): SourceSlot {
+  const mig = SLOT_ID_MIGRATIONS[slot.id];
+  if (mig && slot.modbusId === mig.from) {
+    return { ...slot, modbusId: mig.to };
+  }
+  return slot;
+}
+
+function finalizeSlot(slot: SourceSlot): SourceSlot {
+  return applySlotLinkDefaults(applySlotModbusMigration(slot));
+}
+
+export function normalizeSiteConfig(input: SiteConfig): SiteConfig {
+  const base = defaultSite;
+  const merged: SiteConfig = { ...base, ...input };
+
+  const byId = new Map<string, SourceSlot>();
+  for (const slot of input.slots ?? []) byId.set(slot.id, slot);
+
+  const nextSlots: SourceSlot[] = base.slots.map((slot) => {
+    const existing = byId.get(slot.id);
+    const mergedSlot: SourceSlot = existing ? ({ ...slot, ...existing } as SourceSlot) : slot;
+    return finalizeSlot(mergedSlot);
+  });
+
+  // Preserve any unknown/custom slots at the end (future-proofing).
+  for (const slot of input.slots ?? []) {
+    if (!base.slots.some((s) => s.id === slot.id)) {
+      nextSlots.push(finalizeSlot(slot as SourceSlot));
+    }
+  }
+
+  merged.slots = nextSlots;
+
+  if ((input.slots ?? []).length > 0) {
+    const have = new Set(merged.slots.map((s) => s.id));
+    for (const stub of COMMISSIONING_BACKFILL_STUBS) {
+      if (!have.has(stub.id)) {
+        merged.slots.push(finalizeSlot(stub));
+        have.add(stub.id);
+      }
+    }
+  }
+
+  return merged;
+}

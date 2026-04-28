@@ -28,6 +28,8 @@ type AuthContextValue = {
   session: SessionState;
   role: ReturnType<typeof resolveRole>;
   authenticated: boolean;
+  /** Present when the gateway login provided an installer scope. */
+  installerId?: string;
   /** True when signed in with a real gateway token (not local-dev) and role may use fleet site APIs. */
   siteGatewaySyncAvailable: boolean;
   /** Authenticated `fetch` against `VITE_GATEWAY_URL` with Bearer token. */
@@ -127,6 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authenticated = session.authenticated === true;
 
   const role = useMemo(() => resolveRole(session.role), [session.role]);
+
+  const installerId = useMemo(() => readStored()?.installerId, [session.role, session.siteId, session.authenticated]);
 
   const siteGatewaySyncAvailable = useMemo(() => {
     if (!gatewayUrl || !session.authenticated) return false;
@@ -337,6 +341,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       role,
       authenticated,
+      installerId,
       siteGatewaySyncAvailable,
       fetchGateway,
       login,
@@ -349,6 +354,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       role,
       authenticated,
+      installerId,
       siteGatewaySyncAvailable,
       fetchGateway,
       login,

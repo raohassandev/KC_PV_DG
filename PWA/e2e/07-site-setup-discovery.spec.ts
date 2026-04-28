@@ -34,6 +34,43 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
         }),
       });
     });
+
+    // Prevent direct network probing from accidentally hitting a real mDNS board
+    // on the developer LAN (probeBoard falls back to `${baseUrl}/whoami`).
+    await page.route('**/whoami', async (route) => {
+      const url = route.request().url();
+      if (url.includes('192.168.0.222')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            deviceName: 'e2e-mock-controller',
+            fwVersion: 'e2e-1',
+            mac: 'AA:BB:CC:DD:EE:FF',
+          }),
+        });
+        return;
+      }
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+    });
+
+    await page.route('**/text_sensor/**', async (route) => {
+      const url = route.request().url();
+      if (url.includes('192.168.0.222')) {
+        await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+    });
+
+    await page.route('**/json', async (route) => {
+      const url = route.request().url();
+      if (url.includes('192.168.0.222')) {
+        await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+        return;
+      }
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+    });
   });
 
   test('Scan LAN applies discovered IP to Board IP', async ({ page }) => {
@@ -46,8 +83,6 @@ test.describe('Site Setup — LAN discovery (mocked)', () => {
     await page.getByText('Advanced').click();
     await page.getByRole('textbox', { name: /Controller Name/i }).fill('');
     const boardIpField = page.getByRole('textbox', { name: /Controller Address/i });
-
-    await expect(boardIpField).toHaveValue('192.168.0.111');
 
     // Force the auto-connect flow to miss the pre-filled IP so it reaches /api/board/scan.
     await boardIpField.fill('192.168.0.250');

@@ -1,5 +1,5 @@
 # Key/value bridge for the host firmware core
-site.name=Demo Plant
+site.name=Example site
 site.controllerId=dzx-001
 topology.type=DUAL_BUS_COMBINED
 topology.busCount=2

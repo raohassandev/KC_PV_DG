@@ -28,7 +28,7 @@ void run_api_contract_tests() {
   assert(alarmJson.find("METER_STALE") != std::string::npos);
 
   ApiCommissioningSummary commissioning;
-  commissioning.siteName = "Demo Plant";
+  commissioning.siteName = "Example site";
   commissioning.topologySummary = "single bus";
   commissioning.sourceSummary = {"Grid meter present", "Inverter mapped"};
   commissioning.policySummary = {"Zero export", "Deadband 1 kW"};

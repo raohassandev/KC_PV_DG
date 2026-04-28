@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { mergePwaSiteConfigFromGatewayPayload } from '../auth/gatewaySiteConfig';
 import { NumberField, SelectField, TextField } from '../components/commissioningFields';
 import { FormGrid } from '../layout/FormGrid';
@@ -20,10 +20,17 @@ import {
 
 export type SiteSetupPageProps = {
   siteGatewaySyncAvailable: boolean;
+  installerId?: string;
   fetchGateway: (path: string, init?: RequestInit) => Promise<Response>;
   gatewaySyncSiteId: string;
   setGatewaySyncSiteId: (v: string) => void;
-  gatewaySiteList: Array<{ siteId: string }>;
+  gatewaySiteList: Array<{
+    siteId: string;
+    _receivedAt?: string;
+    _mqttTopic?: string;
+    controllerRuntimeMode?: string;
+    pwaSiteConfig?: unknown;
+  }>;
   gatewaySyncBusy: boolean;
   setGatewaySyncBusy: (v: boolean) => void;
   refreshGatewaySites: () => void | Promise<void>;
@@ -59,6 +66,7 @@ export type SiteSetupPageProps = {
 export function SiteSetupPage(p: SiteSetupPageProps) {
   const {
     siteGatewaySyncAvailable,
+    installerId,
     fetchGateway,
     gatewaySyncSiteId,
     setGatewaySyncSiteId,
@@ -94,6 +102,27 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
     provisionResult,
     setProvisionResult,
   } = p;
+
+  const [rawSiteJsonBusy, setRawSiteJsonBusy] = useState(false);
+  const [rawSiteJsonError, setRawSiteJsonError] = useState<string | null>(null);
+  const [rawSiteJsonText, setRawSiteJsonText] = useState<string | null>(null);
+
+  const sortedGatewaySites = [...gatewaySiteList].sort((a, b) => {
+    const ta = a._receivedAt ? Date.parse(a._receivedAt) : 0;
+    const tb = b._receivedAt ? Date.parse(b._receivedAt) : 0;
+    return tb - ta;
+  });
+
+  const formatReceivedAt = (iso?: string): string => {
+    if (!iso) return '—';
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return '—';
+    try {
+      return new Date(t).toLocaleString();
+    } catch {
+      return iso;
+    }
+  };
   return (
     <FormGrid>
             <SiteScenarioTemplatePanel config={config} setConfig={setConfig} setNotice={setNotice} />
@@ -105,6 +134,17 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                   Load or save the PWA commissioning profile to the VPS gateway under{' '}
                   <code>sites/&lt;siteId&gt;.json</code> as <code>pwaSiteConfig</code>, alongside MQTT
                   discovery data.
+                </p>
+                <p className='help-text'>
+                  Scope:{' '}
+                  {installerId?.trim() ? (
+                    <>
+                      installer <code>{installerId.trim()}</code>
+                    </>
+                  ) : (
+                    <>no installer scope</>
+                  )}
+                  {' · '}Discovered sites: <strong>{gatewaySiteList.length}</strong>
                 </p>
                 <div className='form-grid'>
                   <label className='field' htmlFor='gateway-site-id'>
@@ -128,6 +168,45 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                     </datalist>
                   </label>
                 </div>
+                {sortedGatewaySites.length ? (
+                  <div className='u-mt-md'>
+                    <div className='help-text'>
+                      Pick a discovered site (newest first). “PWA saved” means this site already has a
+                      stored <code>pwaSiteConfig</code>.
+                    </div>
+                    <div className='panel-actions u-mt-sm' style={{ flexWrap: 'wrap' }}>
+                      {sortedGatewaySites.slice(0, 12).map((s) => {
+                        const hasPwa =
+                          s.pwaSiteConfig && typeof s.pwaSiteConfig === 'object' && !Array.isArray(s.pwaSiteConfig);
+                        const active = s.siteId === gatewaySyncSiteId.trim();
+                        return (
+                          <button
+                            key={s.siteId}
+                            type='button'
+                            className={['btn', active ? 'btn--primary' : 'btn--secondary'].join(' ')}
+                            disabled={gatewaySyncBusy}
+                            onClick={() => setGatewaySyncSiteId(s.siteId)}
+                            title={[
+                              `siteId: ${s.siteId}`,
+                              s.controllerRuntimeMode ? `mode: ${s.controllerRuntimeMode}` : null,
+                              s._mqttTopic ? `topic: ${s._mqttTopic}` : null,
+                              s._receivedAt ? `received: ${formatReceivedAt(s._receivedAt)}` : null,
+                              hasPwa ? 'PWA saved: yes' : 'PWA saved: no',
+                            ]
+                              .filter(Boolean)
+                              .join('\n')}
+                          >
+                            {s.siteId}
+                            {hasPwa ? ' · PWA saved' : ''}
+                          </button>
+                        );
+                      })}
+                      {sortedGatewaySites.length > 12 ? (
+                        <span className='help-text'>Showing 12 of {sortedGatewaySites.length}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
                 <div className='panel-actions u-mt-md'>
                   <button
                     type='button'
@@ -137,6 +216,38 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                     data-testid='gateway-sites-refresh'
                   >
                     Refresh list
+                  </button>
+                  <button
+                    type='button'
+                    className='btn btn--secondary'
+                    disabled={gatewaySyncBusy || rawSiteJsonBusy || !gatewaySyncSiteId.trim()}
+                    onClick={async () => {
+                      const id = gatewaySyncSiteId.trim();
+                      if (!id) return;
+                      setRawSiteJsonBusy(true);
+                      setRawSiteJsonError(null);
+                      try {
+                        const res = await fetchGateway(`/api/sites/${encodeURIComponent(id)}`);
+                        if (!res.ok) {
+                          setRawSiteJsonText(null);
+                          setRawSiteJsonError(
+                            res.status === 404
+                              ? 'Site file not found on gateway'
+                              : 'Could not load site JSON from gateway',
+                          );
+                          return;
+                        }
+                        const j = (await res.json()) as unknown;
+                        setRawSiteJsonText(JSON.stringify(j, null, 2));
+                      } catch {
+                        setRawSiteJsonText(null);
+                        setRawSiteJsonError('Could not load site JSON from gateway');
+                      } finally {
+                        setRawSiteJsonBusy(false);
+                      }
+                    }}
+                  >
+                    {rawSiteJsonBusy ? 'Loading JSON…' : 'View raw JSON'}
                   </button>
                   <button
                     type='button'
@@ -212,6 +323,41 @@ export function SiteSetupPage(p: SiteSetupPageProps) {
                     Save to gateway
                   </button>
                 </div>
+                {rawSiteJsonError ? (
+                  <div className='help-text u-mt-sm' role='status'>
+                    {rawSiteJsonError}
+                  </div>
+                ) : null}
+                {rawSiteJsonText ? (
+                  <details className='u-mt-md' open>
+                    <summary className='help-text'>Raw site JSON (read-only)</summary>
+                    <pre
+                      style={{
+                        maxHeight: 260,
+                        overflow: 'auto',
+                        background: 'rgba(0,0,0,0.05)',
+                        padding: 12,
+                        borderRadius: 8,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {rawSiteJsonText}
+                    </pre>
+                    <div className='panel-actions u-mt-sm'>
+                      <button
+                        type='button'
+                        className='btn btn--secondary'
+                        onClick={() => {
+                          setRawSiteJsonText(null);
+                          setRawSiteJsonError(null);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </details>
+                ) : null}
               </div>
             ) : null}
             <div className='panel'>

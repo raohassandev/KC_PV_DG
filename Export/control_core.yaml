@@ -1,103 +1,632 @@
-sensor:
-  - platform: template
-    id: pv_command_percent_sensor
-    name: "PV Command Percent"
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    lambda: "return id(pv_cmd_percent_internal);"
-    web_server:
-      sorting_group_id: grp_overview
-      sorting_weight: 11
+site:
+  name: "New Site"
+  board_name: "pv-dg-controller"
+  board_ip: "pv-dg-controller.local"
+  wifi_ssid: "Rao"
+  customer_name: ""
+  timezone: "Asia/Karachi"
+  controller_runtime_mode: "sync_controller"
+  sync_profile_id: "huawei-default"
+  dzx_profile_id: "huawei-meter-v1"
 
-  - platform: template
-    id: pv_command_kw_sensor
-    name: "PV Command kW"
-    unit_of_measurement: "kW"
-    accuracy_decimals: 2
-    lambda: "return id(pv_cmd_kw_internal);"
-    web_server:
-      sorting_group_id: grp_overview
-      sorting_weight: 12
+topology:
+  type: SINGLE_BUS
+  tie_signal_present: false
 
-  - platform: template
-    id: control_error_sensor
-    name: "Control Error"
-    unit_of_measurement: "kW"
-    accuracy_decimals: 2
-    lambda: "return id(control_error_kw);"
-    web_server:
-      sorting_group_id: grp_overview
-      sorting_weight: 13
+policy:
+  net_metering_enabled: true
+  grid_operating_mode: zero_export
+  export_setpoint_kw: 0
+  zero_export_deadband_kw: 1
+  reverse_margin_kw: 2
+  ramp_up_pct: 3
+  ramp_down_pct: 10
+  fast_drop_pct: 25
+  meter_timeout_sec: 10
+  control_interval_sec: 1
+  generator_minimum_override_enabled: false
+  diesel_minimum_load_pct: 30
+  gas_minimum_load_pct: 50
+  fallback_mode: reduce_to_safe_min
 
-interval:
-  - interval: 1s
-    then:
-      - lambda: |-
-          if (!id(enable_grid_meter).state) return;
-          if (!isnan(id(grid_total_kw).state)) {
-            id(filtered_grid_kw) = 0.7f * id(filtered_grid_kw) + 0.3f * id(grid_total_kw).state;
-          }
+device_catalog:
+  - value: "none"
+    label: "Unused"
+    description: "Slot is reserved but not active."
+    ui_hint: "Use this for a placeholder slot."
+    roles: ["none", "grid_meter", "generator_meter", "inverter"]
+  - value: "em500"
+    label: "EM500 Meter"
+    description: "Current validated EM500 / Rozwell meter template."
+    ui_hint: "Use for grid metering in the lab configuration."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/EM500 Register Data-New (1).pdf"
+  - value: "em500_v2"
+    label: "EM500 Meter v2"
+    description: "Future EM500 variant or alternative register mapping."
+    ui_hint: "Use when the meter model is EM500-compatible but not identical."
+    roles: ["grid_meter", "generator_meter"]
+  - value: "em500_generator"
+    label: "EM500 Generator Meter"
+    description: "EM500 template reused for generator metering roles."
+    ui_hint: "Use for generator-side meter roles on the same RS485 bus."
+    roles: ["generator_meter"]
+  - value: "wm15"
+    label: "Carlo Gavazzi WM15"
+    description: "Three-phase analyzer / energy meter. Register map in repo; firmware YAML not bundled until mapped like EM500."
+    ui_hint: "Select when WM15 is on the RS485 bus. Requires a dedicated ESPHome meter package before deploy."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/Mannual/Energy Analyzer/Carlo Gavazzi WM15 Rs-485 Registers.pdf"
+  - value: "kpm37"
+    label: "KPM37 Rail Meter"
+    description: "Three-phase rail-mount smart power meter (instruction manual + registers in repo)."
+    ui_hint: "Use for sites with KPM37 as grid or sub-meter. Map registers before production."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/KPM37-Three-Phase-Rail-Smart-Power-Meter-instruction-Manual-V4.4-2025.3.pdf"
+  - value: "iskra_mc3"
+    label: "Iskra MC3x0x"
+    description: "Iskra MC3 series analyzer / meter per user manual in repo."
+    ui_hint: "Assign to grid or generator metering slot; validate decode on bench."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/Iskra. K_MC3x0x_GB_22444000_Usersmanual_Ver_8.00.pdf"
+  - value: "m4m"
+    label: "M4M (Modbus map)"
+    description: "M4M energy device with spreadsheet Modbus map in repo."
+    ui_hint: "Use when site standardizes on M4M; import map into firmware template."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/M4M Modbus map - v.1.3N.xlsx"
+  - value: "gc_multiline"
+    label: "GC / DST4602 multiline"
+    description: "Carlo Gavazzi GC400–600 / DST4602 / MC family manual in repo."
+    ui_hint: "For multiline panel analyzers on the bus; map holding/input registers per manual."
+    roles: ["grid_meter", "generator_meter"]
+    doc_path: "docs/Energy Analyzer/Mannual/Energy Analyzer/GC400-GC500-GC600-DST4602-MC100MC200-BTB200-BTB100.pdf"
+  - value: "huawei"
+    label: "Huawei Inverter"
+    description: "Huawei inverter template with live read support only for now."
+    ui_hint: "Use for inverter slots that map to a Huawei device."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Huawei/Huawei Inverter Modbus Interface Definitions (V3.0).pdf"
+  - value: "huawei_smartlogger"
+    label: "Huawei SmartLogger"
+    description: "Huawei SmartLogger or companion gateway profile."
+    ui_hint: "Use if the inverter data arrives through a Huawei gateway layer."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Huawei/SmartLogger ModBus Interface Definitions.pdf"
+  - value: "sma"
+    label: "SMA Inverter"
+    description: "SMA Modbus / SunSpec documentation set in repo (site-specific mapping required)."
+    ui_hint: "Catalog entry for SMA; inverter YAML and entity map still site-specific."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/SMA/SMA-Modbus-general-TI-en-10.pdf"
+  - value: "solaredge"
+    label: "SolarEdge Inverter"
+    description: "SolarEdge / TerraMax Modbus interface technical note in repo."
+    ui_hint: "Select for SolarEdge; follow SunSpec / vendor note for register blocks."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Solar edge/se-modbus-interface-for-solaredge-terramax-inverter-technical-note.pdf"
+  - value: "growatt"
+    label: "Growatt Inverter"
+    description: "Growatt Modbus protocol PDF in repo."
+    ui_hint: "Use for Growatt PV inverters; validate ID and block addresses on site."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/GROWATT.pdf"
+  - value: "solax"
+    label: "Solax Inverter"
+    description: "Solax Hybrid X1/X3 G4 Modbus RTU/TCP manual in repo."
+    ui_hint: "Use for Solax hybrid/string inverters per published map."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Solax/Hybrid-X1X3-G4-ModbusTCPRTU-V321-English_0622-pub_240818_001120.pdf"
+  - value: "sungrow"
+    label: "Sungrow Inverter"
+    description: "Sungrow Modbus protocol reference in repo."
+    ui_hint: "Use for Sungrow; confirm model-specific offsets before enabling writes."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Sungrow .pdf"
+  - value: "cps_chint"
+    label: "Chint / CPS (CPS-SCH)"
+    description: "Chint CPS large string inverter Modbus map spec in repo."
+    ui_hint: "Use for CPS SCH series (e.g. 100–125 kW maps); align FW version to PDF."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Chint/CPS_100_125kW-UL-Modbus-Map-Spec-FW-V120_240817_221331.pdf"
+  - value: "knox_asw"
+    label: "Knox / ASW (LT-G2)"
+    description: "ASW LT-G2 series Modbus documentation in repo."
+    ui_hint: "Use for Knox / ASW inverters; map per MB001 / series PDF."
+    roles: ["inverter"]
+    doc_path: "docs/Inverter/Knox/MB001_ASW GEN-Modbus-en_V2.1.5(2).pdf"
+  - value: "generic_modbus"
+    label: "Generic Modbus Device"
+    description: "Fallback profile for a new Modbus meter/inverter template."
+    ui_hint: "Use when you need a new custom device profile."
+    roles: ["grid_meter", "generator_meter", "inverter"]
 
-  - interval: 1s
-    then:
-      - lambda: |-
-          if (!id(controller_enable).state || !id(enable_grid_meter).state) {
-            id(control_error_kw) = 0.0f;
-            id(pv_cmd_kw_internal) = 0.0f;
-            id(pv_cmd_percent_internal) = 0.0f;
-            return;
-          }
+slot_firmware_bundles:
+  - slot_id: "grid_1"
+    role: "grid_meter"
+    device_type: "em500"
+    bundled_modular_yaml: true
+  - slot_id: "gen_1"
+    role: "generator_meter"
+    device_type: "em500"
+    bundled_modular_yaml: true
+  - slot_id: "gen_2"
+    role: "generator_meter"
+    device_type: "em500"
+    bundled_modular_yaml: true
+  - slot_id: "inv_1"
+    role: "inverter"
+    device_type: "huawei"
+    bundled_modular_yaml: true
 
-          if (isnan(id(grid_total_kw).state)) return;
+role_device_options:
+  grid_meter: ["none", "em500", "em500_v2", "wm15", "kpm37", "iskra_mc3", "m4m", "gc_multiline", "generic_modbus"]
+  generator_meter: ["none", "em500", "em500_v2", "em500_generator", "wm15", "kpm37", "iskra_mc3", "m4m", "gc_multiline", "generic_modbus"]
+  inverter: ["none", "huawei", "huawei_smartlogger", "sma", "solaredge", "growatt", "solax", "sungrow", "cps_chint", "knox_asw", "generic_modbus"]
 
-          float measure_kw = id(filtered_grid_kw);
-          float target_kw = 0.0f;
+controller:
+  mode: grid_zero_export
+  pv_rated_kw: 100
+  deadband_kw: 1
+  control_gain: 0.2
+  export_limit_kw: 0
+  import_limit_kw: 0
+  ramp_pct_step: 3
+  min_pv_percent: 0
+  max_pv_percent: 100
 
-          if (id(control_mode).state == "grid_zero_export") {
-            target_kw = 0.0f;
-          } else if (id(control_mode).state == "grid_limited_export") {
-            target_kw = -1.0f * id(export_limit_kw).state;
-          } else if (id(control_mode).state == "grid_limited_import") {
-            target_kw = id(import_limit_kw).state;
-          } else {
-            id(control_error_kw) = 0.0f;
-            id(pv_cmd_kw_internal) = 0.0f;
-            id(pv_cmd_percent_internal) = 0.0f;
-            return;
-          }
+slots:
+  - id: "grid_1"
+    label: "Grid Meter 1"
+    enabled: true
+    device_type: "em500"
+    role: "grid_meter"
+    transport: "rtu"
+    modbus_id: 1
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 1000
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "gen_1"
+    label: "Generator Meter 1"
+    enabled: true
+    device_type: "em500"
+    role: "generator_meter"
+    transport: "rtu"
+    modbus_id: 9
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 500
+    network_id: "main"
+    bus_side: "A"
+    generator_type: "diesel"
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "gen_2"
+    label: "Generator Meter 2"
+    enabled: true
+    device_type: "em500"
+    role: "generator_meter"
+    transport: "rtu"
+    modbus_id: 12
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 500
+    network_id: "main"
+    bus_side: "A"
+    generator_type: "diesel"
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "gen_3"
+    label: "Generator Meter 3"
+    enabled: false
+    device_type: "em500_generator"
+    role: "generator_meter"
+    transport: "rtu"
+    modbus_id: 5
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 500
+    network_id: "main"
+    bus_side: "A"
+    generator_type: "diesel"
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_1"
+    label: "Inverter 1"
+    enabled: true
+    device_type: "huawei"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 21
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_2"
+    label: "Inverter 2"
+    enabled: false
+    device_type: "huawei"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 22
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_3"
+    label: "Inverter 3"
+    enabled: false
+    device_type: "huawei"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 23
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_4"
+    label: "Inverter 4"
+    enabled: false
+    device_type: "huawei"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 24
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_5"
+    label: "Inverter 5"
+    enabled: false
+    device_type: "huawei"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 25
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_6"
+    label: "Inverter 6"
+    enabled: false
+    device_type: "none"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 26
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_7"
+    label: "Inverter 7"
+    enabled: false
+    device_type: "none"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 27
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_8"
+    label: "Inverter 8"
+    enabled: false
+    device_type: "none"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 28
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_9"
+    label: "Inverter 9"
+    enabled: false
+    device_type: "none"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 29
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
+  - id: "inv_10"
+    label: "Inverter 10"
+    enabled: false
+    device_type: "none"
+    role: "inverter"
+    transport: "rtu"
+    modbus_id: 30
+    tcp_host: null
+    tcp_port: 502
+    capacity_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    generator_type: null
+    ip_hint: null
+    notes: null
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
 
-          float error_kw = target_kw - measure_kw;
-          id(control_error_kw) = error_kw;
+sources:
+  grid_meters:
+    - id: "grid_1"
+      label: "Grid Meter 1"
+      transport: "rtu"
+      modbus_id: 1
+      tcp_host: null
+      tcp_port: 502
+      device_type: "em500"
+      capacity_kw: 1000
+      network_id: "main"
+      bus_side: "A"
+      link:
+        serial_baud: 9600
+        serial_parity: "none"
+        serial_stop_bits: 1
+        serial_data_bits: 8
+        rs485_termination: "auto"
+        poll_interval_ms: 1000
+        request_timeout_ms: 1200
+        tcp_host: null
+        tcp_port: 502
+  generator_meters:
+    - id: "gen_1"
+      label: "Generator Meter 1"
+      transport: "rtu"
+      modbus_id: 9
+      tcp_host: null
+      tcp_port: 502
+      device_type: "em500"
+      capacity_kw: 500
+      network_id: "main"
+      bus_side: "A"
+      generator_type: "diesel"
+      link:
+        serial_baud: 9600
+        serial_parity: "none"
+        serial_stop_bits: 1
+        serial_data_bits: 8
+        rs485_termination: "auto"
+        poll_interval_ms: 1000
+        request_timeout_ms: 1200
+        tcp_host: null
+        tcp_port: 502
+    - id: "gen_2"
+      label: "Generator Meter 2"
+      transport: "rtu"
+      modbus_id: 12
+      tcp_host: null
+      tcp_port: 502
+      device_type: "em500"
+      capacity_kw: 500
+      network_id: "main"
+      bus_side: "A"
+      generator_type: "diesel"
+      link:
+        serial_baud: 9600
+        serial_parity: "none"
+        serial_stop_bits: 1
+        serial_data_bits: 8
+        rs485_termination: "auto"
+        poll_interval_ms: 1000
+        request_timeout_ms: 1200
+        tcp_host: null
+        tcp_port: 502
 
-          float pv_pct = id(pv_cmd_percent_internal);
+inverter_groups:
+  - id: "inv_1"
+    label: "Inverter 1"
+    transport: "rtu"
+    modbus_id: 21
+    tcp_host: null
+    tcp_port: 502
+    device_type: "huawei"
+    rated_kw: 100
+    network_id: "main"
+    bus_side: "A"
+    link:
+      serial_baud: 9600
+      serial_parity: "none"
+      serial_stop_bits: 1
+      serial_data_bits: 8
+      rs485_termination: "auto"
+      poll_interval_ms: 1000
+      request_timeout_ms: 1200
+      tcp_host: null
+      tcp_port: 502
 
-          if (fabsf(error_kw) >= id(deadband_kw).state) {
-            float delta_pct = (error_kw / fmaxf(id(pv_rated_kw).state, 1.0f)) * 100.0f * id(control_gain).state;
-            if (delta_pct > id(ramp_pct_step).state) delta_pct = id(ramp_pct_step).state;
-            if (delta_pct < -id(ramp_pct_step).state) delta_pct = -id(ramp_pct_step).state;
-            pv_pct += delta_pct;
-          }
+derived_zones:
+  - id: "site"
+    summary: "Single zone: 1 grid meter(s), 2 generator meter(s), 1 inverter group(s)"
+    active_source_policy: "zero_export"
+    fallback_mode: "reduce_to_safe_min"
 
-          if (pv_pct < id(min_pv_percent).state) pv_pct = id(min_pv_percent).state;
-          if (pv_pct > id(max_pv_percent).state) pv_pct = id(max_pv_percent).state;
+validation:
+  warnings:
+    - "Multiple generators are configured without override approval"
+  topology_type: "SINGLE_BUS"
+  tie_signal_present: false
+  generator_override_enabled: false
+  network_count: 1
+  dual_bus_state: "single"
 
-          id(pv_cmd_percent_internal) = pv_pct;
-          id(pv_cmd_kw_internal) = (pv_pct / 100.0f) * id(pv_rated_kw).state;
-
-  - interval: 15s
-    then:
-      - lambda: |-
-          ESP_LOGI(
-            "SYS",
-            "IP=%s | SSID=%s | BSSID=%s | MAC=%s | Grid=%.2f kW | PV=%.2f kW | Cmd=%.2f kW | F=%.3f Hz | PF=%.4f | Eimp=%.2f kWh",
-            id(ip_addr).has_state() ? id(ip_addr).state.c_str() : "NA",
-            id(wifi_ssid_sensor).has_state() ? id(wifi_ssid_sensor).state.c_str() : "NA",
-            id(wifi_bssid_sensor).has_state() ? id(wifi_bssid_sensor).state.c_str() : "NA",
-            id(wifi_mac_sensor).has_state() ? id(wifi_mac_sensor).state.c_str() : "NA",
-            isnan(id(grid_total_kw).state) ? 0.0f : id(grid_total_kw).state,
-            isnan(id(inverter_actual_kw).state) ? 0.0f : id(inverter_actual_kw).state,
-            id(pv_cmd_kw_internal),
-            isnan(id(grid_frequency).state) ? 0.0f : id(grid_frequency).state,
-            isnan(id(grid_total_pf).state) ? 0.0f : id(grid_total_pf).state,
-            isnan(id(grid_import_kwh).state) ? 0.0f : id(grid_import_kwh).state
-          );

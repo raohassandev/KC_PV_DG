@@ -28,7 +28,7 @@ import {
   type ProvisionStatusResponse,
 } from './boardDiscovery';
 import { deriveZones as deriveCommissioningZones } from './policySchema';
-import { type SourceSlot, type SiteConfig, defaultSite } from './siteTemplates';
+import { type SourceSlot, type SiteConfig, defaultSite, normalizeSiteConfig } from './siteTemplates';
 import type { FeaturePageId } from './features/dynamic-zero-export/navigation';
 import {
   operationPageLabel,
@@ -56,12 +56,23 @@ function isIpv4(host: string): boolean {
   });
 }
 
+function readSiteFromStorage(): SiteConfig {
+  try {
+    const raw = localStorage.getItem('pvdg.currentSite');
+    if (!raw) return defaultSite;
+    return normalizeSiteConfig(JSON.parse(raw) as SiteConfig);
+  } catch {
+    return defaultSite;
+  }
+}
+
 function App() {
   const {
     authenticated,
     logout,
     role,
     session,
+    installerId,
     fetchGateway,
     siteGatewaySyncAvailable,
   } = useAuth();
@@ -76,7 +87,7 @@ function App() {
   const [dzxEnterTab, setDzxEnterTab] = useState<FeaturePageId>('energy-history');
   const ownerLandingDoneRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
-  const [config, setConfig] = useState<SiteConfig>(defaultSite);
+  const [config, setConfig] = useState<SiteConfig>(readSiteFromStorage);
   const [profileName, setProfileName] = useState('default');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [hardwareSummaryOpen, setHardwareSummaryOpen] = useState(false);
@@ -93,7 +104,17 @@ function App() {
   const [provisionBusy, setProvisionBusy] = useState(false);
   const [provisionResult, setProvisionResult] = useState<ProvisionStatusResponse | null>(null);
   const [provisionError, setProvisionError] = useState<string | null>(null);
-  const [gatewaySiteList, setGatewaySiteList] = useState<Array<{ siteId: string }>>([]);
+  const [gatewaySiteList, setGatewaySiteList] = useState<
+    Array<{
+      siteId: string;
+      _receivedAt?: string;
+      _mqttTopic?: string;
+      controllerRuntimeMode?: string;
+      pwaSiteConfig?: unknown;
+      installer_id?: string;
+      installerId?: string;
+    }>
+  >([]);
   const [gatewaySyncSiteId, setGatewaySyncSiteId] = useState(session.siteId);
   const [gatewaySyncBusy, setGatewaySyncBusy] = useState(false);
   const autoConnectRanRef = useRef(false);
@@ -294,17 +315,6 @@ function App() {
   }, [config]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('pvdg.currentSite');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as SiteConfig;
-      setConfig((prev) => ({ ...prev, ...parsed }));
-    } catch {
-      // Keep defaults if persisted state is invalid.
-    }
-  }, []);
-
-  useEffect(() => {
     setGatewaySyncSiteId(session.siteId);
   }, [session.siteId]);
 
@@ -317,8 +327,32 @@ function App() {
         setNotice('Could not load gateway site list');
         return;
       }
-      const data = (await res.json()) as { sites: Array<{ siteId: string }> };
-      setGatewaySiteList(data.sites ?? []);
+      const data = (await res.json()) as { sites: Array<Record<string, unknown>> };
+      const sites = (data.sites ?? [])
+        .map((s) => {
+          const siteId = typeof s.siteId === 'string' ? s.siteId : '';
+          if (!siteId) return null;
+          return {
+            siteId,
+            _receivedAt: typeof s._receivedAt === 'string' ? s._receivedAt : undefined,
+            _mqttTopic: typeof s._mqttTopic === 'string' ? s._mqttTopic : undefined,
+            controllerRuntimeMode:
+              typeof s.controllerRuntimeMode === 'string' ? s.controllerRuntimeMode : undefined,
+            pwaSiteConfig: s.pwaSiteConfig,
+            installer_id: typeof s.installer_id === 'string' ? s.installer_id : undefined,
+            installerId: typeof s.installerId === 'string' ? s.installerId : undefined,
+          };
+        })
+        .filter(Boolean) as Array<{
+        siteId: string;
+        _receivedAt?: string;
+        _mqttTopic?: string;
+        controllerRuntimeMode?: string;
+        pwaSiteConfig?: unknown;
+        installer_id?: string;
+        installerId?: string;
+      }>;
+      setGatewaySiteList(sites);
     } catch {
       setNotice('Could not load gateway site list');
     } finally {
@@ -333,8 +367,32 @@ function App() {
       try {
         const res = await fetchGateway('/api/sites');
         if (cancelled || !res.ok) return;
-        const data = (await res.json()) as { sites: Array<{ siteId: string }> };
-        if (!cancelled) setGatewaySiteList(data.sites ?? []);
+        const data = (await res.json()) as { sites: Array<Record<string, unknown>> };
+        const sites = (data.sites ?? [])
+          .map((s) => {
+            const siteId = typeof s.siteId === 'string' ? s.siteId : '';
+            if (!siteId) return null;
+            return {
+              siteId,
+              _receivedAt: typeof s._receivedAt === 'string' ? s._receivedAt : undefined,
+              _mqttTopic: typeof s._mqttTopic === 'string' ? s._mqttTopic : undefined,
+              controllerRuntimeMode:
+                typeof s.controllerRuntimeMode === 'string' ? s.controllerRuntimeMode : undefined,
+              pwaSiteConfig: s.pwaSiteConfig,
+              installer_id: typeof s.installer_id === 'string' ? s.installer_id : undefined,
+              installerId: typeof s.installerId === 'string' ? s.installerId : undefined,
+            };
+          })
+          .filter(Boolean) as Array<{
+          siteId: string;
+          _receivedAt?: string;
+          _mqttTopic?: string;
+          controllerRuntimeMode?: string;
+          pwaSiteConfig?: unknown;
+          installer_id?: string;
+          installerId?: string;
+        }>;
+        if (!cancelled) setGatewaySiteList(sites);
       } catch {
         /* offline */
       }
@@ -709,7 +767,9 @@ function App() {
         )}
         {page === 'dashboard' && (
           <DashboardOverview
+            siteName={config.siteName}
             boardIp={config.boardIp}
+            slots={config.slots}
             role={session.role}
             autoConnectStatus={autoConnectStatus}
             onAutoConnect={() => autoConnectController({ silent: false })}
@@ -723,6 +783,7 @@ function App() {
         {page === 'site' && (
           <SiteSetupPage
             siteGatewaySyncAvailable={siteGatewaySyncAvailable}
+            installerId={installerId}
             fetchGateway={fetchGateway}
             gatewaySyncSiteId={gatewaySyncSiteId}
             setGatewaySyncSiteId={setGatewaySyncSiteId}
@@ -792,7 +853,7 @@ function App() {
 
         {page === 'resources' && <BoardResourcesPage boardIp={config.boardIp} />}
 
-        {page === 'control' && <ManufacturerControlPage boardIp={config.boardIp} />}
+        {page === 'control' && <ManufacturerControlPage />}
 
         {page === 'drivers' && <DriversLibraryPage />}
 

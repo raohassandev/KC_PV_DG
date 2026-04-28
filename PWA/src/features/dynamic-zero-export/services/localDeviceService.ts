@@ -24,10 +24,6 @@ export type LocalDeviceService = {
   setProviderMode(mode: ProviderMode): Promise<void>;
   updateConnectivitySettings(body: unknown): Promise<void>;
   acknowledgeAlerts(ids: string[]): Promise<void>;
-  simulateLiveStatus(body: Partial<LiveStatusSnapshot>): Promise<void>;
-  simulateConnectivity(body: Partial<ConnectivitySnapshot>): Promise<void>;
-  simulateAlerts(body: unknown): Promise<void>;
-  appendHistory(body: unknown): Promise<void>;
 };
 
 export function createLocalDeviceService(
@@ -35,8 +31,7 @@ export function createLocalDeviceService(
   baseUrl = resolveDzxApiBaseUrl(),
 ): LocalDeviceService {
   const provider = createDzxProvider(mode, baseUrl);
-  const client =
-    mode !== 'mock' && baseUrl !== undefined ? createDzxApiClient(baseUrl) : undefined;
+  const client = baseUrl !== undefined ? createDzxApiClient(baseUrl) : undefined;
   return {
     mode,
     client,
@@ -66,26 +61,6 @@ export function createLocalDeviceService(
     async acknowledgeAlerts(ids) {
       if (client) {
         await client.acknowledgeAlerts(ids);
-      }
-    },
-    async simulateLiveStatus(body) {
-      if (client) {
-        await client.simulateLiveStatus(body);
-      }
-    },
-    async simulateConnectivity(body) {
-      if (client) {
-        await client.simulateConnectivity(body);
-      }
-    },
-    async simulateAlerts(body) {
-      if (client) {
-        await client.simulateAlerts(body);
-      }
-    },
-    async appendHistory(body) {
-      if (client) {
-        await client.appendHistory(body);
       }
     },
   };

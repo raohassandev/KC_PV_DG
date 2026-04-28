@@ -3,20 +3,24 @@ import {
   type ConnectivitySnapshot,
   type PwaRole,
 } from '../../../../../dynamic_zero_export/pwa';
-import { connectivityFixture } from '../mock/connectivity';
+import { emptyConnectivitySnapshot } from '../emptyMonitoringState';
 import { createDzxProvider, type ProviderMode } from './provider';
 import { loadProviderMode } from './liveStatusService';
 
 const CONNECTIVITY_KEY = 'dzx.connectivity';
 
+function baseSnapshot(): ConnectivitySnapshot {
+  return emptyConnectivitySnapshot();
+}
+
 export function loadConnectivitySnapshot(): ConnectivitySnapshot {
-  if (typeof window === 'undefined') return connectivityFixture;
+  if (typeof window === 'undefined') return baseSnapshot();
   try {
     const raw = localStorage.getItem(CONNECTIVITY_KEY);
-    if (!raw) return connectivityFixture;
-    return { ...connectivityFixture, ...(JSON.parse(raw) as Partial<ConnectivitySnapshot>) };
+    if (!raw) return baseSnapshot();
+    return { ...baseSnapshot(), ...(JSON.parse(raw) as Partial<ConnectivitySnapshot>) };
   } catch {
-    return connectivityFixture;
+    return baseSnapshot();
   }
 }
 

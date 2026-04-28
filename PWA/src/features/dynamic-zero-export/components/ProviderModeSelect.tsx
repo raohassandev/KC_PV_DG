@@ -7,7 +7,7 @@ type Props = {
   disabled?: boolean;
 };
 
-/** Local simulator vs API — persisted under `dzx.providerMode`. */
+/** Monitoring API base URL resolution — persisted under `dzx.providerMode`. */
 export function ProviderModeSelect({ value, onModeChange, disabled }: Props) {
   return (
     <label>

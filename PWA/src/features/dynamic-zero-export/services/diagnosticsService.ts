@@ -18,11 +18,11 @@ export type DiagnosticsFetchOptions = {
 };
 
 export async function fetchDiagnosticsApiBundle(
-  mode: ProviderMode,
+  _mode: ProviderMode,
   options?: DiagnosticsFetchOptions,
 ): Promise<DiagnosticsApiBundle> {
   const baseUrl = options?.baseUrl ?? resolveDzxApiBaseUrl();
-  const useClient = mode !== 'mock' && baseUrl !== undefined;
+  const useClient = baseUrl !== undefined;
   if (!useClient) {
     return { topology: null, device: null, snapshot: null };
   }

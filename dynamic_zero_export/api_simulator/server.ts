@@ -58,8 +58,12 @@ export function createApiServer(port = 8787, storageRoot?: string) {
   return {
     server,
     listen() {
-      return new Promise<http.Server>((resolve) => {
-        server.listen(port, () => resolve(server));
+      return new Promise<http.Server>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(port, '127.0.0.1', () => {
+          server.removeListener('error', reject);
+          resolve(server);
+        });
       });
     },
   };

@@ -15,11 +15,11 @@ export type CommissioningFetchOptions = {
 };
 
 export async function fetchCommissioningApiBundle(
-  mode: ProviderMode,
+  _mode: ProviderMode,
   options?: CommissioningFetchOptions,
 ): Promise<CommissioningApiBundle> {
   const baseUrl = options?.baseUrl ?? resolveDzxApiBaseUrl();
-  const useClient = mode !== 'mock' && baseUrl !== undefined;
+  const useClient = baseUrl !== undefined;
   if (!useClient) {
     return { commissioning: null, configReview: null };
   }

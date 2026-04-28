@@ -25,7 +25,7 @@ test('api client returns the expected snapshot payloads', async () => {
     const device = await client.getDeviceInfo();
     const alerts = await client.getAlerts();
     assert.equal(device.deviceId, 'dzx-001');
-    assert.equal(live.siteName, 'Demo Plant');
+    assert.equal(live.siteName, 'Example site');
     assert.ok(alerts.active.length > 0);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -42,14 +42,15 @@ test('api provider can shape live status and fall back locally', async () => {
     const provider = createDzxProvider('api', `http://127.0.0.1:${port}`);
     const live = await provider.loadLiveStatus('user');
     const connectivity = await provider.loadConnectivity('user');
-    assert.equal(live.siteName, 'Demo Plant');
+    assert.equal(live.siteName, 'Example site');
     assert.equal(connectivity.deviceName, 'Dynamic Zero Export Controller');
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     rmSync(stateDir, { recursive: true, force: true });
   }
 
-  const fallback = createDzxProvider('mock');
-  const live = await fallback.loadLiveStatus('user');
-  assert.equal(live.siteName.length > 0, true);
+  const offline = createDzxProvider('api', undefined);
+  const live = await offline.loadLiveStatus('user');
+  assert.equal(live.siteName, '');
+  assert.equal(live.connectivityLabel, 'Monitoring API unavailable');
 });

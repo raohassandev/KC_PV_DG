@@ -3,12 +3,7 @@ import {
   type EnergyHistorySeries,
   type PwaRole,
 } from '../../../../../dynamic_zero_export/pwa';
-import {
-  decadeHistoryFixture,
-  monthHistoryFixture,
-  todayHistoryFixture,
-  yearHistoryFixture,
-} from '../mock/history';
+import { emptyHistoryBundle } from '../emptyMonitoringState';
 import { aggregateEnergyTotals } from '../types';
 import { createDzxProvider, type ProviderMode } from './provider';
 import { loadProviderMode } from './liveStatusService';
@@ -23,12 +18,7 @@ export type HistoryBundle = {
 };
 
 function defaultBundle(): HistoryBundle {
-  return {
-    today: todayHistoryFixture,
-    month: monthHistoryFixture,
-    year: yearHistoryFixture,
-    decade: decadeHistoryFixture,
-  };
+  return emptyHistoryBundle();
 }
 
 function isHistoryBundle(value: unknown): value is HistoryBundle {

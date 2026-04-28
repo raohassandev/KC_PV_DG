@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
 import { NumberField, SelectField, TextField, ToggleField } from './commissioningFields';
+import { SlotLinkSettingsDialog } from './SlotLinkSettingsDialog';
 import {
   type DeviceType,
   type SourceRole,
   type SourceSlot,
   deviceHelp,
   deviceOptionsForRole,
+  formatSlotLinkSummary,
   roleHelp,
 } from '../siteTemplates';
 import type { DriverMeta } from '../types/driverLibrary';
@@ -52,6 +55,14 @@ export function MappingCard({
   driverOptions?: DriverMeta[];
   compact?: boolean;
 }) {
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const transportRevertRef = useRef<Partial<SourceSlot> | null>(null);
+  const skipTransportDialogRef = useRef(true);
+
+  useEffect(() => {
+    skipTransportDialogRef.current = false;
+  }, []);
+
   const showDriverSelect = slot.role === 'grid_meter' || slot.role === 'inverter';
   const driverSelectOptions: Array<[string, string]> = [
     ['__none__', 'Built-in template (Device Type)'],
@@ -117,41 +128,48 @@ export function MappingCard({
         />
         <SelectField
           label='Transport'
-          help='Per-slot transport: RS485 Modbus RTU on the controller UART, or Modbus TCP to a device on the LAN. A single site can mix RTU and TCP slots; the exported site bundle lists each slot’s transport and TCP host/port for firmware YAML mapping (see Modular_Yaml/modbus_tcp_manager.yaml).'
+          help='RS-485 or RS-232 Modbus RTU on the controller serial port, or Modbus TCP on the LAN. After you change transport, a dialog opens for link timing and serial/TCP parameters (default 9600 N 8 1 on serial).'
           value={slot.transport || 'rtu'}
-          onChange={(v) =>
+          onChange={(v) => {
+            const next = v as 'rtu' | 'tcp' | 'rs232';
+            const prevTransport = slot.transport || 'rtu';
             updateSlot(slot.id, {
-              transport: v as 'rtu' | 'tcp',
-              tcpPort: v === 'tcp' ? slot.tcpPort ?? 502 : slot.tcpPort,
-            })
-          }
+              transport: next,
+              tcpPort: next === 'tcp' ? slot.tcpPort ?? 502 : slot.tcpPort,
+            });
+            if (!skipTransportDialogRef.current) {
+              transportRevertRef.current = { transport: prevTransport };
+              setLinkDialogOpen(true);
+            }
+          }}
           options={[
-            ['rtu', 'rtu (RS485)'],
+            ['rtu', 'rtu (RS-485)'],
+            ['rs232', 'rs232 (RS-232)'],
             ['tcp', 'tcp (Modbus TCP/IP)'],
           ]}
         />
+        <div className='field' style={{ gridColumn: '1 / -1' }}>
+          <div className='field-label'>Link summary</div>
+          <div className='help-text' style={{ marginBottom: 8 }}>
+            {formatSlotLinkSummary(slot)}
+          </div>
+          <button
+            type='button'
+            className='btn btn--secondary'
+            onClick={() => {
+              transportRevertRef.current = null;
+              setLinkDialogOpen(true);
+            }}
+          >
+            Configure link &amp; timing…
+          </button>
+        </div>
         <NumberField
           label='Unit ID'
-          help='Modbus unit/slave ID (RTU slave ID or Modbus TCP unit identifier).'
+          help='Modbus unit/slave ID (RTU/RS-232 slave ID or Modbus TCP unit identifier).'
           value={slot.modbusId}
           onChange={(v) => updateSlot(slot.id, { modbusId: v })}
         />
-        {slot.transport === 'tcp' ? (
-          <>
-            <TextField
-              label='TCP Host'
-              help='IP or hostname of the Modbus TCP device (e.g., PC simulator or meter).'
-              value={slot.tcpHost || ''}
-              onChange={(v) => updateSlot(slot.id, { tcpHost: v })}
-            />
-            <NumberField
-              label='TCP Port'
-              help='Modbus TCP port (default 502).'
-              value={slot.tcpPort ?? 502}
-              onChange={(v) => updateSlot(slot.id, { tcpPort: v })}
-            />
-          </>
-        ) : null}
         <NumberField
           label='Capacity kW'
           help='Nominal capacity used for documentation and sizing.'
@@ -210,6 +228,22 @@ export function MappingCard({
       {!compact ? (
         <div className='slot-help'>Template hint: {templateHelp[slot.deviceType]}</div>
       ) : null}
+
+      <SlotLinkSettingsDialog
+        open={linkDialogOpen}
+        slot={slot}
+        onClose={() => {
+          if (transportRevertRef.current) {
+            updateSlot(slot.id, transportRevertRef.current);
+            transportRevertRef.current = null;
+          }
+          setLinkDialogOpen(false);
+        }}
+        onSave={(patch) => {
+          updateSlot(slot.id, patch);
+          transportRevertRef.current = null;
+        }}
+      />
     </div>
   );
 }

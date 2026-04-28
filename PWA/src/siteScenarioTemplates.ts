@@ -31,9 +31,18 @@ function patchSlots(
   config: SiteConfig,
   patches: Partial<Record<string, Partial<SourceSlot>>>,
 ) {
-  for (const slot of config.slots) {
-    const p = patches[slot.id];
-    if (p) Object.assign(slot, p);
+  const byId = new Map(config.slots.map((s) => [s.id, s]));
+  for (const id of Object.keys(patches)) {
+    const p = patches[id as keyof typeof patches];
+    if (!p) continue;
+    const cur = byId.get(id);
+    if (cur) {
+      Object.assign(cur, p);
+    } else {
+      const row = { id, ...p } as SourceSlot;
+      config.slots.push(row);
+      byId.set(id, row);
+    }
   }
 }
 
@@ -63,24 +72,24 @@ function buildSingleBus(): SiteConfig {
       enabled: false,
       deviceType: 'none',
       role: 'generator_meter',
-      modbusId: 3,
+      modbusId: 11,
       busSide: 'A',
       networkId: 'main',
       generatorType: 'diesel',
     }),
-    gen_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 4, busSide: 'A' }),
+    gen_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 12, busSide: 'A' }),
     gen_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 5, busSide: 'A' }),
     gen_4: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 6, busSide: 'A' }),
     inv_1: baseRtuSlot({
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
-      modbusId: 10,
+      modbusId: 21,
       busSide: 'A',
       networkId: 'main',
     }),
-    inv_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 11, busSide: 'A' }),
-    inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 12, busSide: 'A' }),
+    inv_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 22, busSide: 'A' }),
+    inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 23, busSide: 'A' }),
   });
   c.commissioningScenarioTemplateId = 'topology_single_bus';
   return c;
@@ -99,7 +108,7 @@ function buildSingleBusMultiGen(): SiteConfig {
       enabled: true,
       deviceType: 'em500_generator',
       role: 'generator_meter',
-      modbusId: 3,
+      modbusId: 11,
       capacityKw: 350,
       busSide: 'A',
       networkId: 'main',
@@ -109,7 +118,7 @@ function buildSingleBusMultiGen(): SiteConfig {
       enabled: true,
       deviceType: 'em500_generator',
       role: 'generator_meter',
-      modbusId: 4,
+      modbusId: 12,
       capacityKw: 350,
       busSide: 'A',
       networkId: 'main',
@@ -157,20 +166,20 @@ function buildDualBus(): SiteConfig {
       enabled: true,
       deviceType: 'em500_generator',
       role: 'generator_meter',
-      modbusId: 3,
+      modbusId: 11,
       capacityKw: 500,
       busSide: 'B',
       networkId: 'bus_b',
       generatorType: 'diesel',
     }),
-    gen_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 4, busSide: 'B' }),
+    gen_2: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 12, busSide: 'B' }),
     gen_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 5, busSide: 'B' }),
     gen_4: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'generator_meter', modbusId: 6, busSide: 'B' }),
     inv_1: baseRtuSlot({
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
-      modbusId: 10,
+      modbusId: 21,
       capacityKw: 100,
       busSide: 'A',
       networkId: 'main',
@@ -179,12 +188,12 @@ function buildDualBus(): SiteConfig {
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
-      modbusId: 11,
+      modbusId: 22,
       capacityKw: 100,
       busSide: 'B',
       networkId: 'bus_b',
     }),
-    inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 12, busSide: 'B' }),
+    inv_3: baseRtuSlot({ enabled: false, deviceType: 'none', role: 'inverter', modbusId: 23, busSide: 'B' }),
   });
   c.commissioningScenarioTemplateId = 'topology_dual_bus';
   return c;
@@ -213,7 +222,7 @@ function buildDualBusCombined(): SiteConfig {
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
-      modbusId: 10,
+      modbusId: 21,
       capacityKw: 120,
       busSide: 'both',
       networkId: 'main',
@@ -222,7 +231,7 @@ function buildDualBusCombined(): SiteConfig {
       enabled: true,
       deviceType: 'huawei',
       role: 'inverter',
-      modbusId: 11,
+      modbusId: 22,
       capacityKw: 120,
       busSide: 'both',
       networkId: 'main',
