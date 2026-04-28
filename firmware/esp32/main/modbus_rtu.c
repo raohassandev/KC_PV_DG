@@ -38,12 +38,11 @@ esp_err_t pvdg_modbus_init(void) {
   return ESP_OK;
 }
 
-esp_err_t pvdg_modbus_read_input_regs(uint8_t slave_id, uint16_t addr, uint16_t count, uint16_t *out_regs) {
+static esp_err_t read_regs_common(uint8_t slave_id, uint8_t fc, uint16_t addr, uint16_t count, uint16_t *out_regs) {
   if (!out_regs || count == 0 || count > 64) return ESP_ERR_INVALID_ARG;
-
   uint8_t req[8];
   req[0] = slave_id;
-  req[1] = 0x04; // Read Input Registers
+  req[1] = fc;
   req[2] = (uint8_t)(addr >> 8);
   req[3] = (uint8_t)(addr & 0xFF);
   req[4] = (uint8_t)(count >> 8);
@@ -56,27 +55,30 @@ esp_err_t pvdg_modbus_read_input_regs(uint8_t slave_id, uint16_t addr, uint16_t 
   int w = uart_write_bytes(PVDG_MB_UART, (const char *)req, sizeof(req));
   if (w != (int)sizeof(req)) return ESP_FAIL;
 
-  // Response: id, fc, byteCount, data..., crcLo, crcHi
   const int want = 3 + (int)(count * 2) + 2;
   uint8_t resp[3 + 128 + 2];
-  int r = uart_read_bytes(PVDG_MB_UART, resp, want, pdMS_TO_TICKS(350));
+  int r = uart_read_bytes(PVDG_MB_UART, resp, want, pdMS_TO_TICKS(450));
   if (r < 5) return ESP_ERR_TIMEOUT;
-
-  // Handle exception: id, fc|0x80, code, crc(2)
   if (resp[0] != slave_id) return ESP_FAIL;
-  if (resp[1] == (uint8_t)(0x84)) return ESP_FAIL;
-  if (resp[1] != 0x04) return ESP_FAIL;
+  if (resp[1] == (uint8_t)(fc | 0x80)) return ESP_FAIL;
+  if (resp[1] != fc) return ESP_FAIL;
   if (resp[2] != (uint8_t)(count * 2)) return ESP_FAIL;
   if (r != want) return ESP_ERR_INVALID_SIZE;
-
   uint16_t got_crc = (uint16_t)resp[r - 2] | ((uint16_t)resp[r - 1] << 8);
   uint16_t calc = crc16_modbus(resp, (size_t)r - 2);
   if (got_crc != calc) return ESP_ERR_INVALID_CRC;
-
   const uint8_t *data = &resp[3];
   for (uint16_t i = 0; i < count; i++) {
     out_regs[i] = ((uint16_t)data[i * 2] << 8) | (uint16_t)data[i * 2 + 1];
   }
   return ESP_OK;
+}
+
+esp_err_t pvdg_modbus_read_input_regs(uint8_t slave_id, uint16_t addr, uint16_t count, uint16_t *out_regs) {
+  return read_regs_common(slave_id, 0x04, addr, count, out_regs);
+}
+
+esp_err_t pvdg_modbus_read_holding_regs(uint8_t slave_id, uint16_t addr, uint16_t count, uint16_t *out_regs) {
+  return read_regs_common(slave_id, 0x03, addr, count, out_regs);
 }
 
