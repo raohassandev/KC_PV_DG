@@ -15,6 +15,29 @@ static const char *TAG = "pvdg_http";
 
 static httpd_handle_t s_server = NULL;
 
+static bool token_ok(httpd_req_t *req) {
+  char *tok = NULL;
+  if (pvdg_nvs_load_token(&tok) != ESP_OK || !tok || !tok[0]) {
+    if (tok) free(tok);
+    // Not paired yet -> allow.
+    return true;
+  }
+  char hdr[96] = {0};
+  bool ok = false;
+  if (httpd_req_get_hdr_value_str(req, "X-PVDG-Token", hdr, sizeof(hdr)) == ESP_OK) {
+    ok = (strcmp(hdr, tok) == 0);
+  }
+  free(tok);
+  return ok;
+}
+
+static esp_err_t require_token(httpd_req_t *req) {
+  if (token_ok(req)) return ESP_OK;
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_status(req, "401 Unauthorized");
+  return httpd_resp_send(req, "{\"error\":\"unauthorized\"}", HTTPD_RESP_USE_STRLEN);
+}
+
 static esp_err_t send_json(httpd_req_t *req, cJSON *obj, int status) {
   char *body = cJSON_PrintUnformatted(obj);
   if (!body) return ESP_ERR_NO_MEM;
@@ -43,11 +66,52 @@ static esp_err_t whoami_get(httpd_req_t *req) {
   cJSON_AddBoolToObject(caps, "provisionWifi", true);
   cJSON_AddBoolToObject(caps, "siteConfig", true);
   cJSON_AddBoolToObject(caps, "esphomeEntityEndpoints", true);
+  cJSON_AddBoolToObject(caps, "pairing", true);
   cJSON_AddItemToObject(root, "capabilities", caps);
+
+  char *tok = NULL;
+  bool paired = (pvdg_nvs_load_token(&tok) == ESP_OK && tok && tok[0]);
+  if (tok) free(tok);
+  cJSON_AddBoolToObject(root, "paired", paired);
 
   esp_err_t err = send_json(req, root, 200);
   cJSON_Delete(root);
   return err;
+}
+
+static void rand_hex(char *out, size_t out_len) {
+  uint8_t b[16];
+  for (int i = 0; i < 16; i++) b[i] = (uint8_t)(esp_random() & 0xff);
+  const char *hex = "0123456789abcdef";
+  size_t n = out_len - 1;
+  size_t j = 0;
+  for (int i = 0; i < 16 && j + 1 < n; i++) {
+    out[j++] = hex[(b[i] >> 4) & 0xF];
+    out[j++] = hex[b[i] & 0xF];
+  }
+  out[j] = '\0';
+}
+
+static esp_err_t pair_post(httpd_req_t *req) {
+  // If already paired, return 409.
+  char *tok = NULL;
+  if (pvdg_nvs_load_token(&tok) == ESP_OK && tok && tok[0]) {
+    if (tok) free(tok);
+    httpd_resp_set_status(req, "409 Conflict");
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, "{\"error\":\"already_paired\"}", HTTPD_RESP_USE_STRLEN);
+  }
+  if (tok) free(tok);
+
+  char new_tok[48] = {0};
+  rand_hex(new_tok, sizeof(new_tok));
+  esp_err_t err = pvdg_nvs_save_token(new_tok);
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  cJSON_AddStringToObject(out, "token", new_tok);
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
 }
 
 static esp_err_t read_body(httpd_req_t *req, char **out, size_t *out_len) {
@@ -79,6 +143,7 @@ static void set_job(const char *state, const char *msg) {
 }
 
 static esp_err_t provision_wifi_post(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
   char *body = NULL;
   size_t body_len = 0;
   if (read_body(req, &body, &body_len) != ESP_OK) {
@@ -118,6 +183,7 @@ static esp_err_t provision_wifi_post(httpd_req_t *req) {
 }
 
 static esp_err_t provision_status_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
   // Update state based on IP presence
   char ip[16] = {0};
   if (pvdg_wifi_get_ip(ip) == ESP_OK && ip[0]) {
@@ -133,6 +199,7 @@ static esp_err_t provision_status_get(httpd_req_t *req) {
 }
 
 static esp_err_t site_config_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
   char *json = NULL;
   esp_err_t err = pvdg_nvs_load_site_json(&json);
   if (err != ESP_OK || !json) {
@@ -147,6 +214,7 @@ static esp_err_t site_config_get(httpd_req_t *req) {
 }
 
 static esp_err_t site_config_put(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
   char *body = NULL;
   size_t body_len = 0;
   if (read_body(req, &body, &body_len) != ESP_OK) {
@@ -379,6 +447,9 @@ esp_err_t pvdg_http_start(void) {
   httpd_register_uri_handler(s_server, &scg);
   httpd_uri_t scp = {.uri = "/site/config", .method = HTTP_PUT, .handler = site_config_put};
   httpd_register_uri_handler(s_server, &scp);
+
+  httpd_uri_t pair = {.uri = "/pair", .method = HTTP_POST, .handler = pair_post};
+  httpd_register_uri_handler(s_server, &pair);
 
   httpd_uri_t snap = {.uri = "/telemetry/snapshot", .method = HTTP_GET, .handler = telemetry_snapshot_get};
   httpd_register_uri_handler(s_server, &snap);

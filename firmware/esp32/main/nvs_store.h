@@ -15,3 +15,8 @@ esp_err_t pvdg_nvs_save_wifi(const pvdg_wifi_creds_t *creds);
 esp_err_t pvdg_nvs_load_site_json(char **out_json);   // malloc()'d, caller frees
 esp_err_t pvdg_nvs_save_site_json(const char *json);
 
+// Commissioning auth token (shared secret stored in NVS).
+// When set, sensitive endpoints require `X-PVDG-Token: <token>`.
+esp_err_t pvdg_nvs_load_token(char **out_token); // malloc()'d, caller frees
+esp_err_t pvdg_nvs_save_token(const char *token);
+

@@ -93,3 +93,41 @@ esp_err_t pvdg_nvs_save_site_json(const char *json) {
   return err;
 }
 
+esp_err_t pvdg_nvs_load_token(char **out_token) {
+  if (!out_token) return ESP_ERR_INVALID_ARG;
+  *out_token = NULL;
+  nvs_handle_t h;
+  esp_err_t err = nvs_open(NS, NVS_READONLY, &h);
+  if (err != ESP_OK) return err;
+  size_t len = 0;
+  err = nvs_get_str(h, "auth_token", NULL, &len);
+  if (err != ESP_OK || len == 0) {
+    nvs_close(h);
+    return err;
+  }
+  char *buf = (char *)malloc(len);
+  if (!buf) {
+    nvs_close(h);
+    return ESP_ERR_NO_MEM;
+  }
+  err = nvs_get_str(h, "auth_token", buf, &len);
+  nvs_close(h);
+  if (err != ESP_OK) {
+    free(buf);
+    return err;
+  }
+  *out_token = buf;
+  return ESP_OK;
+}
+
+esp_err_t pvdg_nvs_save_token(const char *token) {
+  if (!token || token[0] == '\0') return ESP_ERR_INVALID_ARG;
+  nvs_handle_t h;
+  esp_err_t err = nvs_open(NS, NVS_READWRITE, &h);
+  if (err != ESP_OK) return err;
+  err = nvs_set_str(h, "auth_token", token);
+  if (err == ESP_OK) err = nvs_commit(h);
+  nvs_close(h);
+  return err;
+}
+
