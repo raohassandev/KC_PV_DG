@@ -9,6 +9,10 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { replaceSiteConfig } from '../store/slices/siteConfigSlice';
 import { loadProfile, saveProfile } from '../store/profiles';
 import type { SiteConfig, SourceSlot } from '../domain/siteProfileSchema';
+import {
+  readSiteConfigFromController,
+  writeSiteConfigToController,
+} from '../store/thunks/siteConfigThunks';
 
 function enabledCounts(slots: SourceSlot[]) {
   const enabled = slots.filter((s) => s.enabled);
@@ -77,6 +81,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function ValidationScreen() {
   const dispatch = useAppDispatch();
   const config = useAppSelector((s) => s.siteConfig.config);
+  const baseUrl = useAppSelector((s) => s.connection.boardBaseUrl);
   const [profileName, setProfileName] = useState('site-profile');
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -114,6 +119,32 @@ export function ValidationScreen() {
 
       <Card title='Derived zones'>
         <Text style={styles.lines}>{zoneLines.length ? zoneLines.map((x) => `• ${x}`).join('\n') : '—'}</Text>
+      </Card>
+
+      <Card title='Controller sync (local REST)'>
+        <Text style={styles.small}>
+          Controller base URL: <Text style={styles.monoInline}>{baseUrl || '—'}</Text>
+        </Text>
+        <ButtonRow>
+          <SecondaryButton
+            label='Read from controller'
+            onPress={() => {
+              void dispatch(readSiteConfigFromController())
+                .unwrap()
+                .then(() => setNotice('Loaded SiteConfig from controller'))
+                .catch((e) => setNotice(e instanceof Error ? e.message : 'Read failed'));
+            }}
+          />
+          <PrimaryButton
+            label='Write to controller'
+            onPress={() => {
+              void dispatch(writeSiteConfigToController())
+                .unwrap()
+                .then(() => setNotice('Saved SiteConfig to controller'))
+                .catch((e) => setNotice(e instanceof Error ? e.message : 'Write failed'));
+            }}
+          />
+        </ButtonRow>
       </Card>
 
       <Card title='Profiles (local)'>
@@ -158,5 +189,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 14, fontWeight: '700', color: colors.text },
   lines: { fontSize: 13, color: colors.text, lineHeight: 18, fontFamily: 'Menlo' },
   notice: { fontSize: 13, color: colors.text, lineHeight: 18 },
+  small: { fontSize: 12, color: colors.textMuted, marginBottom: 8, lineHeight: 16 },
+  monoInline: { fontFamily: 'Menlo', color: colors.text },
 });
 
