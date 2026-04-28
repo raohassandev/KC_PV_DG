@@ -12,6 +12,8 @@
 #include "ota.h"
 #include "wifi.h"
 #include "em500.h"
+#include "esp_heap_caps.h"
+#include "esp_timer.h"
 
 static const char *TAG = "pvdg_http";
 
@@ -343,6 +345,25 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   return resp;
 }
 
+static esp_err_t diagnostics_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddNumberToObject(out, "uptimeMs", (double)(esp_timer_get_time() / 1000));
+  cJSON_AddNumberToObject(out, "heapFree", (double)heap_caps_get_free_size(MALLOC_CAP_8BIT));
+  cJSON_AddNumberToObject(out, "heapMinFree", (double)heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
+
+  char ip[16] = {0};
+  if (pvdg_wifi_get_ip(ip) == ESP_OK) cJSON_AddStringToObject(out, "ip", ip);
+  pvdg_net_mode_t mode = pvdg_wifi_mode();
+  cJSON_AddStringToObject(out, "netMode", mode == PVDG_NET_STA_CONNECTED ? "sta" : (mode == PVDG_NET_SOFTAP ? "softap" : "unknown"));
+  int rssi = 0;
+  if (pvdg_wifi_get_rssi(&rssi) == ESP_OK) cJSON_AddNumberToObject(out, "wifiRssiDbm", rssi);
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
 static esp_err_t ota_status_get(httpd_req_t *req) {
   if (require_token(req) != ESP_OK) return ESP_OK;
   pvdg_ota_status_t st;
@@ -532,6 +553,9 @@ esp_err_t pvdg_http_start(void) {
 
   httpd_uri_t snap = {.uri = "/telemetry/snapshot", .method = HTTP_GET, .handler = telemetry_snapshot_get};
   httpd_register_uri_handler(s_server, &snap);
+
+  httpd_uri_t diag = {.uri = "/diagnostics", .method = HTTP_GET, .handler = diagnostics_get};
+  httpd_register_uri_handler(s_server, &diag);
 
   httpd_uri_t otas = {.uri = "/ota/status", .method = HTTP_GET, .handler = ota_status_get};
   httpd_register_uri_handler(s_server, &otas);

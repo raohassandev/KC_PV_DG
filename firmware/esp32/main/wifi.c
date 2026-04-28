@@ -135,6 +135,15 @@ esp_err_t pvdg_wifi_get_ip(char out_ip[16]) {
   return ESP_OK;
 }
 
+esp_err_t pvdg_wifi_get_rssi(int *out_rssi_dbm) {
+  if (!out_rssi_dbm) return ESP_ERR_INVALID_ARG;
+  wifi_ap_record_t ap = {0};
+  esp_err_t err = esp_wifi_sta_get_ap_info(&ap);
+  if (err != ESP_OK) return err;
+  *out_rssi_dbm = (int)ap.rssi;
+  return ESP_OK;
+}
+
 esp_err_t pvdg_wifi_request_connect(const char *ssid, const char *password) {
   if (!ssid || ssid[0] == '\0') return ESP_ERR_INVALID_ARG;
   pvdg_wifi_creds_t creds = {0};
