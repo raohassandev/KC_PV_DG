@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '../../theme/colors';
+import { Text } from 'react-native-paper';
 
 export function AppScreen({
   title,
@@ -16,8 +16,14 @@ export function AppScreen({
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps='handled'>
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          <Text variant='headlineSmall' style={styles.title}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text variant='bodyMedium' style={styles.subtitle}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
         {children}
       </ScrollView>
@@ -26,9 +32,9 @@ export function AppScreen({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1 },
   scroll: { padding: 16, paddingBottom: 32 },
   header: { marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text },
-  subtitle: { marginTop: 6, fontSize: 14, color: colors.textMuted, lineHeight: 20 },
+  title: { fontWeight: '700' },
+  subtitle: { marginTop: 6, opacity: 0.78, lineHeight: 20 },
 });

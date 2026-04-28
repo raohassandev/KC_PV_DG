@@ -2,12 +2,15 @@ import { useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PaperProvider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { hydrateAuth } from './store/slices/authSlice';
 import { hydrateConnection } from './store/slices/connectionSlice';
 import { hydrateSiteConfig } from './store/slices/siteConfigSlice';
 import { loadPersisted, persistAll } from './store/persistence';
 import { store } from './store';
 import { RootNavigation } from './navigation/RootTabs';
+import { paperLightTheme } from './theme/paperTheme';
 
 export default function App() {
   useEffect(() => {
@@ -56,10 +59,17 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <SafeAreaProvider>
-        <StatusBar style='auto' />
-        <RootNavigation />
-      </SafeAreaProvider>
+      <PaperProvider
+        theme={paperLightTheme}
+        settings={{
+          icon: (props) => <MaterialCommunityIcons {...props} />,
+        }}
+      >
+        <SafeAreaProvider>
+          <StatusBar style='auto' />
+          <RootNavigation />
+        </SafeAreaProvider>
+      </PaperProvider>
     </Provider>
   );
 }
