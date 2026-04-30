@@ -13,7 +13,6 @@ services:
       INITIAL_INSTALLER_PASSWORD: "${INITIAL_INSTALLER_PASSWORD:-}"
       INITIAL_SUPPORT_PASSWORD: "${INITIAL_SUPPORT_PASSWORD:-}"
       INITIAL_MANUFACTURER_PASSWORD: "${INITIAL_MANUFACTURER_PASSWORD:-}"
-      # Hardening flags (implemented in security-hardening todo)
       KC_PVDG_PUBLIC_MODE: "${KC_PVDG_PUBLIC_MODE:-1}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -23,14 +22,5 @@ services:
       - "127.0.0.1:8788:8788"
     restart: unless-stopped
 
-  pwa:
-    build:
-      context: .
-      dockerfile: PWA/Dockerfile
-    ports:
-      - "127.0.0.1:8080:80"
-    restart: unless-stopped
-
 volumes:
   gateway_data:
-

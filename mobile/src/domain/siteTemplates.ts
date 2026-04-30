@@ -57,9 +57,9 @@ export const deviceCatalog: DeviceCatalogItem[] = [
     value: 'wm15',
     label: 'Carlo Gavazzi WM15',
     description:
-      'Three-phase analyzer / energy meter. Register map in repo; firmware YAML not bundled until mapped like EM500.',
+      'Three-phase analyzer / energy meter. Register map in repo; custom firmware driver not bundled until mapped like EM500.',
     uiHint:
-      'Select when WM15 is on the RS485 bus. Requires a dedicated ESPHome meter package before deploy.',
+      'Select when WM15 is on the RS485 bus. Requires a dedicated custom firmware meter driver before deploy.',
     roles: ['grid_meter', 'generator_meter'],
     docPath: 'docs/Energy Analyzer/Mannual/Energy Analyzer/Carlo Gavazzi WM15 Rs-485 Registers.pdf',
   },
@@ -117,7 +117,7 @@ export const deviceCatalog: DeviceCatalogItem[] = [
     value: 'sma',
     label: 'SMA Inverter',
     description: 'SMA Modbus / SunSpec documentation set in repo (site-specific mapping required).',
-    uiHint: 'Catalog entry for SMA; inverter YAML and entity map still site-specific.',
+    uiHint: 'Catalog entry for SMA; inverter command mapping still site-specific.',
     roles: ['inverter'],
     docPath: 'docs/Inverter/SMA/SMA-Modbus-general-TI-en-10.pdf',
   },

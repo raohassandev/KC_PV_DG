@@ -40,6 +40,11 @@ function safeNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function nullableNumber(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function inverterLaneIdleFromStatus(status: string): boolean {
   return String(status).trim().toUpperCase() !== 'ONLINE';
 }
@@ -112,62 +117,62 @@ function invTelemetry(idx: number, board: BoardSnapshot) {
     case 1:
       return {
         status: String(board.inverterStatus),
-        actual: board.inverterActualPower,
-        pmax: board.inverterPmax,
+        actual: nullableNumber(board.inverterActualPower),
+        pmax: nullableNumber(board.inverterPmax),
       };
     case 2:
       return {
         status: String(board.inverter2Status),
-        actual: board.inverter2ActualPower,
-        pmax: board.inverter2Pmax,
+        actual: nullableNumber(board.inverter2ActualPower),
+        pmax: nullableNumber(board.inverter2Pmax),
       };
     case 3:
       return {
         status: String(board.inverter3Status),
-        actual: board.inverter3ActualPower,
-        pmax: board.inverter3Pmax,
+        actual: nullableNumber(board.inverter3ActualPower),
+        pmax: nullableNumber(board.inverter3Pmax),
       };
     case 4:
       return {
         status: String(board.inverter4Status),
-        actual: board.inverter4ActualPower,
-        pmax: board.inverter4Pmax,
+        actual: nullableNumber(board.inverter4ActualPower),
+        pmax: nullableNumber(board.inverter4Pmax),
       };
     case 5:
       return {
         status: String(board.inverter5Status),
-        actual: board.inverter5ActualPower,
-        pmax: board.inverter5Pmax,
+        actual: nullableNumber(board.inverter5ActualPower),
+        pmax: nullableNumber(board.inverter5Pmax),
       };
     case 6:
       return {
         status: String(board.inverter6Status),
-        actual: board.inverter6ActualPower,
-        pmax: board.inverter6Pmax,
+        actual: nullableNumber(board.inverter6ActualPower),
+        pmax: nullableNumber(board.inverter6Pmax),
       };
     case 7:
       return {
         status: String(board.inverter7Status),
-        actual: board.inverter7ActualPower,
-        pmax: board.inverter7Pmax,
+        actual: nullableNumber(board.inverter7ActualPower),
+        pmax: nullableNumber(board.inverter7Pmax),
       };
     case 8:
       return {
         status: String(board.inverter8Status),
-        actual: board.inverter8ActualPower,
-        pmax: board.inverter8Pmax,
+        actual: nullableNumber(board.inverter8ActualPower),
+        pmax: nullableNumber(board.inverter8Pmax),
       };
     case 9:
       return {
         status: String(board.inverter9Status),
-        actual: board.inverter9ActualPower,
-        pmax: board.inverter9Pmax,
+        actual: nullableNumber(board.inverter9ActualPower),
+        pmax: nullableNumber(board.inverter9Pmax),
       };
     case 10:
       return {
         status: String(board.inverter10Status),
-        actual: board.inverter10ActualPower,
-        pmax: board.inverter10Pmax,
+        actual: nullableNumber(board.inverter10ActualPower),
+        pmax: nullableNumber(board.inverter10Pmax),
       };
     default:
       return null;
@@ -187,7 +192,7 @@ export function boardSnapshotResponded(board: BoardSnapshot, boardIp: string): b
   );
 }
 
-/** Build dashboard rows aligned with PWA `DashboardOverview` (installer-level detail). */
+/** Build dashboard rows from the custom firmware telemetry snapshot. */
 export function buildLiveDashboard(
   board: BoardSnapshot | null,
   slots: SourceSlot[],

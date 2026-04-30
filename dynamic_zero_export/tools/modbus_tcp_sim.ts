@@ -30,7 +30,8 @@ function readHoldingRegister(addr: number): number {
 }
 
 const server = net.createServer((socket) => {
-  socket.on('data', (data) => {
+  socket.on('data', (chunk) => {
+    const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     // MBAP header: 7 bytes
     if (data.length < 8) return;
     const transactionId = data.readUInt16BE(0);

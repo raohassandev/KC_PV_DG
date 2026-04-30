@@ -1,114 +1,87 @@
-# PV‑DG Onboarding & Identity Contract (MVP)
+# Custom Firmware Onboarding Contract
 
-This document defines the minimum HTTP endpoints and payloads used by the manufacturer PWA to commission a board **without an OLED**.
+This contract is used by the Android app to commission a board without serial access after firmware is installed.
 
-The contract is designed to support:
-- AP-mode provisioning (board hosts Wi‑Fi AP)
-- LAN discovery and selection (board is on site Wi‑Fi)
-- consistent device identity for support/audit
+## Board Identity
 
----
+`GET /whoami`
 
-## 1) Base URL
-
-The PWA talks to the board using a base URL:
-- AP mode: `http://192.168.4.1`
-- LAN mode: `http://<board-ip>` or `http://<boardName>.local` (mDNS)
-
-All endpoints below are relative to the base URL.
-
----
-
-## 2) `GET /whoami`
-
-Returns identity + capabilities for UI routing.
-
-### Response (JSON)
+Returns:
 
 ```json
 {
   "deviceName": "pv-dg-controller",
-  "controllerId": "PV-DG-001122",
+  "controllerId": "pvdg-...",
   "mac": "AA:BB:CC:DD:EE:FF",
-  "ip": "192.168.4.1",
-  "fwVersion": "2026.04.24",
+  "ip": "192.168.0.108",
+  "fwVersion": "custom-fw",
   "capabilities": {
-    "discovery": true,
-    "apProvisioning": true,
-    "syncMode": true,
-    "dzxMode": false,
-    "modbusRtu": true,
-    "modbusTcp": true
+    "customFirmware": true,
+    "provisionWifi": true,
+    "siteConfig": true,
+    "pairing": true,
+    "telemetrySnapshot": true,
+    "otaPull": true
   },
-  "webUiUrl": "http://192.168.4.1/"
+  "paired": false
 }
 ```
 
-Notes:
-- `controllerId` should be stable (serial/QR identifier).
-- `dzxMode` indicates whether the firmware can serve the inverter as a meter (virtual meter / Modbus slave).
+## Pairing
 
----
+`POST /pair`
 
-## 3) `POST /provision_wifi` (AP mode only)
+Returns a local controller token on first pairing. Subsequent protected requests use:
 
-Requests that the board join a Wi‑Fi network.
+`X-PVDG-Token: <token>`
 
-### Request (JSON)
+## Wi-Fi Provisioning
 
-```json
-{ "ssid": "SiteWiFi", "password": "secret" }
-```
-
-### Response (JSON)
-
-```json
-{ "accepted": true, "jobId": "prov-1" }
-```
-
----
-
-## 4) `GET /provision_status` (AP mode only)
-
-Used by the PWA to show progress and prompt the user to switch networks.
-
-### Response (JSON)
+`POST /provision_wifi`
 
 ```json
 {
-  "jobId": "prov-1",
-  "state": "idle|connecting|connected|failed",
-  "message": "Optional human-readable status"
+  "ssid": "Site WiFi",
+  "password": "secret"
 }
 ```
 
----
+`GET /provision_status`
 
-## 5) Commissioning model additions (PWA → exported config)
+```json
+{
+  "jobId": "wifi-1",
+  "state": "connecting",
+  "message": "Joining network"
+}
+```
 
-### Controller runtime mode (PWA + export)
+## Site Config
 
-The commissioning PWA and generated `site.config.yaml` use **`controller_runtime_mode`**:
+`GET /site/config`
 
-- `dzx_virtual_meter`: board serves inverter as a meter (virtual meter); inverter self-curtails
-- `sync_controller`: board writes power limit commands to inverter(s)
+`PUT /site/config`
 
-(Separately, inverter emulation policy may still reference a `controllerMode` knob inside export payloads where applicable.)
+The Android app sends the current site model JSON directly to the controller. Wi-Fi passwords must never be stored in site config.
 
-### Per-slot transport (mixed RTU + TCP)
+## Telemetry
 
-Each slot has:
-- `transport`: `rtu | tcp`
-- `unitId` (Modbus slave/unit id)
-- if `tcp`: `tcpHost`, `tcpPort`
+`GET /telemetry/snapshot`
 
-The commissioning bundle must preserve these fields for audit/support, even if the current ESPHome YAML still needs explicit wiring per device.
+Returns the flat mobile dashboard snapshot. EM500 values should be live when RS485 is connected and the configured grid meter Modbus ID is correct.
 
----
+## Diagnostics
 
-## 6) Gateway fleet API (denormalized `controllerRuntimeMode`)
+`GET /diagnostics`
 
-`GET /api/sites` and `GET /api/sites/:siteId` responses include **`controllerRuntimeMode`** at the top level when it can be resolved from `pwaSiteConfig.controllerRuntimeMode` (or from a legacy top-level field in the site JSON file). Clients that only peek at list entries can read the mode without parsing the full `pwaSiteConfig` blob.
+Returns runtime health such as uptime, heap, IP, network mode, and RSSI.
 
-`GET /api/sites/:siteId` may return commissioning data only under `pwaSiteConfig`; the PWA merge helper also accepts a top-level `controllerRuntimeMode` when `pwaSiteConfig` is absent so fleet metadata can still drive UI gating.
+## OTA
 
+`POST /ota`
+
+Starts a controller-side OTA pull from a supplied firmware URL.
+
+`GET /ota/status`
+
+Returns OTA state, URL, and latest message.

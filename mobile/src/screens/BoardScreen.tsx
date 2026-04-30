@@ -42,25 +42,20 @@ export function BoardScreen() {
   const candidates = useMemo(() => discoveryCandidates(boardName), [boardName]);
 
   useEffect(() => {
-    // Kick off auto-search when board name / base IP context changes.
     if (autoStatus === 'idle') {
       void dispatch(autoConnectController());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardName]);
+  }, [autoStatus, boardName, dispatch]);
 
   return (
-    <AppScreen
-      title='Controller connection'
-      subtitle='Probe the ESPHome host on LAN (HTTP cleartext enabled). Wi‑Fi provisioning uses the same base URL.'
-    >
-      <Card title='Auto search (same Wi‑Fi)'>
+    <AppScreen title='Controller connection' subtitle='Probe the custom firmware API on LAN or setup AP.'>
+      <Card title='Auto search (same Wi-Fi)'>
         <Text style={styles.help}>
           Status: <Text style={styles.status}>{autoStatus}</Text>
         </Text>
         <ButtonRow>
           <PrimaryButton
-            label={autoStatus === 'searching' ? 'Searching…' : 'Auto search'}
+            label={autoStatus === 'searching' ? 'Searching...' : 'Auto search'}
             busy={autoStatus === 'searching'}
             onPress={() => void dispatch(autoConnectController())}
           />
@@ -69,7 +64,7 @@ export function BoardScreen() {
 
       <Card title='Base URL'>
         <LabeledInput
-          label='http://host — AP mode or LAN'
+          label='http://host - AP mode or LAN'
           value={baseUrl}
           onChangeText={(v) => dispatch(setBoardBaseUrl(v))}
           placeholder='http://192.168.4.1'
@@ -79,11 +74,7 @@ export function BoardScreen() {
         <Text style={styles.help}>Quick targets</Text>
         <View style={styles.chips}>
           {candidates.map((c) => (
-            <Pressable
-              key={c.baseUrl}
-              style={styles.chip}
-              onPress={() => dispatch(setBoardBaseUrl(c.baseUrl))}
-            >
+            <Pressable key={c.baseUrl} style={styles.chip} onPress={() => dispatch(setBoardBaseUrl(c.baseUrl))}>
               <Text style={styles.chipText}>{c.label}</Text>
             </Pressable>
           ))}
@@ -114,7 +105,7 @@ export function BoardScreen() {
             {whoami.ip ? <Text style={styles.mono}>IP: {whoami.ip}</Text> : null}
             {whoami.fwVersion ? <Text style={styles.mono}>FW: {whoami.fwVersion}</Text> : null}
             <Text style={styles.mono}>
-              Token: {controllerToken ? `${controllerToken.slice(0, 6)}…` : '(not paired)'}
+              Token: {controllerToken ? `${controllerToken.slice(0, 6)}...` : '(not paired)'}
             </Text>
           </View>
         ) : null}
@@ -141,21 +132,19 @@ export function BoardScreen() {
 
       <Card title='Firmware OTA'>
         <Text style={styles.help}>
-          This firmware has ESPHome OTA enabled and was verified over Wi-Fi. Current mobile builds
-          can prepare and verify the board address, but firmware upload still runs from ESPHome
-          tooling on the PC.
+          Custom firmware exposes OTA through the controller API. Current mobile builds can verify the board address;
+          direct Android package upload will use the custom OTA flow.
         </Text>
         <View style={styles.otaRow}>
           <Text style={styles.otaLabel}>OTA target</Text>
           <Text style={styles.otaValue}>{baseUrl || 'Set/probe board URL first'}</Text>
         </View>
         <Text style={styles.help}>
-          Future direct Android OTA needs a board HTTP update endpoint or a local update service;
-          ESPHome OTA is not a browser/Expo HTTP upload.
+          For now, build and flash from ESP-IDF on the PC, then use this screen to confirm the controller is reachable.
         </Text>
         <ButtonRow>
           <SecondaryButton
-            label='Open board UI'
+            label='Open controller'
             disabled={!baseUrl.trim()}
             onPress={() => {
               void Linking.openURL(baseUrl.trim());

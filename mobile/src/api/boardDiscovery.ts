@@ -24,15 +24,6 @@ export type ProvisionStatusResponse = {
   message?: string;
 };
 
-type EspHomeJson = {
-  name?: string;
-  mac_address?: string;
-  compilation_time?: string;
-  esphome_version?: string;
-  friendly_name?: string;
-  // other keys exist; we only read a few
-};
-
 function safeUrl(baseUrl: string) {
   return baseUrl.replace(/\/+$/, '');
 }
@@ -54,8 +45,6 @@ export function boardIpFromBaseUrl(baseUrl: string): string | null {
 }
 
 async function fetchJson<T>(url: string, timeoutMs = 4500): Promise<T | null> {
-  // ESPHome web_server v3 can occasionally stall while reading the response body.
-  // Browsers cannot set the `Connection: close` header, so we retry with a fresh request.
   for (let attempt = 0; attempt < 2; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -110,44 +99,8 @@ async function postJson<T>(
 export async function probeBoard(baseUrl: string): Promise<BoardWhoami | null> {
   const base = safeUrl(baseUrl);
 
-  // Preferred future contract
   const whoami = await fetchJson<BoardWhoami>(`${base}/whoami`);
   if (whoami?.deviceName) return whoami;
-
-  // ESPHome entity endpoints fallback: read identity from template sensors (service_ui.yaml).
-  // We try this *before* `${base}/json` because some ESPHome web_server v3 builds can return an
-  // empty reply or stall on `/json`, while entity endpoints remain responsive.
-  const [controllerId, fwVersion, mac, ipAddr] = await Promise.all([
-    fetchJson<{ state?: string }>(`${base}/text_sensor/Controller%20ID`),
-    fetchJson<{ state?: string }>(`${base}/text_sensor/Firmware%20Version`),
-    fetchJson<{ state?: string }>(`${base}/text_sensor/MAC%20Address`),
-    fetchJson<{ state?: string }>(`${base}/text_sensor/IP%20Address`),
-  ]);
-  if (controllerId?.state) {
-    return {
-      deviceName: controllerId.state,
-      controllerId: controllerId.state,
-      fwVersion: fwVersion?.state,
-      mac: mac?.state,
-      ip: ipAddr?.state,
-      webUiUrl: `${base}/`,
-      capabilities: { esphomeEntityEndpoints: true },
-    };
-  }
-
-  // ESPHome web_server compatibility fallback (works when /json responds correctly)
-  const esphome = await fetchJson<EspHomeJson>(`${base}/json`);
-  if (esphome?.name || esphome?.friendly_name) {
-    return {
-      deviceName: String(esphome.name ?? esphome.friendly_name ?? 'pv-dg-controller'),
-      mac: esphome.mac_address,
-      fwVersion: esphome.esphome_version,
-      webUiUrl: `${base}/`,
-      capabilities: {
-        esphomeWebServer: true,
-      },
-    };
-  }
 
   return null;
 }

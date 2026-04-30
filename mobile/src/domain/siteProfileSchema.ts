@@ -39,7 +39,7 @@ export type SourceSlot = {
   deviceType: DeviceType;
   /**
    * Optional driver id from Manufacturer driver library.
-   * When set, commissioning/YAML generation should prefer this over built-in `deviceType` templates.
+   * When set, commissioning should prefer this over built-in `deviceType` templates.
    */
   driverId?: string;
   role: SourceRole;
@@ -57,7 +57,7 @@ export type SourceSlot = {
   serialBaud?: number;
   serialParity?: 'none' | 'even' | 'odd';
   serialStopBits?: 1 | 2;
-  /** Modbus on serial uses 8 data bits; stored for YAML export. */
+  /** Modbus on serial uses 8 data bits; stored for controller configuration. */
   serialDataBits?: 8;
   /** RS-485 line termination / bias intent (ignored for RS-232 / TCP in firmware unless mapped). */
   rs485Termination?: 'auto' | 'on' | 'off';
@@ -112,7 +112,7 @@ export type SiteConfig = {
   minPvPercent: number;
   maxPvPercent: number;
   /**
-   * PWA traceability: built-in scenario template last applied from Site Setup.
+   * Traceability: built-in scenario template last applied from Site Setup.
    * Cleared when the engineer removes the label after heavy customization.
    */
   commissioningScenarioTemplateId?: string | null;

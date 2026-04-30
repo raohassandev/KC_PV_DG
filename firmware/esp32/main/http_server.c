@@ -69,8 +69,9 @@ static esp_err_t whoami_get(httpd_req_t *req) {
   cJSON_AddBoolToObject(caps, "customFirmware", true);
   cJSON_AddBoolToObject(caps, "provisionWifi", true);
   cJSON_AddBoolToObject(caps, "siteConfig", true);
-  cJSON_AddBoolToObject(caps, "esphomeEntityEndpoints", true);
   cJSON_AddBoolToObject(caps, "pairing", true);
+  cJSON_AddBoolToObject(caps, "telemetrySnapshot", true);
+  cJSON_AddBoolToObject(caps, "otaPull", true);
   cJSON_AddItemToObject(root, "capabilities", caps);
 
   char *tok = NULL;
@@ -244,8 +245,7 @@ static esp_err_t site_config_put(httpd_req_t *req) {
 }
 
 static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
-  // v1 snapshot mirrors the PWA/mobile `fetchBoardSnapshot` shape (a flat object).
-  // v1: prefer a real EM500 grid read if available; otherwise return stub values.
+  // v1: prefer a real EM500 grid read if available; otherwise return explicit safe defaults.
   cJSON *out = cJSON_CreateObject();
 
   pvdg_em500_grid_t em = {0};
@@ -408,125 +408,6 @@ static esp_err_t ota_start_post(httpd_req_t *req) {
   return resp;
 }
 
-// ESPHome-compatible entity endpoints (minimal v1)
-static esp_err_t entity_handler(httpd_req_t *req) {
-  const char *uri = req->uri ? req->uri : "";
-  const bool is_text = strncmp(uri, "/text_sensor/", 12) == 0;
-
-  // Default: unknown -> return empty object for numeric sensors, NA for text sensors.
-  const char *state = "NA";
-  double value = 0.0;
-  bool is_numeric = false;
-  bool known = false;
-
-  // Key endpoints used by mobile dashboard
-  if (strcmp(uri, "/text_sensor/Controller%20State") == 0) {
-    state = "ONLINE";
-    known = true;
-  } else if (strcmp(uri, "/text_sensor/Grid%20Meter%20Status") == 0) {
-    state = "ONLINE";
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Frequency") == 0) {
-    value = 50.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Total%20Active%20Power") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Import%20Energy") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Total%20Power%20Factor") == 0) {
-  } else if (strcmp(uri, "/sensor/Grid%20L1%20Voltage") == 0) {
-    value = 230.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20L2%20Voltage") == 0) {
-    value = 230.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20L3%20Voltage") == 0) {
-    value = 230.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20L1%20Current") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20L2%20Current") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20L3%20Current") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Equivalent%20Phase%20Voltage") == 0) {
-    value = 230.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Grid%20Equivalent%20Current") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  }
-    value = 1.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/text_sensor/Inverter%20Status") == 0) {
-    state = "ONLINE";
-    known = true;
-  } else if (strcmp(uri, "/sensor/Inverter%20Actual%20Power") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Inverter%20Pmax") == 0) {
-    value = 0.0;
-    is_numeric = true;
-    known = true;
-  } else if (strcmp(uri, "/text_sensor/Generator%201%20Meter%20Status") == 0) {
-    state = "NA";
-    known = true;
-  } else if (strcmp(uri, "/text_sensor/Generator%202%20Meter%20Status") == 0) {
-    state = "NA";
-    known = true;
-  } else if (strcmp(uri, "/sensor/Generator%201%20Total%20Active%20Power") == 0) {
-    is_numeric = true;
-    value = 0.0;
-    known = true;
-  } else if (strcmp(uri, "/sensor/Generator%202%20Total%20Active%20Power") == 0) {
-    is_numeric = true;
-    value = 0.0;
-    known = true;
-  } else if (strncmp(uri, "/text_sensor/Inverter%20", 20) == 0 && strstr(uri, "%20Status")) {
-    // Inverter 2..10 status
-    state = "NA";
-    known = true;
-  } else if (strncmp(uri, "/sensor/Inverter%20", 16) == 0 && (strstr(uri, "%20Actual%20Power") || strstr(uri, "%20Pmax"))) {
-    // Inverter 2..10 numeric metrics
-    is_numeric = true;
-    value = 0.0;
-    known = true;
-  }
-
-  cJSON *out = cJSON_CreateObject();
-  if (!known) {
-    if (is_text) {
-      cJSON_AddStringToObject(out, "state", "NA");
-    }
-    // else: keep empty object -> mobile fetchEntity returns null
-  } else if (is_numeric) {
-    cJSON_AddNumberToObject(out, "value", value);
-  } else {
-    cJSON_AddStringToObject(out, "state", state);
-  }
-  esp_err_t resp = send_json(req, out, 200);
-  cJSON_Delete(out);
-  return resp;
-}
-
 esp_err_t pvdg_http_start(void) {
   httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
   cfg.stack_size = 8192;
@@ -561,12 +442,6 @@ esp_err_t pvdg_http_start(void) {
   httpd_register_uri_handler(s_server, &otas);
   httpd_uri_t otap = {.uri = "/ota", .method = HTTP_POST, .handler = ota_start_post};
   httpd_register_uri_handler(s_server, &otap);
-
-  // Generic entity endpoints (register wildcard prefixes)
-  httpd_uri_t sensor = {.uri = "/sensor/*", .method = HTTP_GET, .handler = entity_handler};
-  httpd_uri_t text = {.uri = "/text_sensor/*", .method = HTTP_GET, .handler = entity_handler};
-  httpd_register_uri_handler(s_server, &sensor);
-  httpd_register_uri_handler(s_server, &text);
 
   ESP_LOGI(TAG, "HTTP server started");
   return ESP_OK;

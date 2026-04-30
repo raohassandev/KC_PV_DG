@@ -20,7 +20,7 @@ bool pvdg_em500_read_grid(uint8_t slave_id, pvdg_em500_grid_t *out) {
   if (!out) return false;
   memset(out, 0, sizeof(*out));
 
-  // Addresses are from `Modular_Yaml/meter_em500_grid.yaml`.
+  // Addresses are the lab-verified EM500/Rozwell register map for this project.
   // Input registers (FC04): voltages/currents/power/frequency/PF.
   // Holding registers (FC03): energy QWORD blocks (kWh).
   uint16_t r2[2];
@@ -92,7 +92,7 @@ bool pvdg_em500_read_grid(uint8_t slave_id, pvdg_em500_grid_t *out) {
   if (pvdg_modbus_read_input_regs(slave_id, 0x0040, 2, r2) != ESP_OK) return false;
   out->total_pf = (double)s32_from_regs(r2) * 0.0001;
 
-  // Energies are 4-word blocks. YAML divides by 2^32 then * 0.01 to get kWh.
+  // Energies are 4-word blocks. The verified decode divides by 2^32 then * 0.01 to get kWh.
   if (pvdg_modbus_read_holding_regs(slave_id, 0x1B21, 4, r4) == ESP_OK) {
     out->import_kwh = (u64_from_regs(r4) / 4294967296.0) * 0.01;
   }

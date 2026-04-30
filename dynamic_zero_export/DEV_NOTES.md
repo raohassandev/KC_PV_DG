@@ -1,8 +1,6 @@
 # Dev Notes
 
-This folder is a starter kit for the future `dynamic-Zero-export` branch.
-
-Keep the current ESPHome path untouched.
+This folder supports the custom firmware and Android commissioning branch.
 
 Implementation order:
 
@@ -11,7 +9,6 @@ Implementation order:
 3. policy engine
 4. monitoring snapshot
 5. adapter wiring
-6. live UI integration
+6. firmware/mobile integration
 
-Stubs here are intentionally minimal and should be replaced by real drivers later.
-
+Stubs here are intentionally minimal and should be replaced by real drivers after bench or site validation.

@@ -1,6 +1,6 @@
 # Dynamic Zero Export Local API Contract
 
-This contract is the first LAN-first bridge between the firmware core and the PWA.
+This contract is the first LAN-first bridge between the firmware core and commissioning clients.
 It is local-controller focused and does not require cloud services.
 
 Implemented endpoints / payload groups:

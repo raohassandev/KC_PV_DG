@@ -10,7 +10,7 @@ The firmware core will expose minimal HTTP endpoints when the ESP32 networking l
 
 ### `GET /whoami` (MVP)
 
-Returns identity and capabilities for the manufacturer PWA.
+Returns identity and capabilities for the commissioning client.
 
 Example fields:
 - `deviceName`, `controllerId`, `mac`, `ip`, `fwVersion`
@@ -18,10 +18,10 @@ Example fields:
 
 ### `POST /provision_wifi` and `GET /provision_status`
 
-AP mode provisioning endpoints used by the PWA.
+AP mode provisioning endpoints used by the commissioning client.
 
 Notes:
-- During ESPHome phase, AP provisioning is handled by ESPHome captive portal; PWA probes `192.168.4.1` and can open the portal.
+- Custom firmware owns AP provisioning directly at `192.168.4.1`.
 - In firmware_core/custom firmware, these endpoints become first-class.
 
 See also: `docs/onboarding_contract.md` (repo-level contract).
@@ -61,7 +61,7 @@ Key requirements:
 
 ## 3) Alignment with existing local API contract
 
-The firmware core already serializes payloads used by the PWA DZX feature area. When networking is added:
+The firmware core already serializes payloads used by the controller API. When networking is added:
 - expose the existing contract paths under `/api/*` as defined in `dynamic_zero_export/docs/local_api_contract.md`
 - keep `/whoami` separate as an onboarding identity endpoint used before the full API is configured
 

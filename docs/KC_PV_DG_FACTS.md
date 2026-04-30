@@ -1,193 +1,42 @@
-# KC_PV_DG Verified Project Facts (Strict Handover)
+# KC PV-DG Current Facts
 
-## 1. Project goal
+Last updated: 2026-04-30
 
-### Purpose
-PV–DG controller to:
-- read electrical parameters (grid, inverter, generator)
-- control inverter output
-- maintain desired grid import/export behavior
+## Product Direction
 
-### Problem to solve
-- prevent grid export (zero export)
-- limit export/import
-- balance power between grid + PV + DG
+- This branch targets custom ESP32 firmware, not ESPHome.
+- Android is the field commissioning and monitoring client.
+- The board must keep local control and telemetry working without cloud access.
 
-### Done definition
-- EM500 working (confirmed)
-- control loop running (exists)
-- inverter control working (NOT DONE)
-- PWA commissioning working (NOT DONE)
+## Hardware
 
----
+- Controller: KC868-A6 / ESP32.
+- Grid meter: EM500 / Rozwell over RS485 Modbus RTU.
+- Inverter command behavior remains hardware-validation pending.
+- Generator meter model remains pending.
 
-## 2. Hardware
+## Verified EM500 Registers
 
-### Confirmed
-- Controller: KC868-A6 (ESP32)
-- Grid meter: EM500 / Rozwell
+- Frequency: input register `0x0032`.
+- Total active power: input register `0x003A`.
+- Import energy: holding register `0x1B21`, 4 registers/QWORD, divide by `4294967296`, multiply by `0.01`.
 
-### Partial
-- Inverter: Huawei (model unknown)
+## Custom Firmware API
 
-### Unknown
-- Generator meter model
-- IO wiring
-- OLED usage final state
+- `GET /whoami`
+- `POST /pair`
+- `POST /provision_wifi`
+- `GET /provision_status`
+- `GET /site/config`
+- `PUT /site/config`
+- `GET /telemetry/snapshot`
+- `GET /diagnostics`
+- `POST /ota`
+- `GET /ota/status`
 
----
+## Immediate Work
 
-## 3. Communication
-
-### Confirmed
-- RS485 Modbus RTU
-- 9600 baud, 8N1
-
-### Addresses
-- EM500: ID 1 (working)
-- Huawei: ID 10 (not verified)
-
-### Status
-- EM500 working
-- Huawei not verified
-- Generator not verified
-
----
-
-## 4. Protocol / Registers
-
-### EM500 verified
-Scaling:
-- voltage/current/power: ×0.01
-
-### Energy (critical)
-Working config:
-- address: 0x1B21
-- type: U_QWORD
-- scale: /4294967296 ×0.01
-
-Manual mismatch confirmed.
-
-### Huawei
-- registers: unknown
-- write method: unknown
-
----
-
-## 5. Control logic
-
-Modes:
-- grid_zero_export → target 0 kW
-- grid_limited_export → negative limit
-- grid_limited_import → positive limit
-
-Core:
-error = target - measured
-
-Output:
-- pv_cmd_percent
-- pv_cmd_kw
-
-Limiter:
-- deadband
-- gain
-- ramp step
-- min/max %
-
-Failsafe:
-- disabled → output 0
-
----
-
-## 6. PWA
-
-### Current
-- dashboard (live working)
-- site setup
-- slots
-- templates
-- engineer actions
-- YAML preview
-
-### Behavior
-- reads via /sensor/<name>
-- uses JSON value field
-
-### Future
-- YAML generation
-- remote control
-
----
-
-## 7. Naming contract
-
-### Working names (examples)
-- /sensor/Grid Frequency
-- /sensor/Grid Total Active Power
-- /sensor/Grid Import Energy
-- /text_sensor/Grid Meter Status
-- /text_sensor/Controller State
-
-Rule:
-- exact names required
-- URL encoded
-
-Status:
-- not finalized → risk
-
----
-
-## 8. Blockers
-
-1. Huawei inverter not working
-2. Write API not verified
-3. No read-back sync
-4. Naming mismatch risk
-5. Logger crash history
-
----
-
-## 9. Workflow
-
-Firmware:
-- esphome run pv-dg-controller.yaml
-
-PWA:
-- npm run dev
-
-Testing:
-- local bench only
-- inverter requires site
-
-Secrets:
-- secrets.yaml required
-
----
-
-## 10. Immediate next task
-
-### Task
-Verify write API between PWA and board
-
-### Expected
-- change control mode
-- enable/disable controller
-- set limits
-
-### Verify
-- use browser POST endpoints
-- confirm ESPHome logs
-- confirm state update via API
-
----
-
-## Unresolved Questions
-
-1. Huawei model?
-2. Huawei register map?
-3. inverter command method?
-4. generator meter?
-5. final entity naming?
-6. fail-safe definition?
-7. YAML vs live config approach?
-8. deployment model?
+1. Build and flash `firmware/esp32`.
+2. Confirm `/whoami` over LAN or AP mode.
+3. Confirm `/telemetry/snapshot` includes real EM500 readings.
+4. Confirm Android app probe, pairing, provisioning, and live dashboard against the board.

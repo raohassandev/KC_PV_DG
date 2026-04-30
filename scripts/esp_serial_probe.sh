@@ -4,7 +4,7 @@
 set -u
 shopt -s nullglob 2>/dev/null || true
 
-echo "=== Callout ports: /dev/cu.* (prefer these for esptool / esphome on macOS) ==="
+echo "=== Callout ports: /dev/cu.* (prefer these for ESP-IDF/esptool on macOS) ==="
 for p in /dev/cu.*; do
   [[ -e "$p" ]] || continue
   base="${p##*/}"
@@ -21,7 +21,7 @@ done
 
 echo ""
 if ! command -v esptool.py >/dev/null 2>&1 && ! command -v esptool >/dev/null 2>&1; then
-  echo "esptool not in PATH (install: pip install esptool, or use the Python env that ships with ESPHome)."
+  echo "esptool not in PATH (install ESP-IDF or pip install esptool)."
   exit 0
 fi
 ESPTOOL=esptool.py

@@ -1,19 +1,12 @@
 {
   "name": "kc-pv-dg",
   "private": true,
-  "description": "Scripts to verify subprojects without hardware",
+  "description": "Custom ESP32 firmware and Android commissioning app for KC PV-DG",
   "scripts": {
-    "dev": "npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run dev:pwa",
-    "dev:pwa": "cd PWA && npm run dev",
-    "dev:gateway": "cd gateway && npm run start",
     "check:dzx": "cd dynamic_zero_export && npm run check",
-    "check:gateway": "cd gateway && npx tsc -p .",
-    "check:drivers": "cd gateway && npm run check:drivers",
     "test:dzx": "cd dynamic_zero_export && npm test",
-    "test:pwa": "cd PWA && npm test",
-    "test:e2e:pwa": "cd PWA && CI=1 npm run test:e2e",
-    "test:e2e:gateway:pwa": "cd PWA && CI=1 npm run test:e2e:gateway",
-    "build:pwa": "cd PWA && npm run build",
-    "verify": "npm run check:dzx && npm run check:gateway && npm run check:drivers && npm run test:dzx && npm run test:pwa && npm run build:pwa && npm run test:e2e:pwa && npm run test:e2e:gateway:pwa"
+    "check:mobile": "cd mobile && npm run check",
+    "verify": "npm run check:dzx && npm run test:dzx && npm run check:mobile",
+    "dev:mobile": "cd mobile && npm run start"
   }
 }

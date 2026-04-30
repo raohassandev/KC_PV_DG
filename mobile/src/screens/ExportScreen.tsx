@@ -17,7 +17,7 @@ export function ExportScreen() {
       subtitle='Share a local commissioning snapshot (JSON).'
     >
       <Card title='Commissioning JSON'>
-        <InfoBanner message='Tip: use this export for local commissioning artifacts. Fleet/VPS sync belongs to the web app.' />
+        <InfoBanner message='Tip: use this export for local commissioning artifacts.' />
         <ButtonRow>
           <SecondaryButton
             label='Copy JSON'

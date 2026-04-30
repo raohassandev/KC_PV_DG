@@ -43,7 +43,7 @@ export function AccountScreen() {
       <Card title='Mobile app access'>
         <Text style={styles.help}>
           This mobile app is for local field work: live status, board setup, commissioning,
-          validation, and export. Fleet server/VPS features stay in the web app.
+          validation, and export. Fleet server/VPS features are outside this local Android flow.
         </Text>
       </Card>
 

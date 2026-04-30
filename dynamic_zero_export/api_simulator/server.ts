@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createDeviceServiceRuntime } from './runtime';
 import { createDeviceServiceStorage } from './storage';
 
-/** Lets the PWA hit the simulator from another origin during local commissioning. */
+/** Lets local clients hit the simulator from another origin during commissioning tests. */
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,OPTIONS',

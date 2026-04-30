@@ -17,7 +17,7 @@ export type SiteScenarioTemplate = {
   topologyType: TopologyType;
   title: string;
   description: string;
-  /** Short commissioning notes for this scene (shown in PWA; not a substitute for as-built docs). */
+  /** Short commissioning notes for this scene (not a substitute for as-built docs). */
   documentation: string;
   /** Returns a fresh deep copy the UI can own and edit. */
   build: () => SiteConfig;
@@ -286,7 +286,7 @@ export const SITE_SCENARIO_TEMPLATES: SiteScenarioTemplate[] = [
     documentation: [
       'Choose this when the tie is normally open or transfer is supervised — export and limits follow separate-bus rules.',
       'Keep grid sources on bus A and island generation on bus B unless your SLD differs.',
-      'Confirm tie/interlock inputs in hardware summary and controller YAML before commissioning.',
+      'Confirm tie/interlock inputs in hardware summary and controller config before commissioning.',
     ].join('\n'),
     build: buildDualBusSeparate,
   },
