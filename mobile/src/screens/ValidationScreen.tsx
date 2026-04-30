@@ -90,7 +90,7 @@ export function ValidationScreen() {
   const warn = useMemo(() => warnings(config), [config]);
 
   return (
-    <AppScreen title='Validation' subtitle='Sanity checks before export / gateway save.'>
+    <AppScreen title='Validation' subtitle='Sanity checks before local export or controller sync.'>
       {notice ? (
         <Card title='Status'>
           <Text style={styles.notice}>{notice}</Text>

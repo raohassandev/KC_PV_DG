@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { discoveryCandidates } from '../api/boardDiscovery';
 import { Card } from '../components/ui/Card';
 import { AppScreen } from '../components/ui/AppScreen';
@@ -123,7 +123,7 @@ export function BoardScreen() {
         </ButtonRow>
       </Card>
 
-      <Card title='Wi‑Fi provisioning'>
+      <Card title='Wi-Fi provisioning'>
         <LabeledInput label='Target SSID' value={ssid} onChangeText={(v) => dispatch(setProvisionSsid(v))} />
         <LabeledInput
           label='Password'
@@ -136,6 +136,31 @@ export function BoardScreen() {
         <ButtonRow>
           <PrimaryButton label='Send provision' busy={provBusy} onPress={() => void dispatch(runProvisionWifi())} />
           <SecondaryButton label='Refresh status' onPress={() => void dispatch(pollProvisionStatus())} />
+        </ButtonRow>
+      </Card>
+
+      <Card title='Firmware OTA'>
+        <Text style={styles.help}>
+          This firmware has ESPHome OTA enabled and was verified over Wi-Fi. Current mobile builds
+          can prepare and verify the board address, but firmware upload still runs from ESPHome
+          tooling on the PC.
+        </Text>
+        <View style={styles.otaRow}>
+          <Text style={styles.otaLabel}>OTA target</Text>
+          <Text style={styles.otaValue}>{baseUrl || 'Set/probe board URL first'}</Text>
+        </View>
+        <Text style={styles.help}>
+          Future direct Android OTA needs a board HTTP update endpoint or a local update service;
+          ESPHome OTA is not a browser/Expo HTTP upload.
+        </Text>
+        <ButtonRow>
+          <SecondaryButton
+            label='Open board UI'
+            disabled={!baseUrl.trim()}
+            onPress={() => {
+              void Linking.openURL(baseUrl.trim());
+            }}
+          />
         </ButtonRow>
       </Card>
     </AppScreen>
@@ -157,4 +182,15 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   who: { marginTop: 12, gap: 4 },
   mono: { fontSize: 14, color: colors.text, fontFamily: 'Menlo' },
+  otaRow: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 8,
+    backgroundColor: colors.bg,
+  },
+  otaLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '700', marginBottom: 2 },
+  otaValue: { fontSize: 13, color: colors.text, fontWeight: '800' },
 });

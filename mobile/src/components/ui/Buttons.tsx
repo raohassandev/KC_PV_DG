@@ -16,7 +16,10 @@ export function PrimaryButton(props: BtnProps) {
       onPress={props.onPress}
       disabled={props.disabled}
       loading={props.busy}
+      compact
       style={styles.btn}
+      contentStyle={styles.btnContent}
+      labelStyle={styles.label}
     >
       {props.label}
     </Button>
@@ -30,7 +33,10 @@ export function SecondaryButton(props: BtnProps) {
       onPress={props.onPress}
       disabled={props.disabled}
       loading={props.busy}
+      compact
       style={styles.btn}
+      contentStyle={styles.btnContent}
+      labelStyle={styles.label}
     >
       {props.label}
     </Button>
@@ -42,6 +48,8 @@ export function ButtonRow({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  btn: { minWidth: 140 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  btn: { minWidth: 120, borderRadius: 8 },
+  btnContent: { minHeight: 40 },
+  label: { fontSize: 13, fontWeight: '700' },
 });

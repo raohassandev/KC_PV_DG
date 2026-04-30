@@ -14,10 +14,10 @@ export function ExportScreen() {
   return (
     <AppScreen
       title='Export'
-      subtitle='Share a commissioning snapshot (JSON). This is the same shape the gateway stores under pwaSiteConfig.'
+      subtitle='Share a local commissioning snapshot (JSON).'
     >
       <Card title='Commissioning JSON'>
-        <InfoBanner message='Tip: save to gateway from the Gateway tab for fleet usage.' />
+        <InfoBanner message='Tip: use this export for local commissioning artifacts. Fleet/VPS sync belongs to the web app.' />
         <ButtonRow>
           <SecondaryButton
             label='Copy JSON'

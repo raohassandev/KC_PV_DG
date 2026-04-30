@@ -1,6 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Appbar } from 'react-native-paper';
 import { SourceCard } from '../components/SourceCard';
 import { AppScreen } from '../components/ui/AppScreen';
 import { Card } from '../components/ui/Card';
@@ -30,26 +31,51 @@ export function DashboardScreen() {
 
   return (
     <AppScreen
-      title='Live dashboard'
-      subtitle={`${siteName || 'Site'} · Board IP ${boardIp || '—'}${pollBusy ? ' · updating…' : ''}`}
+      title='Live status'
+      subtitle={`${siteName || 'Site'} | ${boardIp || 'No board IP'}${pollBusy ? ' | updating...' : ''}`}
+      actions={
+        <Appbar.Action
+          icon='refresh'
+          color={colors.primary}
+          onPress={() => void dispatch(pollBoardSnapshot())}
+        />
+      }
     >
       {pollError ? <ErrorBanner message={pollError} /> : null}
-      <Card title='Summary'>
-        <View style={styles.grid}>
-          <Metric label='Grid' value={`${vm.summary.gridKw.toFixed(2)} kW`} />
-          <Metric label='PV (inv 1)' value={`${vm.summary.pvKw.toFixed(2)} kW`} />
-          <Metric label='Frequency' value={`${vm.summary.frequencyHz.toFixed(3)} Hz`} />
-          <Metric label='Import' value={`${vm.summary.importKwh.toFixed(2)} kWh`} />
-          <Metric label='PF' value={vm.summary.pf ? vm.summary.pf.toFixed(3) : '—'} />
+
+      <Card>
+        <Text style={styles.kicker}>PLANT SNAPSHOT</Text>
+        <View style={styles.heroRow}>
+          <View style={styles.heroMetric}>
+            <Text style={styles.heroLabel}>Grid</Text>
+            <Text style={styles.heroValue}>{vm.summary.gridKw.toFixed(2)}</Text>
+            <Text style={styles.heroUnit}>kW</Text>
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroMetric}>
+            <Text style={styles.heroLabel}>PV</Text>
+            <Text style={styles.heroValue}>{vm.summary.pvKw.toFixed(2)}</Text>
+            <Text style={styles.heroUnit}>kW</Text>
+          </View>
         </View>
-        <Text style={styles.controllerLine}>
-          Controller: <Text style={styles.controllerVal}>{vm.controllerState}</Text>
-        </Text>
+        <View style={styles.statusStrip}>
+          <StatusPill label='Controller' value={vm.controllerState} />
+          <StatusPill label='Transport' value={boardIp ? 'REST' : 'offline'} tone={boardIp ? 'ok' : 'idle'} />
+          <StatusPill label='Updated' value={vm.updatedAt} tone='idle' />
+        </View>
         {vm.inverterLaneIdle ? (
           <Text style={styles.hint}>Inverter lane idle (first inverter not ONLINE).</Text>
         ) : null}
-        <Text style={styles.updated}>Updated {vm.updatedAt}</Text>
       </Card>
+
+      <Card title='Electrical readings'>
+        <View style={styles.grid}>
+          <Metric label='Frequency' value={`${vm.summary.frequencyHz.toFixed(3)} Hz`} />
+          <Metric label='Import energy' value={`${vm.summary.importKwh.toFixed(2)} kWh`} />
+          <Metric label='Power factor' value={vm.summary.pf ? vm.summary.pf.toFixed(3) : '-'} />
+        </View>
+      </Card>
+
       <Text style={styles.section}>Sources</Text>
       {vm.sources.map((s) => (
         <SourceCard key={s.id} source={s} />
@@ -69,14 +95,43 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function StatusPill({
+  label,
+  value,
+  tone = 'ok',
+}: {
+  label: string;
+  value: string;
+  tone?: 'ok' | 'idle';
+}) {
+  return (
+    <View style={[styles.pill, tone === 'ok' ? styles.pillOk : styles.pillIdle]}>
+      <Text style={styles.pillLabel}>{label}</Text>
+      <Text style={styles.pillValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  cell: { width: '30%', minWidth: 96 },
-  controllerLine: { marginTop: 12, fontSize: 14, color: colors.textMuted },
-  controllerVal: { fontWeight: '700', color: colors.text },
+  kicker: { fontSize: 11, fontWeight: '800', color: colors.textMuted, marginBottom: 10 },
+  heroRow: { flexDirection: 'row', alignItems: 'stretch', gap: 14 },
+  heroMetric: { flex: 1 },
+  heroDivider: { width: 1, backgroundColor: colors.border },
+  heroLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 4 },
+  heroValue: { fontSize: 34, lineHeight: 38, fontWeight: '800', color: colors.text },
+  heroUnit: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  statusStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+  pill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, minWidth: 96 },
+  pillOk: { backgroundColor: '#e7f5ec' },
+  pillIdle: { backgroundColor: colors.bg },
+  pillLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '700' },
+  pillValue: { fontSize: 12, color: colors.text, fontWeight: '800', marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  cell: { width: '31%', minWidth: 96, paddingVertical: 2 },
   cellLabel: { fontSize: 12, color: colors.textMuted, marginBottom: 4 },
-  cellValue: { fontSize: 15, fontWeight: '600', color: colors.text },
+  cellValue: { fontSize: 16, fontWeight: '800', color: colors.text },
   hint: { marginTop: 10, fontSize: 13, color: colors.textMuted },
-  updated: { marginTop: 8, fontSize: 12, color: colors.textMuted },
-  section: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: colors.text },
+  section: { fontSize: 15, fontWeight: '800', marginTop: 2, marginBottom: -2, color: colors.text },
 });
