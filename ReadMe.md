@@ -4,7 +4,7 @@ Custom PV-DG controller firmware and Android commissioning app.
 
 ## Current Direction
 
-- `firmware/esp32/` is the board firmware track.
+- `firmware/esp32-s3/` is the ESP32-S3 board firmware track.
 - `mobile/` is the Android commissioning and monitoring app.
 - `dynamic_zero_export/` keeps the policy/runtime model and tests.
 - EM500/Rozwell grid meter support is implemented in the custom firmware path.
@@ -16,8 +16,8 @@ The old ESPHome firmware and PWA product path have been removed from this branch
 From repo root:
 
 ```bash
-cd firmware/esp32
-idf.py set-target esp32
+cd firmware/esp32-s3
+idf.py set-target esp32s3
 idf.py build flash monitor
 ```
 

@@ -33,5 +33,5 @@ From the repository root, `npm run verify` runs Dynamic Zero Export checks plus 
 
 ## Non-Scope
 
-- production Modbus drivers beyond the firmware work in `firmware/esp32`
+- production Modbus drivers beyond the firmware work in `firmware/esp32-s3`
 - production brand register maps until hardware validation is complete
