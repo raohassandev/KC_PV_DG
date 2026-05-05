@@ -37,6 +37,10 @@
 # Local screenshots accidentally dropped in repo root
 /Screenshot*.png
 
+# Local editor/agent settings
+/.claude/
+/.vscode/
+
 # PDF/XLSX parsing temporary outputs (generated)
 /docs/_extracted/
 

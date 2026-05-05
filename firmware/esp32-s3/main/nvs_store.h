@@ -1,0 +1,25 @@
+#pragma once
+
+#include "esp_err.h"
+
+typedef struct {
+  char ssid[33];
+  char password[65];
+} pvdg_wifi_creds_t;
+
+esp_err_t pvdg_nvs_init(void);
+esp_err_t pvdg_nvs_load_wifi(pvdg_wifi_creds_t *out);
+esp_err_t pvdg_nvs_save_wifi(const pvdg_wifi_creds_t *creds);
+
+// Site config stored as opaque JSON string.
+esp_err_t pvdg_nvs_load_site_json(char **out_json);   // malloc()'d, caller frees
+esp_err_t pvdg_nvs_save_site_json(const char *json);
+
+// Config version counter: incremented each time site_json is saved.
+// control_task polls this to detect hot-reload.
+esp_err_t pvdg_nvs_load_cfg_version(uint32_t *out_ver);
+esp_err_t pvdg_nvs_bump_cfg_version(void);
+
+// Commissioning auth token.
+esp_err_t pvdg_nvs_load_token(char **out_token);  // malloc()'d, caller frees
+esp_err_t pvdg_nvs_save_token(const char *token);
