@@ -5,6 +5,7 @@
 #include "app_config.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -36,16 +37,16 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
   (void)id;
 }
 
-static void build_softap_ssid(char out[33]) {
+static void build_softap_ssid(char *out, size_t out_len) {
   uint8_t mac[6] = {0};
   esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-  snprintf(out, 33, "%s%02X%02X%02X", PVDG_SOFTAP_SSID_PREFIX, mac[3], mac[4], mac[5]);
+  snprintf(out, out_len, "%s%02X%02X%02X", PVDG_SOFTAP_SSID_PREFIX, mac[3], mac[4], mac[5]);
 }
 
 static esp_err_t start_softap(void) {
   if (!s_netif_ap) s_netif_ap = esp_netif_create_default_wifi_ap();
   wifi_config_t cfg = {0};
-  build_softap_ssid((char *)cfg.ap.ssid);
+  build_softap_ssid((char *)cfg.ap.ssid, sizeof(cfg.ap.ssid));
   cfg.ap.ssid_len      = strlen((char *)cfg.ap.ssid);
   strlcpy((char *)cfg.ap.password, PVDG_SOFTAP_PASSWORD, sizeof(cfg.ap.password));
   cfg.ap.channel        = PVDG_SOFTAP_CHANNEL;

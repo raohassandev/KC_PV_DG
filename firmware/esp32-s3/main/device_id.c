@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "app_config.h"
+#include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_system.h"
 #include "esp_wifi.h"

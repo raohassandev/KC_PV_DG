@@ -5,13 +5,17 @@
 #include <inttypes.h>
 
 #include "cJSON.h"
+#include "app_config.h"
 #include "device_id.h"
+#include "device_registry.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "nvs_store.h"
 #include "ota.h"
 #include "wifi.h"
 #include "em500.h"
+#include "inverter_registry.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 
@@ -222,7 +226,8 @@ static esp_err_t site_config_put(httpd_req_t *req) {
   }
   cJSON *j = cJSON_Parse(body);
   if (!j || !cJSON_IsObject(j)) {
-    if (j) cJSON_Delete(j); free(body);
+    if (j) cJSON_Delete(j);
+    free(body);
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "expected JSON object"); return ESP_OK;
   }
   cJSON_Delete(j);
@@ -307,6 +312,170 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   return resp;
 }
 
+static void add_inverter_snapshot_json(cJSON *obj, const pvdg_inverter_snapshot_t *inv) {
+  cJSON_AddBoolToObject(obj, "online", inv->online);
+  cJSON_AddNumberToObject(obj, "state_code", inv->state_code);
+  cJSON_AddNumberToObject(obj, "alarm_code", inv->alarm_code);
+  cJSON_AddNumberToObject(obj, "ac_power_w", inv->ac_power_w);
+  cJSON_AddNumberToObject(obj, "ac_frequency_hz", inv->ac_frequency_hz);
+  cJSON_AddNumberToObject(obj, "ac_voltage_l1_v", inv->ac_voltage_l1_v);
+  cJSON_AddNumberToObject(obj, "ac_voltage_l2_v", inv->ac_voltage_l2_v);
+  cJSON_AddNumberToObject(obj, "ac_voltage_l3_v", inv->ac_voltage_l3_v);
+  cJSON_AddNumberToObject(obj, "ac_current_l1_a", inv->ac_current_l1_a);
+  cJSON_AddNumberToObject(obj, "ac_current_l2_a", inv->ac_current_l2_a);
+  cJSON_AddNumberToObject(obj, "ac_current_l3_a", inv->ac_current_l3_a);
+  cJSON_AddNumberToObject(obj, "dc_voltage_v", inv->dc_voltage_v);
+  cJSON_AddNumberToObject(obj, "dc_current_a", inv->dc_current_a);
+  cJSON_AddNumberToObject(obj, "dc_power_w", inv->dc_power_w);
+  cJSON_AddNumberToObject(obj, "efficiency_pct", inv->efficiency_pct);
+  cJSON_AddNumberToObject(obj, "active_power_limit_pct", inv->active_power_limit_pct);
+  cJSON_AddNumberToObject(obj, "daily_energy_kwh", inv->daily_energy_kwh);
+  cJSON_AddNumberToObject(obj, "lifetime_energy_kwh", inv->lifetime_energy_kwh);
+
+  cJSON *strings = cJSON_CreateArray();
+  for (uint8_t i = 0; i < inv->string_count; i++) {
+    const pvdg_pv_string_snapshot_t *s = &inv->strings[i];
+    if (!s->valid) continue;
+    cJSON *item = cJSON_CreateObject();
+    cJSON_AddNumberToObject(item, "id", i + 1);
+    cJSON_AddNumberToObject(item, "voltage_v", s->voltage_v);
+    cJSON_AddNumberToObject(item, "current_a", s->current_a);
+    cJSON_AddNumberToObject(item, "temperature_c", s->temperature_c);
+    cJSON_AddItemToArray(strings, item);
+  }
+  cJSON_AddItemToObject(obj, "strings", strings);
+}
+
+static esp_err_t parse_optional_json_body(httpd_req_t *req, cJSON **out) {
+  *out = NULL;
+  if (req->content_len <= 0) return ESP_OK;
+
+  char *body = NULL;
+  size_t body_len = 0;
+  esp_err_t err = read_body(req, &body, &body_len);
+  if (err != ESP_OK) return err;
+
+  cJSON *j = cJSON_Parse(body);
+  free(body);
+  if (!j || !cJSON_IsObject(j)) {
+    if (j) cJSON_Delete(j);
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  *out = j;
+  return ESP_OK;
+}
+
+static uint8_t json_slave_id_or_default(const cJSON *j, uint8_t default_slave) {
+  const cJSON *slave = j ? cJSON_GetObjectItem(j, "slave_id") : NULL;
+  if (!cJSON_IsNumber(slave)) slave = j ? cJSON_GetObjectItem(j, "slaveId") : NULL;
+  if (cJSON_IsNumber(slave) && slave->valueint >= 1 && slave->valueint <= 247) {
+    return (uint8_t)slave->valueint;
+  }
+  return default_slave;
+}
+
+// ---------------------------------------------------------------------------
+// POST /inverter/huawei/read
+// ---------------------------------------------------------------------------
+
+static esp_err_t huawei_read_post(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  cJSON *body = NULL;
+  if (parse_optional_json_body(req, &body) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad json");
+    return ESP_OK;
+  }
+
+  uint8_t slave_id = json_slave_id_or_default(body, 2);
+  if (body) cJSON_Delete(body);
+
+  const pvdg_inverter_driver_t *driver = pvdg_inverter_driver_for_brand("huawei");
+  pvdg_inverter_snapshot_t inv = {0};
+  esp_err_t err = driver->read_snapshot(slave_id, &inv);
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  cJSON_AddNumberToObject(out, "slave_id", slave_id);
+  cJSON_AddStringToObject(out, "brand", driver->brand_id);
+  if (err == ESP_OK) {
+    add_inverter_snapshot_json(out, &inv);
+  } else {
+    cJSON_AddStringToObject(out, "error", esp_err_to_name(err));
+  }
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+// ---------------------------------------------------------------------------
+// POST /inverter/huawei/limit
+// ---------------------------------------------------------------------------
+
+static esp_err_t huawei_limit_post(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  cJSON *body = NULL;
+  if (parse_optional_json_body(req, &body) != ESP_OK || !body) {
+    if (body) cJSON_Delete(body);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "body required");
+    return ESP_OK;
+  }
+
+  uint8_t slave_id = json_slave_id_or_default(body, 2);
+  const cJSON *limit = cJSON_GetObjectItem(body, "limit_pct");
+  if (!cJSON_IsNumber(limit)) limit = cJSON_GetObjectItem(body, "limitPct");
+  if (!cJSON_IsNumber(limit)) {
+    cJSON_Delete(body);
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "limit_pct required");
+    return ESP_OK;
+  }
+
+  double limit_pct = limit->valuedouble;
+  cJSON_Delete(body);
+
+  const pvdg_inverter_driver_t *driver = pvdg_inverter_driver_for_brand("huawei");
+  esp_err_t err = driver->write_limit_pct(slave_id, limit_pct);
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  cJSON_AddNumberToObject(out, "slave_id", slave_id);
+  cJSON_AddStringToObject(out, "brand", driver->brand_id);
+  cJSON_AddNumberToObject(out, "requested_limit_pct", limit_pct);
+  if (err != ESP_OK) cJSON_AddStringToObject(out, "error", esp_err_to_name(err));
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+// ---------------------------------------------------------------------------
+// GET /control/status
+// ---------------------------------------------------------------------------
+
+static esp_err_t control_status_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddStringToObject(out, "policy_mode", "zero_export");
+  cJSON_AddNumberToObject(out, "export_kw", 0.0);
+  cJSON_AddNumberToObject(out, "target_kw", 0.0);
+  cJSON_AddNumberToObject(out, "inverter_limit_pct", 100.0);
+  cJSON_AddBoolToObject(out, "gen_running", false);
+  cJSON_AddBoolToObject(out, "meter_online", false);
+  cJSON_AddBoolToObject(out, "inverter_online", false);
+  cJSON_AddNumberToObject(out, "cycle_count", 0);
+  cJSON_AddNumberToObject(out, "meter_errors", 0);
+  cJSON_AddNumberToObject(out, "inverter_errors", 0);
+  cJSON_AddStringToObject(out, "state", "not_started");
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
 // ---------------------------------------------------------------------------
 // GET /diagnostics
 // ---------------------------------------------------------------------------
@@ -324,6 +493,91 @@ static esp_err_t diagnostics_get(httpd_req_t *req) {
     mode == PVDG_NET_STA_CONNECTED ? "sta" : (mode == PVDG_NET_SOFTAP ? "softap" : "unknown"));
   int rssi = 0;
   if (pvdg_wifi_get_rssi(&rssi) == ESP_OK) cJSON_AddNumberToObject(out, "wifiRssiDbm", rssi);
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+// ---------------------------------------------------------------------------
+// POST /device/discover
+// ---------------------------------------------------------------------------
+
+static esp_err_t device_discover_post(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  int start_id = 1;
+  int end_id = 32;
+  int baud_rate = PVDG_MB_BAUD;
+
+  if (req->content_len > 0) {
+    char *body = NULL;
+    size_t body_len = 0;
+    if (read_body(req, &body, &body_len) != ESP_OK) {
+      httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad body");
+      return ESP_OK;
+    }
+
+    cJSON *j = cJSON_Parse(body);
+    free(body);
+    if (!j || !cJSON_IsObject(j)) {
+      if (j) cJSON_Delete(j);
+      httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad json");
+      return ESP_OK;
+    }
+
+    const cJSON *scan_range = cJSON_GetObjectItem(j, "scan_range");
+    if (cJSON_IsArray(scan_range) && cJSON_GetArraySize(scan_range) >= 2) {
+      const cJSON *first = cJSON_GetArrayItem(scan_range, 0);
+      const cJSON *last = cJSON_GetArrayItem(scan_range, 1);
+      if (cJSON_IsNumber(first)) start_id = first->valueint;
+      if (cJSON_IsNumber(last)) end_id = last->valueint;
+    }
+
+    const cJSON *baud = cJSON_GetObjectItem(j, "baud_rate");
+    if (cJSON_IsNumber(baud)) baud_rate = baud->valueint;
+
+    cJSON_Delete(j);
+  }
+
+  if (start_id < 1) start_id = 1;
+  if (end_id > 247) end_id = 247;
+  if (end_id < start_id) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "invalid scan_range");
+    return ESP_OK;
+  }
+
+  pvdg_discovery_request_t scan_req = {
+    .start_id = (uint8_t)start_id,
+    .end_id = (uint8_t)end_id,
+    .baud_rate = baud_rate,
+  };
+  pvdg_discovery_result_t result = {0};
+  esp_err_t scan_err = pvdg_device_discovery_scan(&scan_req, &result);
+  if (scan_err != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "scan failed");
+    return ESP_OK;
+  }
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON *devices = cJSON_CreateArray();
+
+  for (uint8_t i = 0; i < result.device_count; i++) {
+    const pvdg_discovered_device_t *found = &result.devices[i];
+    cJSON *dev = cJSON_CreateObject();
+    cJSON_AddNumberToObject(dev, "slave_id", found->slave_id);
+    cJSON_AddBoolToObject(dev, "responding", true);
+    cJSON_AddStringToObject(dev, "brand", found->brand);
+    cJSON_AddStringToObject(dev, "probe", found->probe);
+    cJSON_AddNumberToObject(dev, "sample_register", found->sample_register);
+    cJSON_AddItemToArray(devices, dev);
+  }
+
+  cJSON_AddItemToObject(out, "devices", devices);
+  cJSON_AddNumberToObject(out, "scan_duration_ms", (double)result.scan_duration_ms);
+  cJSON_AddNumberToObject(out, "baud_rate", baud_rate);
+  cJSON_AddNumberToObject(out, "range_start", start_id);
+  cJSON_AddNumberToObject(out, "range_end", end_id);
+
   esp_err_t resp = send_json(req, out, 200);
   cJSON_Delete(out);
   return resp;
@@ -396,6 +650,11 @@ esp_err_t pvdg_http_start(void) {
   REG(HTTP_GET,  "/site/config",       site_config_get);
   REG(HTTP_PUT,  "/site/config",       site_config_put);
   REG(HTTP_GET,  "/telemetry/snapshot",telemetry_snapshot_get);
+  REG(HTTP_GET,  "/control/status",    control_status_get);
+  REG(HTTP_POST, "/inverter/huawei/read", huawei_read_post);
+  REG(HTTP_POST, "/inverter/huawei/limit", huawei_limit_post);
+  REG(HTTP_POST, "/device/discover",    device_discover_post);
+  REG(HTTP_POST, "/api/v1/device/discover", device_discover_post);
   REG(HTTP_GET,  "/diagnostics",       diagnostics_get);
   REG(HTTP_GET,  "/ota/status",        ota_status_get);
   REG(HTTP_POST, "/ota",               ota_start_post);

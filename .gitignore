@@ -14,6 +14,11 @@
 /secrets.yaml
 /Modular_Yaml/secrets.yaml
 
+# ESP-IDF local build output
+/firmware/esp32-s3/build/
+/firmware/esp32-s3/sdkconfig
+/firmware/esp32-s3/sdkconfig.old
+
 # Local-only copy of dev / deployment credentials (see CREDENTIALS.local.example)
 /Export/secrets.yaml
 /CREDENTIALS.local.md

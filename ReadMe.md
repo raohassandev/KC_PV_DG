@@ -15,13 +15,11 @@ The old ESPHome firmware and PWA product path have been removed from this branch
 
 From repo root:
 
-```bash
-cd firmware/esp32-s3
-idf.py set-target esp32s3
-idf.py build flash monitor
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\flash_esp32s3.ps1 -Port COMx -Monitor
 ```
 
-On Windows, use the ESP-IDF PowerShell or command prompt so `idf.py` is available.
+On Windows, use the ESP-IDF PowerShell or command prompt so `idf.py` is available. Omit `-Port` to auto-detect a single connected ESP USB serial port.
 
 ## Run Android App
 

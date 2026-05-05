@@ -5,16 +5,21 @@ idf_component_register(
     "http_server.c"
     "nvs_store.c"
     "device_id.c"
+    "device_registry.c"
     "ota.c"
     "modbus_rtu.c"
     "em500.c"
-  INCLUDE_DIRS "."
+    "inverters/huawei_sun2000.c"
+    "inverters/inverter_registry.c"
+  INCLUDE_DIRS "." "inverters"
   REQUIRES
     esp_http_server
     esp_wifi
     nvs_flash
-    esp_ota_ops
+    app_update
+    esp_https_ota
+    esp_timer
     driver
-    cJSON
+    json
     spiffs
 )
