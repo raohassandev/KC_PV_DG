@@ -8,6 +8,7 @@
 #include "app_config.h"
 #include "device_id.h"
 #include "device_registry.h"
+#include "energy_history.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -556,6 +557,25 @@ static esp_err_t diagnostics_get(httpd_req_t *req) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /energy/history
+// ---------------------------------------------------------------------------
+
+static esp_err_t energy_history_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+  char *json = NULL;
+  esp_err_t err = pvdg_energy_history_read_json(&json);
+  if (err != ESP_OK || !json) {
+    httpd_resp_set_status(req, "500 Internal Server Error");
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, "{\"error\":\"history_unavailable\"}", HTTPD_RESP_USE_STRLEN);
+  }
+  httpd_resp_set_type(req, "application/json");
+  esp_err_t resp = httpd_resp_send(req, json, HTTPD_RESP_USE_STRLEN);
+  cJSON_free(json);
+  return resp;
+}
+
+// ---------------------------------------------------------------------------
 // GET/PUT /device/registry
 // ---------------------------------------------------------------------------
 
@@ -772,6 +792,7 @@ esp_err_t pvdg_http_start(void) {
   REG(HTTP_POST, "/device/discover",    device_discover_post);
   REG(HTTP_POST, "/api/v1/device/discover", device_discover_post);
   REG(HTTP_GET,  "/diagnostics",       diagnostics_get);
+  REG(HTTP_GET,  "/energy/history",    energy_history_get);
   REG(HTTP_GET,  "/ota/status",        ota_status_get);
   REG(HTTP_POST, "/ota",               ota_start_post);
 

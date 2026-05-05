@@ -21,6 +21,7 @@ static esp_netif_t *s_netif_sta = NULL;
 static esp_netif_t *s_netif_ap  = NULL;
 static pvdg_net_mode_t s_mode   = PVDG_NET_UNKNOWN;
 static char s_ip[16] = {0};
+static pvdg_wifi_creds_t s_pending_creds;
 
 static const int BIT_STA_GOT_IP = BIT0;
 static const int BIT_STA_FAIL   = BIT1;
@@ -130,13 +131,35 @@ esp_err_t pvdg_wifi_get_rssi(int *out_rssi_dbm) {
   return ESP_OK;
 }
 
+static void wifi_reconnect_task(void *arg) {
+  (void)arg;
+  vTaskDelay(pdMS_TO_TICKS(500));
+  xEventGroupClearBits(s_events, BIT_STA_GOT_IP | BIT_STA_FAIL);
+
+  esp_err_t stop_err = esp_wifi_stop();
+  if (stop_err != ESP_OK && stop_err != ESP_ERR_WIFI_NOT_STARTED) {
+    ESP_LOGW(TAG, "wifi stop before STA failed: %s", esp_err_to_name(stop_err));
+  }
+
+  esp_err_t sta_err = start_sta(s_pending_creds.ssid, s_pending_creds.password);
+  if (sta_err != ESP_OK) {
+    ESP_LOGW(TAG, "STA request failed, returning to SoftAP: %s", esp_err_to_name(sta_err));
+    (void)start_softap();
+  }
+
+  vTaskDelete(NULL);
+}
+
 esp_err_t pvdg_wifi_request_connect(const char *ssid, const char *password) {
   if (!ssid || ssid[0] == '\0') return ESP_ERR_INVALID_ARG;
   pvdg_wifi_creds_t creds = {0};
   strlcpy(creds.ssid, ssid, sizeof(creds.ssid));
   if (password) strlcpy(creds.password, password, sizeof(creds.password));
-  ESP_ERROR_CHECK(pvdg_nvs_save_wifi(&creds));
-  xEventGroupClearBits(s_events, BIT_STA_GOT_IP | BIT_STA_FAIL);
-  ESP_ERROR_CHECK(start_sta(creds.ssid, creds.password));
+  esp_err_t err = pvdg_nvs_save_wifi(&creds);
+  if (err != ESP_OK) return err;
+  s_pending_creds = creds;
+  BaseType_t ok = xTaskCreate(wifi_reconnect_task, "wifi_reconnect", 4096, NULL, 4, NULL);
+  if (ok != pdPASS) return ESP_ERR_NO_MEM;
+  ESP_LOGI(TAG, "STA reconnect scheduled SSID=%s", creds.ssid);
   return ESP_OK;
 }

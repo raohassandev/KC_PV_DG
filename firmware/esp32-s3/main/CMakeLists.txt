@@ -10,6 +10,7 @@ idf_component_register(
     "modbus_rtu.c"
     "modbus_poll.c"
     "em500.c"
+    "energy_history.c"
     "inverters/huawei_sun2000.c"
     "inverters/inverter_registry.c"
   INCLUDE_DIRS "." "inverters"
