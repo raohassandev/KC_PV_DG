@@ -8,6 +8,7 @@ idf_component_register(
     "device_registry.c"
     "ota.c"
     "modbus_rtu.c"
+    "modbus_poll.c"
     "em500.c"
     "inverters/huawei_sun2000.c"
     "inverters/inverter_registry.c"

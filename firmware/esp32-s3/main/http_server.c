@@ -15,6 +15,7 @@
 #include "ota.h"
 #include "wifi.h"
 #include "em500.h"
+#include "modbus_poll.h"
 #include "inverter_registry.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
@@ -33,6 +34,10 @@ static bool token_ok(httpd_req_t *req) {
   bool ok = false;
   if (httpd_req_get_hdr_value_str(req, "X-PVDG-Token", hdr, sizeof(hdr)) == ESP_OK)
     ok = (strcmp(hdr, tok) == 0);
+  if (!ok && httpd_req_get_hdr_value_str(req, "Authorization", hdr, sizeof(hdr)) == ESP_OK) {
+    const char *prefix = "Bearer ";
+    if (strncmp(hdr, prefix, strlen(prefix)) == 0) ok = (strcmp(hdr + strlen(prefix), tok) == 0);
+  }
   free(tok);
   return ok;
 }
@@ -248,35 +253,10 @@ static esp_err_t site_config_put(httpd_req_t *req) {
 static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   cJSON *out = cJSON_CreateObject();
 
-  pvdg_em500_grid_t em = {0};
-  uint8_t grid_slave = 1;
-  char *site_json = NULL;
-  if (pvdg_nvs_load_site_json(&site_json) == ESP_OK && site_json) {
-    cJSON *root = cJSON_Parse(site_json);
-    if (root && cJSON_IsObject(root)) {
-      const cJSON *slots = cJSON_GetObjectItem(root, "slots");
-      if (cJSON_IsArray(slots)) {
-        const cJSON *slot = NULL;
-        cJSON_ArrayForEach(slot, slots) {
-          const cJSON *enabled = cJSON_GetObjectItem(slot, "enabled");
-          const cJSON *role    = cJSON_GetObjectItem(slot, "role");
-          const cJSON *dev     = cJSON_GetObjectItem(slot, "deviceType");
-          const cJSON *mb      = cJSON_GetObjectItem(slot, "modbusId");
-          if (!cJSON_IsBool(enabled) || !cJSON_IsString(role) ||
-              !cJSON_IsString(dev)   || !cJSON_IsNumber(mb)) continue;
-          if (!cJSON_IsTrue(enabled)) continue;
-          if (strcmp(role->valuestring, "grid_meter") != 0) continue;
-          if (strncmp(dev->valuestring, "em500", 5) != 0) continue;
-          int mbid = mb->valueint;
-          if (mbid >= 1 && mbid <= 247) { grid_slave = (uint8_t)mbid; break; }
-        }
-      }
-    }
-    if (root) cJSON_Delete(root);
-    free(site_json);
-  }
-
-  bool have_em = pvdg_em500_read_grid(grid_slave, &em);
+  pvdg_live_snapshot_t snap = {0};
+  bool have_snapshot = pvdg_modbus_poll_get_snapshot(&snap) == ESP_OK;
+  bool have_em = have_snapshot && snap.grid_meter.online;
+  pvdg_em500_grid_t em = have_em ? snap.grid_meter.sample : (pvdg_em500_grid_t){0};
 
   cJSON_AddNumberToObject(out, "gridFrequency",            have_em ? em.frequency_hz          : 50.0);
   cJSON_AddNumberToObject(out, "gridTotalActivePowerW",    have_em ? em.total_active_power_w   : 0.0);
@@ -296,13 +276,22 @@ static esp_err_t telemetry_snapshot_get(httpd_req_t *req) {
   cJSON_AddNumberToObject(out, "gridPf",                   have_em ? em.total_pf               : 1.0);
   cJSON_AddNumberToObject(out, "gridImportKwh",            have_em ? em.import_kwh             : 0.0);
   cJSON_AddNumberToObject(out, "gridExportKwh",            have_em ? em.export_kwh             : 0.0);
-  cJSON_AddStringToObject(out, "gridStatus",               "ONLINE");
+  cJSON_AddStringToObject(out, "gridStatus",               have_em ? "ONLINE" : "OFFLINE");
+  cJSON_AddBoolToObject(out, "gridConfigured",             have_snapshot && snap.grid_meter.configured);
+  cJSON_AddNumberToObject(out, "gridSlaveId",              have_snapshot ? snap.grid_meter.slave_id : 0);
+  cJSON_AddNumberToObject(out, "gridErrorCount",           have_snapshot ? snap.grid_meter.error_count : 0);
 
   // Inverter lane 1 — populated by control_task in Group 2
+  bool have_inv = have_snapshot && snap.inverter.online;
   cJSON_AddStringToObject(out, "controllerState",    "ONLINE");
-  cJSON_AddStringToObject(out, "inverterStatus",     "ONLINE");
-  cJSON_AddNumberToObject(out, "inverterActualPower", 0.0);
+  cJSON_AddStringToObject(out, "inverterStatus",     have_inv ? "ONLINE" : "OFFLINE");
+  cJSON_AddNumberToObject(out, "inverterActualPower", have_inv ? snap.inverter.sample.ac_power_w : 0.0);
   cJSON_AddNumberToObject(out, "inverterPmax",        0.0);
+  cJSON_AddBoolToObject(out, "inverterConfigured",    have_snapshot && snap.inverter.configured);
+  cJSON_AddNumberToObject(out, "inverterSlaveId",     have_snapshot ? snap.inverter.slave_id : 0);
+  cJSON_AddNumberToObject(out, "inverterErrorCount",  have_snapshot ? snap.inverter.error_count : 0);
+  cJSON_AddNumberToObject(out, "snapshotAgeMs",
+                          have_snapshot ? (double)((esp_timer_get_time() / 1000) - snap.updated_ms) : 0.0);
 
   cJSON_AddStringToObject(out, "gen1Status",   "NA");
   cJSON_AddNullToObject(out,   "gen1TotalActivePowerW");
@@ -373,6 +362,59 @@ static uint8_t json_slave_id_or_default(const cJSON *j, uint8_t default_slave) {
     return (uint8_t)slave->valueint;
   }
   return default_slave;
+}
+
+static void add_registry_device_json(cJSON *arr, const pvdg_device_config_t *dev) {
+  cJSON *item = cJSON_CreateObject();
+  cJSON_AddBoolToObject(item, "enabled", dev->enabled);
+  cJSON_AddNumberToObject(item, "slave_id", dev->slave_id);
+  cJSON_AddNumberToObject(item, "poll_interval_ms", dev->poll_interval_ms);
+  cJSON_AddStringToObject(item, "role", dev->role);
+  cJSON_AddStringToObject(item, "brand", dev->brand);
+  cJSON_AddStringToObject(item, "protocol", dev->protocol);
+  cJSON_AddStringToObject(item, "port", dev->port);
+  cJSON_AddItemToArray(arr, item);
+}
+
+static esp_err_t parse_registry_body(const cJSON *root, pvdg_device_registry_t *out) {
+  if (!root || !out) return ESP_ERR_INVALID_ARG;
+  const cJSON *devices = cJSON_GetObjectItem(root, "devices");
+  if (!cJSON_IsArray(devices)) return ESP_ERR_INVALID_ARG;
+
+  memset(out, 0, sizeof(*out));
+  const int count = cJSON_GetArraySize(devices);
+  if (count > PVDG_DEVICE_REGISTRY_MAX_DEVICES) return ESP_ERR_INVALID_SIZE;
+
+  for (int i = 0; i < count; i++) {
+    const cJSON *item = cJSON_GetArrayItem(devices, i);
+    if (!cJSON_IsObject(item)) return ESP_ERR_INVALID_ARG;
+
+    const cJSON *slave = cJSON_GetObjectItem(item, "slave_id");
+    if (!cJSON_IsNumber(slave)) slave = cJSON_GetObjectItem(item, "slaveId");
+    const cJSON *role = cJSON_GetObjectItem(item, "role");
+    const cJSON *brand = cJSON_GetObjectItem(item, "brand");
+    if (!cJSON_IsNumber(slave) || slave->valueint < 1 || slave->valueint > 247 ||
+        !cJSON_IsString(role) || !cJSON_IsString(brand)) {
+      return ESP_ERR_INVALID_ARG;
+    }
+
+    pvdg_device_config_t *dev = &out->devices[out->device_count++];
+    const cJSON *enabled = cJSON_GetObjectItem(item, "enabled");
+    const cJSON *poll_ms = cJSON_GetObjectItem(item, "poll_interval_ms");
+    if (!cJSON_IsNumber(poll_ms)) poll_ms = cJSON_GetObjectItem(item, "pollIntervalMs");
+    const cJSON *protocol = cJSON_GetObjectItem(item, "protocol");
+    const cJSON *port = cJSON_GetObjectItem(item, "port");
+
+    dev->enabled = !cJSON_IsBool(enabled) || cJSON_IsTrue(enabled);
+    dev->slave_id = (uint8_t)slave->valueint;
+    dev->poll_interval_ms = cJSON_IsNumber(poll_ms) ? (uint16_t)poll_ms->valueint : 1000;
+    strlcpy(dev->role, role->valuestring, sizeof(dev->role));
+    strlcpy(dev->brand, brand->valuestring, sizeof(dev->brand));
+    strlcpy(dev->protocol, cJSON_IsString(protocol) ? protocol->valuestring : "rtu", sizeof(dev->protocol));
+    strlcpy(dev->port, cJSON_IsString(port) ? port->valuestring : "uart1", sizeof(dev->port));
+  }
+
+  return ESP_OK;
 }
 
 // ---------------------------------------------------------------------------
@@ -459,17 +501,19 @@ static esp_err_t control_status_get(httpd_req_t *req) {
   if (require_token(req) != ESP_OK) return ESP_OK;
 
   cJSON *out = cJSON_CreateObject();
+  pvdg_live_snapshot_t snap = {0};
+  bool have_snapshot = pvdg_modbus_poll_get_snapshot(&snap) == ESP_OK;
   cJSON_AddStringToObject(out, "policy_mode", "zero_export");
   cJSON_AddNumberToObject(out, "export_kw", 0.0);
   cJSON_AddNumberToObject(out, "target_kw", 0.0);
   cJSON_AddNumberToObject(out, "inverter_limit_pct", 100.0);
   cJSON_AddBoolToObject(out, "gen_running", false);
-  cJSON_AddBoolToObject(out, "meter_online", false);
-  cJSON_AddBoolToObject(out, "inverter_online", false);
-  cJSON_AddNumberToObject(out, "cycle_count", 0);
-  cJSON_AddNumberToObject(out, "meter_errors", 0);
-  cJSON_AddNumberToObject(out, "inverter_errors", 0);
-  cJSON_AddStringToObject(out, "state", "not_started");
+  cJSON_AddBoolToObject(out, "meter_online", have_snapshot && snap.grid_meter.online);
+  cJSON_AddBoolToObject(out, "inverter_online", have_snapshot && snap.inverter.online);
+  cJSON_AddNumberToObject(out, "cycle_count", have_snapshot ? snap.cycle_count : 0);
+  cJSON_AddNumberToObject(out, "meter_errors", have_snapshot ? snap.grid_meter.error_count : 0);
+  cJSON_AddNumberToObject(out, "inverter_errors", have_snapshot ? snap.inverter.error_count : 0);
+  cJSON_AddStringToObject(out, "state", have_snapshot && snap.poller_running ? "polling" : "not_started");
 
   esp_err_t resp = send_json(req, out, 200);
   cJSON_Delete(out);
@@ -493,6 +537,76 @@ static esp_err_t diagnostics_get(httpd_req_t *req) {
     mode == PVDG_NET_STA_CONNECTED ? "sta" : (mode == PVDG_NET_SOFTAP ? "softap" : "unknown"));
   int rssi = 0;
   if (pvdg_wifi_get_rssi(&rssi) == ESP_OK) cJSON_AddNumberToObject(out, "wifiRssiDbm", rssi);
+
+  pvdg_device_registry_t registry = {0};
+  if (pvdg_device_registry_load(&registry) == ESP_OK) {
+    cJSON_AddNumberToObject(out, "configuredDeviceCount", registry.device_count);
+    cJSON_AddNumberToObject(out, "deviceRegistryVersion", registry.version);
+  }
+  pvdg_live_snapshot_t snap = {0};
+  if (pvdg_modbus_poll_get_snapshot(&snap) == ESP_OK) {
+    cJSON_AddBoolToObject(out, "pollerRunning", snap.poller_running);
+    cJSON_AddNumberToObject(out, "pollCycleCount", snap.cycle_count);
+    cJSON_AddBoolToObject(out, "gridMeterOnline", snap.grid_meter.online);
+    cJSON_AddBoolToObject(out, "inverterOnline", snap.inverter.online);
+  }
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+// ---------------------------------------------------------------------------
+// GET/PUT /device/registry
+// ---------------------------------------------------------------------------
+
+static esp_err_t device_registry_get(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  pvdg_device_registry_t registry = {0};
+  esp_err_t err = pvdg_device_registry_load(&registry);
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  cJSON_AddNumberToObject(out, "version", registry.version);
+  cJSON *devices = cJSON_CreateArray();
+  for (uint8_t i = 0; i < registry.device_count; i++) {
+    add_registry_device_json(devices, &registry.devices[i]);
+  }
+  cJSON_AddItemToObject(out, "devices", devices);
+  if (err != ESP_OK) cJSON_AddStringToObject(out, "error", esp_err_to_name(err));
+
+  esp_err_t resp = send_json(req, out, 200);
+  cJSON_Delete(out);
+  return resp;
+}
+
+static esp_err_t device_registry_put(httpd_req_t *req) {
+  if (require_token(req) != ESP_OK) return ESP_OK;
+
+  char *body = NULL;
+  size_t body_len = 0;
+  if (read_body(req, &body, &body_len) != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad body");
+    return ESP_OK;
+  }
+
+  cJSON *j = cJSON_Parse(body);
+  free(body);
+  pvdg_device_registry_t registry = {0};
+  esp_err_t err = parse_registry_body(j, &registry);
+  if (j) cJSON_Delete(j);
+  if (err != ESP_OK) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad device registry");
+    return ESP_OK;
+  }
+
+  err = pvdg_device_registry_save(&registry);
+  if (err == ESP_OK) pvdg_nvs_bump_cfg_version();
+
+  cJSON *out = cJSON_CreateObject();
+  cJSON_AddBoolToObject(out, "ok", err == ESP_OK);
+  cJSON_AddNumberToObject(out, "device_count", registry.device_count);
+  if (err != ESP_OK) cJSON_AddStringToObject(out, "error", esp_err_to_name(err));
   esp_err_t resp = send_json(req, out, 200);
   cJSON_Delete(out);
   return resp;
@@ -653,6 +767,8 @@ esp_err_t pvdg_http_start(void) {
   REG(HTTP_GET,  "/control/status",    control_status_get);
   REG(HTTP_POST, "/inverter/huawei/read", huawei_read_post);
   REG(HTTP_POST, "/inverter/huawei/limit", huawei_limit_post);
+  REG(HTTP_GET,  "/device/registry",    device_registry_get);
+  REG(HTTP_PUT,  "/device/registry",    device_registry_put);
   REG(HTTP_POST, "/device/discover",    device_discover_post);
   REG(HTTP_POST, "/api/v1/device/discover", device_discover_post);
   REG(HTTP_GET,  "/diagnostics",       diagnostics_get);
